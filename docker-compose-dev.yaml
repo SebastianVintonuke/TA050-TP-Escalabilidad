@@ -1,0 +1,121 @@
+name: TP Escalabilidad - Coffee Shop Analysis
+services:
+  middleware:
+    container_name: middleware
+    image: middleware:latest
+    entrypoint: python3 /middleware/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - testing_net
+    volumes:
+      - ./middleware/config.ini:/config.ini:ro
+
+  results:
+    container_name: results
+    image: results:latest
+    entrypoint: python3 /results/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./results/config.ini:/config.ini:ro
+
+  server:
+    container_name: server
+    image: server:latest
+    entrypoint: python3 /server/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - testing_net
+    volumes:
+      - ./server/config.ini:/config.ini:ro
+
+  client:
+    container_name: client
+    image: client:latest
+    entrypoint: python3 /client/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - testing_net
+    depends_on:
+      - server
+    volumes:
+      - ./client/config.ini:/config.ini:ro
+
+  dispatcher:
+    container_name: dispatcher
+    image: dispatcher:latest
+    entrypoint: python3 /dispatcher/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./dispatcher/config.ini:/config.ini:ro
+
+  resultnode1:
+    container_name: resultnode1
+    image: resultnode:latest
+    entrypoint: python3 /resultnode/main.py
+    environment:
+      - RESULT_NODE_ID=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./resultnode/config.ini:/config.ini:ro
+
+  resultnode2:
+    container_name: resultnode2
+    image: resultnode:latest
+    entrypoint: python3 /resultnode/main.py
+    environment:
+      - RESULT_NODE_ID=2
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./resultnode/config.ini:/config.ini:ro
+
+  selectnode1:
+    container_name: selectnode1
+    image: selectnode:latest
+    entrypoint: python3 /selectnode/main.py
+    environment:
+      - SELECT_NODE_ID=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./selectnode/config.ini:/config.ini:ro
+
+  selectnode2:
+    container_name: selectnode2
+    image: selectnode:latest
+    entrypoint: python3 /selectnode/main.py
+    environment:
+      - SELECT_NODE_ID=2
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./selectnode/config.ini:/config.ini:ro
+
+networks:
+  testing_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.125.0/24
