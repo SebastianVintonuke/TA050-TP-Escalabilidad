@@ -60,12 +60,14 @@ echo "  client:
     entrypoint: python3 /client/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - DATA_DIR=/archive
     networks:
       - testing_net
     depends_on:
       - server
     volumes:
       - ./client/config.ini:/config.ini:ro
+      - ./.data/archive:/archive:ro
 " >> "$output_file_name"
 
 echo "  dispatcher:

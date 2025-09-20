@@ -2,9 +2,10 @@
 
 import logging
 import os
+import socket
 from configparser import ConfigParser
 
-from common import test_shared
+from common import BatchProtocol, Model, SignalProtocol
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -68,7 +69,34 @@ def main() -> None:
         f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level}"
     )
 
-    test_shared("server")
+    _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    _socket.bind(("", port))
+    _socket.listen(listen_backlog)
+
+    client_socket, addr = _socket.accept()
+    logging.info(f"action: accept_connections | result: success | ip: {addr[0]}")
+
+    signal_protocol = SignalProtocol(client_socket)
+    batch_protocol = BatchProtocol(client_socket)
+
+    # count = 0
+    try:
+        batch = batch_protocol.wait_batch()
+        header = batch[0]
+        model = Model.model_for(header)
+        while len(batch) > 0:  # el fin se indica con un batch vacio
+            # count += 1
+            # if count == 3:
+            #    raise Exception("prueba del protocolo de error")  # Descomentar para ver propagacion de errores
+            batch = batch_protocol.wait_batch()
+            signal_protocol.send_ack()
+            for item in batch:
+                print(model.from_bytes(item))
+    except Exception as e:
+        print(e)
+        signal_protocol.send_error(str(e))
+
+    print("end")
 
 
 if __name__ == "__main__":
