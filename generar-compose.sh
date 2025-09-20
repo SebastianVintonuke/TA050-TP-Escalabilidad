@@ -34,6 +34,7 @@ echo "  results:
     entrypoint: python3 /results/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - LISTEN_BACKLOG=$result_node_number
     networks:
       - testing_net
     depends_on:

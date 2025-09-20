@@ -73,19 +73,7 @@ services:
       - testing_net
     depends_on:
       - middleware
-    volumes:
-      - ./resultnode/config.ini:/config.ini:ro
-
-  resultnode2:
-    container_name: resultnode2
-    image: resultnode:latest
-    entrypoint: python3 /resultnode/main.py
-    environment:
-      - RESULT_NODE_ID=2
-    networks:
-      - testing_net
-    depends_on:
-      - middleware
+      - results
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
 
@@ -95,19 +83,6 @@ services:
     entrypoint: python3 /selectnode/main.py
     environment:
       - SELECT_NODE_ID=1
-    networks:
-      - testing_net
-    depends_on:
-      - middleware
-    volumes:
-      - ./selectnode/config.ini:/config.ini:ro
-
-  selectnode2:
-    container_name: selectnode2
-    image: selectnode:latest
-    entrypoint: python3 /selectnode/main.py
-    environment:
-      - SELECT_NODE_ID=2
     networks:
       - testing_net
     depends_on:

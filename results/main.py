@@ -2,9 +2,10 @@
 
 import logging
 import os
+import signal
 from configparser import ConfigParser
 
-from common import test_shared
+from src.results import ResultsServer
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -25,6 +26,9 @@ def initialize_config():  # type: ignore[no-untyped-def]
     config_params = {}
     try:
         config_params["port"] = int(os.getenv("PORT", config["DEFAULT"]["PORT"]))
+        config_params["listen_backlog"] = int(
+            os.getenv("LISTEN_BACKLOG", config["DEFAULT"]["LISTEN_BACKLOG"])
+        )
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
@@ -55,16 +59,22 @@ def initialize_log(logging_level: int) -> None:
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
+    listen_backlog = config_params["listen_backlog"]
     logging_level = config_params["logging_level"]
 
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level}"
     )
 
-    test_shared("results")
+    results = ResultsServer(port, listen_backlog)
+    signal.signal(signal.SIGTERM, results.graceful_shutdown)
+
+    results.run()
+
+    logging.shutdown()
 
 
 if __name__ == "__main__":

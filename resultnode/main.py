@@ -2,9 +2,10 @@
 
 import logging
 import os
+import socket
 from configparser import ConfigParser
 
-from common import test_shared
+from common import QueryId, QueryResult1, ResultsProtocol, new_uuid
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -27,6 +28,12 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["port"] = int(os.getenv("PORT", config["DEFAULT"]["PORT"]))
         config_params["node_id"] = os.getenv(
             "RESULT_NODE_ID", config["DEFAULT"]["RESULT_NODE_ID"]
+        )
+        config_params["results_ip"] = os.getenv(
+            "RESULTS_IP", config["DEFAULT"]["RESULTS_IP"]
+        )
+        config_params["results_port"] = int(
+            os.getenv("RESULTS_PORT", config["DEFAULT"]["RESULTS_PORT"])
         )
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
@@ -58,6 +65,8 @@ def initialize_log(logging_level: int) -> None:
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
+    results_ip = config_params["results_ip"]
+    results_port = config_params["results_port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
 
@@ -68,7 +77,39 @@ def main() -> None:
         f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
     )
 
-    test_shared("resultnode")
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    a_socket.connect((results_ip, results_port))
+
+    results_protocol = ResultsProtocol(a_socket)
+    fake_user_id = new_uuid()
+    partial_results_1 = [
+        QueryResult1.from_bytes(
+            "9af9901b-60a8-4f95-a586-980a725d1049,87.0".encode("utf-8")
+        ),
+        QueryResult1.from_bytes(
+            "6a58d026-823f-4bda-a15c-2c3f090b7a27,78.0".encode("utf-8")
+        ),
+    ]
+    partial_results_2 = [
+        QueryResult1.from_bytes(
+            "8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5".encode("utf-8")
+        ),
+        QueryResult1.from_bytes(
+            "1b42e037-691b-40e1-9082-04743ef92f7b,75.0".encode("utf-8")
+        ),
+    ]
+
+    results_protocol.notify_results_for(fake_user_id, QueryId.Query1)
+    for result in partial_results_1:
+        print(f"send {result}")
+    results_protocol.append_results(partial_results_1)
+    for result in partial_results_2:
+        print(f"send {result}")
+    results_protocol.append_results(partial_results_2)
+    print("notify results are ready")
+    results_protocol.notify_eof_results()  # Indica que se guardó el último resultado, el server cierra su socket
+    results_protocol.close_with(lambda socket_to_close: socket_to_close.close())
+    print("end")
 
 
 if __name__ == "__main__":
