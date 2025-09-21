@@ -5,7 +5,8 @@ import os
 from configparser import ConfigParser
 
 from common import test_shared
-
+from common import routing 
+from src.selectnode import SelectNode 
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -68,8 +69,16 @@ def main() -> None:
         f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
     )
 
-    test_shared("selectnode")
-
+    try:
+        conn = routing.try_open_connection()
+        node = SelectNode(conn)
+        
+        test_shared("selectnode")
+        node.start()
+    except Exception as e:
+        logging.error(
+            f"action: select_node_main | result: error | err:{e}"
+            )
 
 if __name__ == "__main__":
     main()

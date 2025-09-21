@@ -6,3 +6,5 @@ bin/
 
 # Data
 .data
+runner
+cleaner

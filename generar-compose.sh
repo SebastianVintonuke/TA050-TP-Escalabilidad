@@ -17,15 +17,19 @@ echo "name: TP Escalabilidad - Coffee Shop Analysis" > "$output_file_name"
 echo "services:" >> "$output_file_name"
 
 echo "  middleware:
-    container_name: middleware
-    image: middleware:latest
-    entrypoint: python3 /middleware/main.py
-    environment:
-      - PYTHONUNBUFFERED=1
+    build:
+      context: ./middleware
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15672:15672
     networks:
       - testing_net
-    volumes:
-      - ./middleware/config.ini:/config.ini:ro
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:15672"]
+        interval: 10s
+        timeout: 5s
+        retries: 10
+        
 " >> "$output_file_name"
 
 echo "  results:
