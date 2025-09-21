@@ -5,9 +5,9 @@ class SelectNode:
 		self.channel = middleware_conn.open_channel();
 		self.channel.consume_select_tasks(self.handle_task)
 
-	def handle_task(self, task):
-		pass
+	def handle_task(self, msg):
+		msg.describe()
+		msg.ack_self()
 
-	
 	def start(self):
 		self.channel.start_consume()

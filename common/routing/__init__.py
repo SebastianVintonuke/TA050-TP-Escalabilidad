@@ -6,6 +6,7 @@ import logging
 
 RABBITMQ_HOST = "middleware"
 connection = None
+logging.getLogger("pika").setLevel(logging.WARNING)
 
 class Connection:
 	def __init__(self, host = RABBITMQ_HOST):
