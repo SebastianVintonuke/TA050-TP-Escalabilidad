@@ -5,7 +5,7 @@ import os
 import signal
 from configparser import ConfigParser
 
-from src.results import ResultsServer
+from src.result import ResultServer
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -29,6 +29,7 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["listen_backlog"] = int(
             os.getenv("LISTEN_BACKLOG", config["DEFAULT"]["LISTEN_BACKLOG"])
         )
+        config_params["dir_path"] = os.getenv("DIR_PATH", config["DEFAULT"]["DIR_PATH"])
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
@@ -60,19 +61,20 @@ def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
     listen_backlog = config_params["listen_backlog"]
+    dir_path = config_params["dir_path"]
     logging_level = config_params["logging_level"]
 
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | dir_path: {dir_path} | logging_level: {logging_level}"
     )
 
-    results = ResultsServer(port, listen_backlog)
-    signal.signal(signal.SIGTERM, results.graceful_shutdown)
+    result_server = ResultServer(port, listen_backlog, dir_path)
+    signal.signal(signal.SIGTERM, result_server.graceful_shutdown)
 
-    results.run()
+    result_server.run()
 
     logging.shutdown()
 

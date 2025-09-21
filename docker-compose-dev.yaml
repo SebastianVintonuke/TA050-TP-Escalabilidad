@@ -17,12 +17,14 @@ services:
     entrypoint: python3 /results/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - DIR_PATH=/results
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./results/config.ini:/config.ini:ro
+      - ./.data/results:/results/results
 
   server:
     container_name: server

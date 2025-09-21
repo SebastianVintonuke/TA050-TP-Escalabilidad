@@ -7,8 +7,10 @@ from typing import List, Optional, Tuple
 
 from common import ResultsProtocol
 
+from .storage import ResultStorage
 
-class ResultsServer:
+
+class ResultServer:
     @staticmethod
     def __try_close(a_socket: socket.socket, socket_name_to_log: str) -> None:
         """
@@ -28,12 +30,13 @@ class ResultsServer:
                     f"action: close_{socket_name_to_log} | result: fail | error: {e}"
                 )
 
-    def __init__(self, port: int, listen_backlog: int) -> None:
+    def __init__(self, port: int, listen_backlog: int, dir_path: str) -> None:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(("", port))
         self._server_socket.listen(listen_backlog)
         self._was_stopped = False
         self._clients: List[Tuple[threading.Thread, socket.socket]] = []
+        self._results_storage = ResultStorage(dir_path)
 
     def run(self) -> None:
         """
@@ -75,7 +78,10 @@ class ResultsServer:
         """
         protocol = ResultsProtocol(client_socket)
         try:
-            protocol.handle_requests()
+            protocol.handle_requests(
+                self._results_storage.append_results,
+                self._results_storage.notify_eof_results,
+            )
         except Exception as e:
             logging.error(f"action: error | result: fail | error: {e}")
         finally:
@@ -85,7 +91,7 @@ class ResultsServer:
 
             protocol.close_with(closure_to_close)
 
-    def __accept_new_connection(self) -> socket.socket | None:
+    def __accept_new_connection(self) -> Optional[socket.socket]:
         """
         Accept new connections
 
