@@ -31,10 +31,12 @@ class Channel:
 
 
 	def open_sender_select_tasks(self):
+		self._rbmq_channel.queue_declare(queue=SELECT_TASKS_QUEUE_BASE)
 		return MessageSender(self._rbmq_channel, SELECT_TASKS_QUEUE_BASE);
 
 
 	def open_sender_to_results(self):
+		self._rbmq_channel.queue_declare(queue=RESULTS_QUEUE_BASE)
 		return MessageSender(self._rbmq_channel, RESULTS_QUEUE_BASE);
 
 
