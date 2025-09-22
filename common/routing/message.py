@@ -1,8 +1,23 @@
 import logging
 
+# Message builder
+class MessageBuilder:
+	def __init__(self,query_id, query_type):
+		self.id = query_id
+		self.type = query_type
+		self.payload = []
+		self.fields= []
 
-FIELD_QUERY_ID ="queries_id" 
-FIELD_QUERY_TYPE ="queries_type" 
+	def set_fields(self, fields):
+		# set field names!
+		self.fields = fields
+
+	def add_row(self,row):
+		#assert len(row) == len(fields) # Same size of fields 
+		self.payload.append(row)
+
+	def build(self):
+		return Message("", [self.id], [self.type], self.payload)
 
 # Defines basic initialization and header management
 class Message:
@@ -20,6 +35,9 @@ class Message:
 	def clone_with(self, queries_id, queries_type):
 		return Message(self.tag, queries_id, queries_type, self.payload)
 
+	def result_builder_for_single(self, ind):
+		return MessageBuilder(self.ids[ind], self.types[ind])
+
 	# For subclasses
 	def ack_self(self):
 		pass
@@ -29,19 +47,3 @@ class Message:
 
 	def stream_rows(self):
 		logging.info(f"action: stream_rows | result: success | data: {self.payload}")
-
-
-# Defines basic initialization from rabbitmq channel recv
-class ChannelMessage(Message):
-	def __init__(self, ch, method, headers, payload):
-		super().__init__(method.delivery_tag, 
-					headers.get(FIELD_QUERY_ID, []),
-					headers.get(FIELD_QUERY_TYPE, []),
-					payload)
-		self.ch =ch
-
-	def clone_with(self, queries_id, queries_type):
-		return ChannelMessage(self.ch, self.tag, queries_id, queries_type, self.payload)
-
-	def ack_self(self):
-		self.ch.basic_ack(delivery_tag = self.tag)

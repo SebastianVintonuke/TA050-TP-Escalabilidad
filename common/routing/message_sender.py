@@ -5,6 +5,6 @@ class MessageSender:
 		self.channel = chann
 		self.target_key = target
 
-	def send(self, msg):
+	def send_msg(self, msg):
 		self.channel.basic_publish(exchange='', routing_key=self.target_key, body=msg)
 
