@@ -1,7 +1,7 @@
 
 
 from .message_sender import MessageSender
-from .message import Message
+from .message import ChannelMessage
 import logging
 
 SELECT_TASKS_QUEUE_BASE = "select_tasks_queue"
@@ -10,7 +10,7 @@ SELECT_TASKS_QUEUE_BASE = "select_tasks_queue"
 def callback_wrapper(callback):
 	def real_callback(ch, method, properties, body):
 		logging.info(f"action: rcv_msg | result: success | method: {method} | props: {properties} | body:{body}")
-		return callback(Message(ch, method, properties, body))
+		return callback(ChannelMessage(ch, method, properties.headers, body))
 	return real_callback
 
 
