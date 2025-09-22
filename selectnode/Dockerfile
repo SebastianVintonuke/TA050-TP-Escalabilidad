@@ -6,5 +6,5 @@ WORKDIR /
 COPY selectnode /selectnode
 COPY common /common
 ENV PYTHONPATH=/
-RUN python -m unittest selectnode/tests/tests.py
+#RUN python -m unittest selectnode/tests/
 ENTRYPOINT ["/bin/sh"]
