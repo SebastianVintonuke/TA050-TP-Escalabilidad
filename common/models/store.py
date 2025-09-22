@@ -1,21 +1,20 @@
 from dataclasses import dataclass
-from typing import Optional
 from .model import Model
 from typing import ClassVar
 
 @dataclass
 class Store(Model):
-    _HEADER: ClassVar[str] = "store_id,store_name,street,postal_code,city,state,latitude,longitude"
+    _ORIGINAL_HEADER: ClassVar[str] = "store_id,store_name,street,postal_code,city,state,latitude,longitude"
 
-    store_id: Optional[int]
-    store_name: Optional[str]
-    state: Optional[str]
-    city: Optional[str]
+    store_id: int
+    store_name: str
+    state: str
+    city: str
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> "Store":
+    def from_bytes_and_project(cls, data: bytes) -> "Store":
         """
-        Receive a CSV line as bytes and returns a Store
+        Check superclass documentation
         Expected format:
         store_id,store_name,address,postal_code,state,city,latitude,longitude
         Example:
@@ -24,10 +23,10 @@ class Store(Model):
         line = data.decode("utf-8").strip()
         fields = line.split(",")
 
-        store_id = int(fields[0]) if fields[0] else None
-        store_name = fields[1].strip() if len(fields) > 1 and fields[1] else None
-        state = fields[4].strip() if len(fields) > 4 and fields[4] else None
-        city = fields[5].strip() if len(fields) > 5 and fields[5] else None
+        store_id = int(fields[0])
+        store_name = fields[1].strip()
+        state = fields[4].strip()
+        city = fields[5].strip()
 
         return cls(
             store_id=store_id,
@@ -35,3 +34,33 @@ class Store(Model):
             state=state,
             city=city,
         )
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "Store":
+        """
+        Check superclass documentation
+        Expected format:
+        store_id,store_name,state,city
+        Example:
+        b"1,G Coffee @ USJ 89q,USJ 89q,Kuala Lumpur"
+        """
+        line = data.decode("utf-8").strip()
+        fields = line.split(",")
+
+        store_id = int(fields[0])
+        store_name = fields[1].strip()
+        state = fields[2].strip()
+        city = fields[3].strip()
+
+        return cls(
+            store_id=store_id,
+            store_name=store_name,
+            state=state,
+            city=city,
+        )
+
+    def to_bytes(self) -> bytes:
+        """
+        Check superclass documentation
+        """
+        return f"{self.store_id},{self.store_name},{self.state},{self.city}".encode("utf-8")

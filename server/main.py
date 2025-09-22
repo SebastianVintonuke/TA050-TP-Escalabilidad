@@ -91,7 +91,7 @@ def main() -> None:
             batch = batch_protocol.wait_batch()
             signal_protocol.send_ack()
             for item in batch:
-                print(model.from_bytes(item))
+                print(model.from_bytes_and_project(item))
     except Exception as e:
         print(e)
         signal_protocol.send_error(str(e))

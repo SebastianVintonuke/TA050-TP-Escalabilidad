@@ -73,7 +73,7 @@ class ResultsProtocol:
         If is not an associated user, creates a new one
         Args:
             user_id (str): Unique identifier for the user
-            query_id (str): Unique identifier for the query (1, 2A, 2B, 3, 4)
+            query_id (QueryId): Unique identifier for the query (1, 2A, 2B, 3, 4)
         """
         self._byte_protocol.send_uint8(ResultOperation.NotifyResults)
         self._byte_protocol.send_bytes(user_id.encode("utf-8"))

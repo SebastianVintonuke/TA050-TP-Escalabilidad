@@ -4,7 +4,7 @@ from typing import Type, ClassVar, TypeVar
 T = TypeVar("T", bound="Model")
 
 class Model(ABC):
-    _HEADER: ClassVar[str]
+    _ORIGINAL_HEADER: ClassVar[str]
 
     @classmethod
     def model_for(cls: Type[T], header: bytes) -> Type["Model"]:
@@ -22,13 +22,32 @@ class Model(ABC):
         """
         Receives a header, return true if it is from a user CSV, false otherwise
         """
-        return header.decode("utf-8").strip() == cls._HEADER
+        return header.decode("utf-8").strip() == cls._ORIGINAL_HEADER
+
+    @classmethod
+    @abstractmethod
+    def from_bytes_and_project(cls: Type[T], data: bytes) -> T:
+        """
+        Receives a CSV line as bytes, return an instance of the model without the unnecessary columns
+        To be used to sanitize the original data uploaded by the user
+        Should be implemented by subclasses
+        """
+        pass
 
     @classmethod
     @abstractmethod
     def from_bytes(cls: Type[T], data: bytes) -> T:
         """
-        Convierte una línea CSV en bytes en una instancia del modelo.
-        Debe ser implementado por cada subclase.
+        Receives a CSV line as bytes, return an instance of the model
+        Should be implemented by subclasses
+        """
+        pass
+
+
+    @abstractmethod
+    def to_bytes(self) -> bytes:
+        """
+        Returns a bytes representation of the model
+        Should be implemented by subclasses
         """
         pass
