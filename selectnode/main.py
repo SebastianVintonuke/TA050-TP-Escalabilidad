@@ -7,6 +7,7 @@ from configparser import ConfigParser
 from common import test_shared
 from common import routing 
 from src.selectnode import SelectNode 
+from src.row_filtering import * 
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -71,8 +72,47 @@ def main() -> None:
 
     try:
         conn = routing.try_open_connection()
-        node = SelectNode(conn)
-        
+
+        """
+        Transacciones (Id y monto) realizadas durante 2024 y 2025 entre las 06:00 AM y las
+        11:00 PM con monto total mayor o igual a 75.
+        2. Productos más vendidos (nombre y cant) y productos que más ganancias han generado
+        (nombre y monto), para cada mes en 2024 y 2025.
+        3. TPV (Total Payment Value) por cada semestre en 2024 y 2025, para cada sucursal, para
+        transacciones realizadas entre las 06:00 AM y las 11:00 PM.
+        4. Fecha de cumpleaños de los 3 clientes que han hecho más compras durante 2024 y
+        2025, para cada sucursal.        
+
+GREATER_THAN_OP = ">"
+GREATER_EQ_THAN_OP = ">="
+LESSER_EQ_THAN_OP = "<="
+LESSER_THAN_OP = "<"
+BETWEEN_THAN_OP = "between"
+EQUALS_ANY = "equals_any"
+NOT_EQUALS = "not_equals"
+
+
+        """
+
+        types_config = {
+            "query_1": [
+                ["year", EQUALS_ANY, [2024, 2025]],
+                ["hour", BETWEEN_THAN_OP, [6, 23]],
+                ["sum", GREATER_THAN_OP, [75]],
+            ],
+            "query_2": [
+                ["year", EQUALS_ANY, [2024, 2025]],
+            ],
+            "query_3": [
+                ["year", EQUALS_ANY, [2024, 2025]],
+                ["hour", BETWEEN_THAN_OP, [6, 23]],
+            ],
+            "query_4": [
+                ["year", EQUALS_ANY, [2024, 2025]],
+            ],
+        }
+        node = SelectNode(conn, types_config)
+
         test_shared("selectnode")
         node.start()
     except Exception as e:
