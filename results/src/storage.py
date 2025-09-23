@@ -2,8 +2,8 @@ import threading
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
-from common.models.queryresult import QueryResult
 from common.protocol.results import QueryId
+from common.results.query import QueryResult
 
 
 class ResultStorage:
@@ -77,8 +77,6 @@ class ResultStorage:
         self, dir_path: Path
     ) -> Dict[str, Dict[QueryId, threading.Lock]]:
         results = {}
-        for f in dir_path.iterdir():
-            print(f.name)
         for user_dir in dir_path.iterdir():
             if user_dir.is_dir():
                 results[user_dir.name] = self.__load_user_from(user_dir)

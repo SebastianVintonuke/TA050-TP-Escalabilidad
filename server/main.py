@@ -96,8 +96,6 @@ def main() -> None:
         print(e)
         signal_protocol.send_error(str(e))
 
-    print("end")
-
 
 if __name__ == "__main__":
     main()

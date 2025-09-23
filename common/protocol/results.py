@@ -1,32 +1,18 @@
 import socket
-from typing import Callable, List, Tuple, Sequence
 from enum import Enum
+from typing import Callable, Tuple, Sequence
 
 from .byte import ByteProtocol
 from .signal import SignalProtocol
 from .batch import BatchProtocol
-from ..models.queryresult import QueryResult, QueryResult1, QueryResult2BestSelling, QueryResult2MostProfit, QueryResult3, QueryResult4
+from ..results.query import QueryResult
+from ..results.query1 import QueryResult1
+from ..results.query2bs import QueryResult2BestSelling
+from ..results.query2mp import QueryResult2MostProfit
+from ..results.query3 import QueryResult3
+from ..results.query4 import QueryResult4
+from ..utils import QueryId, query_id_from
 
-class QueryId(str, Enum):
-    Query1 = "1"
-    Query2BestSelling = "2BS"
-    Query2MostProfit = "2MP"
-    Query3 = "3"
-    Query4 = "4"
-
-def query_id_from(string: str) -> QueryId:
-    if string == QueryId.Query1:
-        return QueryId.Query1
-    elif string == QueryId.Query2BestSelling:
-        return QueryId.Query2BestSelling
-    elif string == QueryId.Query2MostProfit:
-        return QueryId.Query2MostProfit
-    elif string == QueryId.Query3:
-        return QueryId.Query3
-    elif string == QueryId.Query4:
-        return QueryId.Query4
-    else:
-        raise ValueError(f"Invalid query id {string}")
 
 class ResultOperation(int, Enum):
     NotifyResults = 0x01

@@ -2,14 +2,15 @@ name: TP Escalabilidad - Coffee Shop Analysis
 services:
   middleware:
     container_name: middleware
-    image: middleware:latest
-    entrypoint: python3 /middleware/main.py
-    environment:
-      - PYTHONUNBUFFERED=1
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    ports:
+      - '15672:15672'
     networks:
       - testing_net
     volumes:
-      - ./middleware/config.ini:/config.ini:ro
+      - ./middleware/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
 
   results:
     container_name: results
@@ -34,6 +35,8 @@ services:
       - PYTHONUNBUFFERED=1
     networks:
       - testing_net
+    depends_on:
+      - dispatcher
     volumes:
       - ./server/config.ini:/config.ini:ro
 

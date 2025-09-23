@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 from .model import Model
 from typing import ClassVar, Optional
 
@@ -60,8 +59,5 @@ class MenuItem(Model):
             price=price,
         )
 
-    def to_bytes(self) -> bytes:
-        """
-        Check superclass documentation
-        """
-        return f"{self.item_id},{self.item_name},{self.category},{self.price}".encode("utf-8")
+    def __str__(self) -> str:
+        return f"{self.item_id},{self.item_name},{self.category},{self.price}"

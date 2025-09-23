@@ -70,8 +70,5 @@ class Transaction(Model):
             created_at=created_at,
         )
 
-    def to_bytes(self) -> bytes:
-        """
-        Check superclass documentation
-        """
-        return f"{self.transaction_id},{self.store_id},{self.user_id},{self.original_amount},{self.final_amount},{self.created_at}".encode("utf-8")
+    def __str__(self) -> str:
+        return f"{self.transaction_id},{self.store_id},{self.user_id},{self.original_amount},{self.final_amount},{self.created_at}"

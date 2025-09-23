@@ -59,8 +59,5 @@ class Store(Model):
             city=city,
         )
 
-    def to_bytes(self) -> bytes:
-        """
-        Check superclass documentation
-        """
-        return f"{self.store_id},{self.store_name},{self.state},{self.city}".encode("utf-8")
+    def __str__(self) -> str:
+        return f"{self.store_id},{self.store_name},{self.state},{self.city}"

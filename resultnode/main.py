@@ -109,7 +109,6 @@ def main() -> None:
     print("notify results are ready")
     results_protocol.notify_eof_results()  # Indica que se guardó el último resultado, el server cierra su socket
     results_protocol.close_with(lambda socket_to_close: socket_to_close.close())
-    print("end")
 
 
 if __name__ == "__main__":

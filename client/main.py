@@ -86,7 +86,6 @@ def main() -> None:
 
     with open(stores_path, "rb") as reader:
         for index, line in enumerate(reader):
-            print(f"line {line.decode('utf-8')}")
             if index == 0:
                 batch_protocol.send_batch([line])
             else:
@@ -94,8 +93,6 @@ def main() -> None:
                 signal_protocol.wait_signal()
 
     batch_protocol.send_batch([])  # mando uno vacio para indicar el fin
-
-    print("end")
 
 
 if __name__ == "__main__":

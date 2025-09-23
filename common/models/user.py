@@ -45,8 +45,5 @@ class User(Model):
 
         return cls(user_id=user_id, birthdate=birthdate, registered_at=registered_at)
 
-    def to_bytes(self) -> bytes:
-        """
-        Check superclass documentation
-        """
-        return f"{self.user_id},{self.birthdate},{self.registered_at}".encode("utf-8")
+    def __str__(self) -> str:
+        return f"{self.user_id},{self.birthdate},{self.registered_at}"

@@ -17,15 +17,15 @@ echo "name: TP Escalabilidad - Coffee Shop Analysis" > "$output_file_name"
 echo "services:" >> "$output_file_name"
 
 echo "  middleware:
-    container_name: middleware
-    image: middleware:latest
-    entrypoint: python3 /middleware/main.py
-    environment:
-      - PYTHONUNBUFFERED=1
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    ports:
+      - '15672:15672'
     networks:
       - testing_net
     volumes:
-      - ./middleware/config.ini:/config.ini:ro
+      - ./middleware/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
 " >> "$output_file_name"
 
 echo "  results:
@@ -51,6 +51,8 @@ echo "  server:
       - PYTHONUNBUFFERED=1
     networks:
       - testing_net
+    depends_on:
+      - dispatcher
     volumes:
       - ./server/config.ini:/config.ini:ro
 " >> "$output_file_name"
@@ -96,6 +98,7 @@ for ((i=1; i<=result_node_number; i++)); do
       - testing_net
     depends_on:
       - middleware
+      - results
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
 " >> "$output_file_name"

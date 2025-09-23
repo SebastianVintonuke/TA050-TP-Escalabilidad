@@ -30,7 +30,7 @@ class Model(ABC):
         """
         Receives a CSV line as bytes, return an instance of the model without the unnecessary columns
         To be used to sanitize the original data uploaded by the user
-        Should be implemented by subclasses
+        Must be implemented by subclasses
         """
         pass
 
@@ -39,15 +39,20 @@ class Model(ABC):
     def from_bytes(cls: Type[T], data: bytes) -> T:
         """
         Receives a CSV line as bytes, return an instance of the model
-        Should be implemented by subclasses
+        Must be implemented by subclasses
         """
         pass
 
-
     @abstractmethod
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the model
+        Must be implemented by subclasses
+        """
+        pass
+
     def to_bytes(self) -> bytes:
         """
         Returns a bytes representation of the model
-        Should be implemented by subclasses
         """
-        pass
+        return self.__str__().encode("utf-8")
