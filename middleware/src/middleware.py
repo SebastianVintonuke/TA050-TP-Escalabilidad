@@ -1,22 +1,5 @@
 from abc import ABC, abstractmethod
 
-
-class MessageMiddlewareMessageError(Exception):
-    pass
-
-
-class MessageMiddlewareDisconnectedError(Exception):
-    pass
-
-
-class MessageMiddlewareCloseError(Exception):
-    pass
-
-
-class MessageMiddlewareDeleteError(Exception):
-    pass
-
-
 class MessageMiddleware(ABC):
 
     # Comienza a escuchar a la cola/exchange e invoca a on_message_callback tras

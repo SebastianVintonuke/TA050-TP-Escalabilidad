@@ -1,43 +1,39 @@
 import unittest
-from selectnode.src.selectnode import * 
-from selectnode.src.row_filtering import * 
 
-class MockSender:
+from selectnode.src.row_filtering import * 
+from selectnode.src.type_config import * 
+from selectnode.src.selectnode import * 
+
+from middleware.middleware import * 
+from middleware.routing.message import * 
+
+
+class MockMiddleware(MessageMiddleware):
     def __init__(self):
         self.msgs= []
-    def send_msg(self, msg):
+        self.callback = None
+    def send(self, msg):
         self.msgs.append(msg)
 
-class MockChannel:
-    def __init__(self, result_sender):
-        self.handler = None
-        self.result_sender = result_sender
+    def push_msg(self, msg):
+        self.callback(msg)
 
-    def consume_select_tasks(self, handler):
-        self.handler = handler
+    def start_consuming(self, on_message_callback):
+        self.callback = on_message_callback
 
-    def start_consume(self):
+    def stop_consuming(self):
+        pass
+    def close(self):
         pass
 
-    def push_msg(self, msg):
-        self.handler(msg)
-
-
-    def open_sender_to_results(self):
-        return self.result_sender
-
-class MockConn:
-    def __init__(self, channel):
-        self.channel = channel
-
-    def open_channel(self):
-        return self.channel
+    def delete(self):
+        pass
 
 
 class MockMessageBuilder:
-    def __init__(self,query_id, query_type):
-        self.id = query_id
-        self.type = query_type
+    def __init__(self,msg, ind):
+        self.msg_from = msg
+        self.ind= ind
         self.payload = []
         self.fields= []
 
@@ -49,55 +45,37 @@ class MockMessageBuilder:
         #assert len(row) == len(fields) # Same size of fields 
         self.payload.append(row)
 
-    def build(self):
-        return MockMessage("", [self.id], [self.type], self.payload)
-
-class MockMessage:
+class MockMessage(Message):
     def __init__(self, tag, queries_id, queries_type, payload):
-        self.tag = tag
-        self.ids = queries_id
-        self.types = queries_type
-        self.payload = payload
-        # assert len of queries == len of types!
-        assert len(self.ids) == len(self.types)
-
-    def len_queries(self):
-        return len(self.ids)
+        super().from_data(tag,queries_type,queries_type, payload)
 
     def clone_with(self, queries_id, queries_type):
         return MockMessage(self.tag, queries_id, queries_type, self.payload)
-
-
-    def result_builder_for_single(self, ind):
-        return MockMessageBuilder(self.ids[ind],self.types[ind])
-
-
-    # For subclasses
-    def ack_self(self):
-        pass
-
-    def describe(self):
-        pass
 
     def stream_rows(self):
         return iter(self.payload)
 
 
+
+
 class TestSelectNode(unittest.TestCase):
+
     def test_query_1_selectnode(self):
         filters_serial = [
                 ["year", EQUALS_ANY, [2024, 2025]],
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
                 ["sum", GREATER_THAN_OP, [75]],
         ]
+        result_grouper = MockMiddleware()
+        in_middle = MockMiddleware()
 
-        type_map = {"query_t_1": filters_serial}
+        type_map = {
+            "query_t_1": TypeConfiguration(filters_serial, result_grouper, MockMessageBuilder)
+        }
 
-        result_grouper = MockSender()
-        channel_mock = MockChannel(result_grouper)
-
-        node = SelectNode(MockConn(channel_mock), type_map)
-
+        node = SelectNode(in_middle, type_map)
+        node.start()
+        
         rows_pass = [
             {'year': 2024, 'hour': 7, 'sum': 88},
             {'year': 2025, 'hour': 23, 'sum': 942},
@@ -113,8 +91,11 @@ class TestSelectNode(unittest.TestCase):
             rows_pass+ rows_fail
         )
 
-        channel_mock.push_msg(message);
+        in_middle.push_msg(message);
+
         self.assertTrue(len(result_grouper.msgs)==1)
+        self.assertTrue(result_grouper.msgs[0].ind == 0)
+        self.assertTrue(result_grouper.msgs[0].msg_from == message)
 
         got_result = result_grouper.msgs[0].payload
 
@@ -122,7 +103,6 @@ class TestSelectNode(unittest.TestCase):
             self.assertTrue(elem in got_result)
 
         self.assertTrue(len(got_result) == len(rows_pass))
-
 
     def test_multiquery_selectnode(self):
         filters_serial = [
@@ -136,12 +116,16 @@ class TestSelectNode(unittest.TestCase):
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
         ]
 
-        type_map = {"query_t_1": filters_serial, "query_t_2": filters_serial2}
+        result_grouper = MockMiddleware()
+        in_middle = MockMiddleware()
 
-        result_grouper = MockSender()
-        channel_mock = MockChannel(result_grouper)
+        type_map = {
+            "query_t_1": TypeConfiguration(filters_serial, result_grouper, MockMessageBuilder),
+            "query_t_2": TypeConfiguration(filters_serial2, result_grouper, MockMessageBuilder)
+        }
 
-        node = SelectNode(MockConn(channel_mock), type_map)
+        node = SelectNode(in_middle, type_map)
+        node.start()
 
         rows_pass = [
             {'year': 2024, 'hour': 7, 'sum': 88},
@@ -158,16 +142,15 @@ class TestSelectNode(unittest.TestCase):
             rows_pass+ rows_fail
         )
 
-        channel_mock.push_msg(message);
+        in_middle.push_msg(message);
         self.assertTrue(len(result_grouper.msgs)==2)
 
         # CHECK STILL QUERY 1 is solved
+        self.assertTrue(result_grouper.msgs[0].ind == 0)
+        self.assertTrue(result_grouper.msgs[0].msg_from == message)
+
         got_result = result_grouper.msgs[0].payload
 
-        self.assertTrue(result_grouper.msgs[0].ids[0] == "query_3323")
-        self.assertTrue(result_grouper.msgs[0].types[0] == "query_t_1")
-        self.assertTrue(len(result_grouper.msgs[0].ids) == 1)
-        
         for elem in rows_pass:
             self.assertTrue(elem in got_result)
 
@@ -175,9 +158,9 @@ class TestSelectNode(unittest.TestCase):
 
 
         # CHECK QUERY 2
+        self.assertTrue(result_grouper.msgs[1].ind == 1)
+        self.assertTrue(result_grouper.msgs[1].msg_from == message)
         got_result = result_grouper.msgs[1].payload
-        self.assertTrue(result_grouper.msgs[1].types[0] == "query_t_2")
-
 
         rows_pass2 = [
             {'year': 2024, 'hour': 7, 'sum': 88},

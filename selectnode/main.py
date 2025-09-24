@@ -5,9 +5,14 @@ import os
 from configparser import ConfigParser
 
 from common import test_shared
+
 from middleware import routing 
+from middleware.result_node_middleware import * 
+from middleware.select_node_middleware import * 
+
 from src.selectnode import SelectNode 
 from src.row_filtering import * 
+from src.type_config import * 
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -56,6 +61,8 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+def result_msg_builder_creator(msg, ind) -> routing.MessageBuilder:
+    return routing.MessageBuilder(msg.ids[ind], msg.types[ind])
 
 def main() -> None:
     config_params = initialize_config()
@@ -94,6 +101,7 @@ NOT_EQUALS = "not_equals"
 
         """
 
+        # Basic filter description
         types_config = {
             "query_1": [
                 ["year", EQUALS_ANY, [2024, 2025]],
@@ -111,10 +119,28 @@ NOT_EQUALS = "not_equals"
                 ["year", EQUALS_ANY, [2024, 2025]],
             ],
         }
-        node = SelectNode(conn, types_config)
+
+        result_middleware = ResultNodeMiddleware()
+        # Wrap and add output management, I.e middlewares
+        types_config["query_1"] = TypeConfiguration(types_config["query_1"], 
+                                    result_middleware, result_msg_builder_creator)
+
+        # To modify...
+        types_config["query_2"] = TypeConfiguration(types_config["query_2"], 
+                                    result_middleware, result_msg_builder_creator)
+
+        types_config["query_3"] = TypeConfiguration(types_config["query_3"], 
+                                    result_middleware, result_msg_builder_creator)
+
+        types_config["query_4"] = TypeConfiguration(types_config["query_4"], 
+                                    result_middleware, result_msg_builder_creator)
+
+        node = SelectNode(SelectTasksMiddleware(), types_config)
 
         test_shared("selectnode")
         node.start()
+        
+        node.close()
     except Exception as e:
         logging.error(
             f"action: select_node_main | result: error | err:{e}"

@@ -1,10 +1,14 @@
 import logging
 
+FIELD_QUERY_ID ="queries_id" 
+FIELD_QUERY_TYPE ="queries_type" 
+#FIELD_QUERY_FIELDS ="queries_" 
+
 # Message builder
 class MessageBuilder:
-	def __init__(self,query_id, query_type):
-		self.id = query_id
-		self.type = query_type
+	def __init__(self,queries_id, queries_type):
+		self.ids = queries_id
+		self.types = queries_type
 		self.payload = []
 		self.fields= []
 
@@ -17,26 +21,51 @@ class MessageBuilder:
 		self.payload.append(row)
 
 	def build(self):
-		return Message("", [self.id], [self.type], self.payload)
+		return Message("", self.ids, self.types, self.payload)
+
+	def serialize_payload(self):
+		return str(self.payload).encode()
+	
+	def get_headers(self):
+		return {
+			FIELD_QUERY_ID: self.ids,
+			FIELD_QUERY_TYPE: self.types,
+		}
+
 
 # Defines basic initialization and header management
 class Message:
-	def __init__(self, tag, queries_id, queries_type, payload):
+	def _verify_headers(self):
+		# assert len of queries == len of types!
+		assert len(self.ids) == len(self.types)
+
+	def _from_headers(self, headers):
+		self.ids = headers.get(FIELD_QUERY_ID, [])
+		self.types = headers.get(FIELD_QUERY_TYPE, [])
+
+		self._verify_headers()
+
+	def _deserialize_payload(self, payload):
+		return payload
+
+	def from_data(self, tag, queries_id, queries_type, payload):
 		self.tag = tag
 		self.ids = queries_id
 		self.types = queries_type
+		self._verify_headers()
 		self.payload = payload
-		# assert len of queries == len of types!
-		assert len(self.ids) == len(self.types)
+
+	def __init__(self, tag, headers, payload):
+		self.tag = tag
+		self._from_headers(headers)
+		self.payload = self._deserialize_payload(payload)
+
 
 	def len_queries(self):
 		return len(self.ids)
 
 	def clone_with(self, queries_id, queries_type):
 		return Message(self.tag, queries_id, queries_type, self.payload)
-
-	def result_builder_for_single(self, ind):
-		return MessageBuilder(self.ids[ind], self.types[ind])
 
 	# For subclasses
 	def ack_self(self):

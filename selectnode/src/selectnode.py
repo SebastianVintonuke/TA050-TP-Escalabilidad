@@ -1,39 +1,25 @@
-
-
-from .row_filtering import load_all_filters, should_keep
-
-
-class TypeConfiguration:
-	def __init__(self, type_conf):
-		self.filters = load_all_filters(type_conf)
-
-	def should_keep(self, row):
-		return should_keep(self.filters, row)
-
+#from .type_config import TypeConfiguration
 
 class TypeHandler:
 	def __init__(self, type_conf, msg_builder):
 		self.type_conf = type_conf
 		self.msg_builder = msg_builder
 
+	def __init__(self, type_conf, msg, ind):
+		self.type_conf = type_conf
+		self.msg_builder = type_conf.new_builder_for(msg, ind)
+
 	def check(self, row):
 		if self.type_conf.should_keep(row):
 			self.msg_builder.add_row(row)
 
-	def send_to(self, sender):
-		sender.send_msg(self.msg_builder.build())
+	def send_built(self):
+		self.type_conf.send(self.msg_builder)
 
 class SelectNode:
-	def __init__(self, middleware_conn, types_confs):
-		self.channel = middleware_conn.open_channel();
-		self.channel.consume_select_tasks(self.handle_task)
-		self.types_configurations = {}
-
-		for q_type, type_conf in types_confs.items():
-			self.types_configurations[q_type] = TypeConfiguration(type_conf)
-
-		# FOR now just results sending!
-		self.results_sender = self.channel.open_sender_to_results()
+	def __init__(self, select_middleware, types_confs):
+		self.middleware = select_middleware;
+		self.types_configurations = types_confs
 
 	def handle_task(self, msg):
 		msg.describe()
@@ -41,10 +27,8 @@ class SelectNode:
 		outputs = []
 		ind = 0
 		for type in msg.types:
-			outputs.append(TypeHandler(
-				self.types_configurations[type],
-				msg.result_builder_for_single(ind))
-			)
+			outputs.append(
+				TypeHandler(self.types_configurations[type], msg, ind))
 			ind+=1
 
 		for row in msg.stream_rows():
@@ -52,9 +36,14 @@ class SelectNode:
 				output.check(row)
 
 		for output in outputs:
-			output.send_to(self.results_sender)
+			output.send_built()
 
 		msg.ack_self()
 
 	def start(self):
-		self.channel.start_consume()
+		self.middleware.start_consuming(self.handle_task)		
+
+	def close(self):
+		self.middleware.close()
+		for k, conf in self.types_configurations.items():
+			conf.close()

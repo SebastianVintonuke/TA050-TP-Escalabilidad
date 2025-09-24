@@ -1,27 +1,32 @@
 
+
+
 import pika
-from .channel import Channel
 import time
 import logging
+from pika.exceptions import AMQPConnectionError, ConnectionClosed, ChannelClosed, StreamLostError
 
-RABBITMQ_HOST = "middleware"
-connection = None
+
+# Serial/message imports
+from .message import *
+from .message_sender import *
+from .channel_message import *
+
+
 logging.getLogger("pika").setLevel(logging.WARNING)
 
-class Connection:
-	def __init__(self, host = RABBITMQ_HOST):
-		self._conn = pika.BlockingConnection(
-		    pika.ConnectionParameters(host=RABBITMQ_HOST))
+RABBITMQ_HOST = "middleware"
+RoutingConnectionErrors = (
+    AMQPConnectionError,
+    ChannelClosed,
+    ConnectionClosed,
+    StreamLostError,
+)
 
-	def open_channel(self):	
-		return Channel(self._conn.channel())
-
-
-
-def try_open_connection(max_attempts = 10, host = RABBITMQ_HOST):
+def try_open_connection(host,max_attempts):
 	for i in range(1,max_attempts):
 		try:
-			return Connection(host)
+			return pika.BlockingConnection(pika.ConnectionParameters(host=host))
 		except Exception as e:
 			logging.warning(
 				f"action: open_connection_middleware | result: in_progress | err:{e} | {i}"
@@ -29,4 +34,4 @@ def try_open_connection(max_attempts = 10, host = RABBITMQ_HOST):
 			time.sleep(1)
 
 	# Last attempt
-	return Connection(host)
+	return pika.BlockingConnection(pika.ConnectionParameters(host=host))
