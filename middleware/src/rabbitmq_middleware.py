@@ -2,6 +2,7 @@ from .middleware import *
 from .errors import *
 from . import routing
 import logging
+import pika
 
 class RabbitQueueMiddleware(MessageMiddlewareQueue):
 	def __init__(self, queue_name, host = routing.RABBITMQ_HOST):
@@ -54,9 +55,9 @@ class RabbitQueueMiddleware(MessageMiddlewareQueue):
 		try:
 			self._send(message_builder.get_headers(), message_builder.serialize_payload())
 		except routing.RoutingConnectionErrors as e:
-			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at consume: {e}") from e
+			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send: {e}") from e
 		except Exception as e:
-			raise MessageMiddlewareMessageError(f"Message handling error: {e}") from e
+			raise MessageMiddlewareMessageError(f"Message handling error at send: {e}") from e
 	
 	# Si se estaba consumiendo desde la cola/exchange, se detiene la escucha. Si
 	# no se estaba consumiendo de la cola/exchange, no tiene efecto, ni levanta
@@ -66,7 +67,7 @@ class RabbitQueueMiddleware(MessageMiddlewareQueue):
 		try:
 			self.channel.stop_consuming()
 		except routing.RoutingConnectionErrors as e:
-			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at consume: {e}") from e
+			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at stop consume: {e}") from e
 
 	# Se desconecta de la cola o exchange al que estaba conectado.
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareCloseError.

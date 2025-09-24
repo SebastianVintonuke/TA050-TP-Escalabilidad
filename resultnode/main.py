@@ -7,6 +7,12 @@ from configparser import ConfigParser
 
 from common import QueryId, QueryResult1, ResultsProtocol, new_uuid
 
+from middleware import routing 
+from middleware.result_node_middleware import * 
+from middleware.select_tasks_middleware import * 
+from middleware.errors import * 
+from middleware.routing.select_task_message import * 
+
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -61,24 +67,9 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-
-def main() -> None:
-    config_params = initialize_config()
-    port = config_params["port"]
-    results_ip = config_params["results_ip"]
-    results_port = config_params["results_port"]
-    node_id = config_params["node_id"]
-    logging_level = config_params["logging_level"]
-
-    initialize_log(logging_level)
-
-    # Log config parameters at the beginning of the program to verify the configuration of the component
-    logging.debug(
-        f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
-    )
-
+def start_notifying(addr):
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    a_socket.connect((results_ip, results_port))
+    a_socket.connect(addr)
 
     results_protocol = ResultsProtocol(a_socket)
     fake_user_id = new_uuid()
@@ -110,6 +101,62 @@ def main() -> None:
     results_protocol.notify_eof_results()  # Indica que se guardó el último resultado, el server cierra su socket
     results_protocol.close_with(lambda socket_to_close: socket_to_close.close())
     print("end")
+
+def main() -> None:
+    config_params = initialize_config()
+    port = config_params["port"]
+    results_ip = config_params["results_ip"]
+    results_port = config_params["results_port"]
+    node_id = config_params["node_id"]
+    logging_level = config_params["logging_level"]
+
+    initialize_log(logging_level)
+
+    # Log config parameters at the beginning of the program to verify the configuration of the component
+    logging.debug(
+        f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
+    )
+
+    result_middleware = ResultNodeMiddleware()
+    tmp_send_middle = SelectTasksMiddleware()
+
+    msg_build = SelectTaskMessageBuilder(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"])
+
+    ## From test
+    rows_pass = [
+        {'year': 2024, 'hour': 7, 'sum': 88},
+        {'year': 2025, 'hour': 23, 'sum': 942},
+        {'year': 2024, 'hour': 6, 'sum': 942},
+    ]
+    rows_fail = [
+        {'year': 2027, 'hour': 7, 'sum': 88},
+        {'year': 2025, 'hour': 24, 'sum': 942},
+        {'year': 2024, 'hour': 6, 'sum': 55},
+    ]
+
+    for itm in rows_pass:
+        msg_build.add_row(itm)
+
+    for itm in rows_fail:
+        msg_build.add_row(itm)
+
+    logging.info(
+        f"action: select_msg_build | result: success | {msg_build.get_headers()} | {msg_build.serialize_payload()}"
+    )
+
+    tmp_send_middle.send(msg_build)
+
+    logging.info(
+        f"action: start_consuming | result: success"
+    )
+
+    def handle_result(result_msg):
+        print("GOT RESULT MSG? ", result_msg)
+        for itm in result_msg.stream_rows():
+            print("ROW", itm)
+
+    result_middleware.start_consuming(handle_result)
+    #start_notifying((results_ip, results_port))
 
 
 if __name__ == "__main__":

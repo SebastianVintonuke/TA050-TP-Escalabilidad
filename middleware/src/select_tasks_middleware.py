@@ -1,5 +1,6 @@
 from .rabbitmq_middleware import *
 from . import routing
+from .routing.select_task_message import *
 
 SELECT_TASKS_QUEUE_BASE = "select_tasks_queue"
 
@@ -13,7 +14,7 @@ class SelectTasksMiddleware(RabbitQueueMiddleware):
 			logging.info(f"action: select_rcv_msg | result: success | method: {method} | props: {properties} | body:{body}")
 			
 			# Wrap specific message
-			wrapped_msg = routing.ChannelMessage(ch, method, properties.headers, body)
+			wrapped_msg = SelectTaskMessage(ch, method, properties.headers, body)
 
 			return callback(wrapped_msg)
 		return real_callback

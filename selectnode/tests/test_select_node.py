@@ -48,6 +48,8 @@ class MockMessageBuilder:
 class MockMessage(Message):
     def __init__(self, tag, queries_id, queries_type, payload):
         super().from_data(tag,queries_type,queries_type, payload)
+    def _deserialize_payload(self, payload): # Do nothing with it.
+        return payload
 
     def clone_with(self, queries_id, queries_type):
         return MockMessage(self.tag, queries_id, queries_type, self.payload)

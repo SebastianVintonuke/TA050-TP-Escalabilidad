@@ -20,9 +20,6 @@ class MessageBuilder:
 		#assert len(row) == len(fields) # Same size of fields 
 		self.payload.append(row)
 
-	def build(self):
-		return Message("", self.ids, self.types, self.payload)
-
 	def serialize_payload(self):
 		return str(self.payload).encode()
 	
