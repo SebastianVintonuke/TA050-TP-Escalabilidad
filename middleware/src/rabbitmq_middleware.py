@@ -24,8 +24,8 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 
 
 	# Serial basic _send
-	def _send(self, headers, serial_msg):
-		self.channel.basic_publish(exchange=self.exch_type, routing_key=self._get_routing_key(), body=serial_msg,  
+	def _send(self, routing_key, headers, serial_msg):
+		self.channel.basic_publish(exchange=self.exch_type, routing_key=routing_key, body=serial_msg,  
 			properties=pika.BasicProperties(
 				headers=headers
 			))
@@ -59,7 +59,7 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
 	def send(self, message_builder):
 		try:
-			self._send(message_builder.get_headers(), message_builder.serialize_payload())
+			self._send(self.queue_name, message_builder.get_headers(),message_builder.serialize_payload())
 		except routing.RoutingConnectionErrors as e:
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send: {e}") from e
 		except Exception as e:

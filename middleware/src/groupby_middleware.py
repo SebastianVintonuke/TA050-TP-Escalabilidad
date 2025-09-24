@@ -2,11 +2,12 @@ from .rabbitmq_middleware import *
 from . import routing
 from .routing.groupby_message import *
 
-GROUPBY_TASKS_QUEUE_BASE = "groupby_queue-"
+GROUPBY_TASKS_QUEUE_BASE = f"groupby_queue-{IND}"
 
 class GroupbyTasksMiddleware(RabbitQueueMiddleware):
-	def __init__(self, host = routing.RABBITMQ_HOST):
-		super().__init__(GROUPBY_TASKS_QUEUE_BASE, host)
+	def __init__(self, groupby_node_count,ind = 1, host = routing.RABBITMQ_HOST):
+		super().__init__(GROUPBY_TASKS_QUEUE_BASE.format(IND= ind), host)
+		self.groupby_node_count = groupby_node_count
 
 
 	def _callback_wrapper(self, callback):
@@ -18,3 +19,13 @@ class GroupbyTasksMiddleware(RabbitQueueMiddleware):
 
 			return callback(wrapped_msg)
 		return real_callback
+
+	def send(self, hashed_message_builder):
+		try:
+			target = GROUPBY_TASKS_QUEUE_BASE.format(IND= hashed_message_builder.hash_in(self.groupby_node_count))
+			self._send(target, message_builder.get_headers(),message_builder.serialize_payload())
+		except routing.RoutingConnectionErrors as e:
+			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send: {e}") from e
+		except Exception as e:
+			raise MessageMiddlewareMessageError(f"Message handling error at send: {e}") from e
+	
