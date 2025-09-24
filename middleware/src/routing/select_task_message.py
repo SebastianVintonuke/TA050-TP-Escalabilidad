@@ -47,9 +47,6 @@ class SelectTaskMessageBuilder(MessageBuilder):
         # Check all of fields are there first
         self.payload.append(",".join(vls))
 
-    def serialize_payload(self):
-        return ("\n".join(self.payload)).encode()
-
 
 def select_task_from_msg(msg, ind):
     return SelectTaskMessageBuilder([msg.ids[ind]], [msg.types[ind]])

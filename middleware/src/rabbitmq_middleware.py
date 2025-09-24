@@ -4,22 +4,28 @@ from . import routing
 import logging
 import pika
 
-class RabbitQueueMiddleware(MessageMiddlewareQueue):
-	def __init__(self, queue_name, host = routing.RABBITMQ_HOST):
+DEFAULT_EXCHANGE = ''
+class RabbitExchangeMiddleware(MessageMiddleware):
+	def __init__(self, queue_name, exchange_type = DEFAULT_EXCHANGE, host = routing.RABBITMQ_HOST):
 		self.queue_name = queue_name
-		self.exch_type = ''
+		self.exch_type = exchange_type
 		try:
 			self._conn = routing.try_open_connection(host, 10) # Can fail but should we wrap the error on a MessageMiddlewareDisconnectedError?
 			self.channel = self._conn.channel()
-			self.channel.queue_declare(queue=self.queue_name)
-
+			self._init_bind()
 		except Exception as e:
 			raise MessageMiddlewareConnectError(f"RabbitMQ connect failed: {e}") from e
+
+	def _get_routing_key(self):
+		return self.queue_name
+	def _init_bind(self):
+		self.channel.queue_declare(queue=self.queue_name)
+		self.channel.queue_bind(queue=self.queue_name, exchange=self.exch_type, routing_key=self._get_routing_key())
 
 
 	# Serial basic _send
 	def _send(self, headers, serial_msg):
-		self.channel.basic_publish(exchange=self.exch_type, routing_key=self.queue_name, body=serial_msg,  
+		self.channel.basic_publish(exchange=self.exch_type, routing_key=self._get_routing_key(), body=serial_msg,  
 			properties=pika.BasicProperties(
 				headers=headers
 			))
@@ -91,8 +97,9 @@ class RabbitQueueMiddleware(MessageMiddlewareQueue):
 
 
 # Not used at the moment.
-class RabbitExchangeMiddleware(MessageMiddlewareExchange):
-	def __init__(self, host, exchange_name, route_keys):
-		pass
+class RabbitQueueMiddleware(RabbitExchangeMiddleware):
+	def __init__(self, queue_name, host = routing.RABBITMQ_HOST):
+		super().__init__(queue_name, DEFAULT_EXCHANGE, host)
 
-
+	def _init_bind(self):
+		self.channel.queue_declare(queue=self.queue_name)

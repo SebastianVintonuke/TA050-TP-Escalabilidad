@@ -1,8 +1,5 @@
 import logging
-
-FIELD_QUERY_ID ="queries_id" 
-FIELD_QUERY_TYPE ="queries_type" 
-#FIELD_QUERY_FIELDS ="queries_" 
+from .header_fields import *
 
 # Message builder
 class MessageBuilder:
@@ -18,11 +15,12 @@ class MessageBuilder:
 
 	def add_row(self,row):
 		#assert len(row) == len(fields) # Same size of fields 
-		self.payload.append(row)
+		self.payload.append(str(row))
 
-	def serialize_payload(self):
-		return str(self.payload).encode()
-	
+
+    def serialize_payload(self):
+        return ("\n".join(self.payload)).encode()
+
 	def get_headers(self):
 		return {
 			FIELD_QUERY_ID: self.ids,

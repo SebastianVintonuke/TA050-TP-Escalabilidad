@@ -5,8 +5,8 @@ from middleware.routing import result_message
 RESULTS_QUEUE_BASE = "results_queue"
 
 class ResultNodeMiddleware(RabbitQueueMiddleware):
-	def __init__(self, host = routing.RABBITMQ_HOST):
-		super().__init__(RESULTS_QUEUE_BASE, host)
+	def __init__(self, host = routing.RABBITMQ_HOST, queue_name = RESULTS_QUEUE_BASE):
+		super().__init__(queue_name, host)
 
 	def _callback_wrapper(self, callback):
 		def real_callback(ch, method, properties, body):

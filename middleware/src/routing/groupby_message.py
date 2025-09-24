@@ -1,15 +1,17 @@
 
 from .csv_payload_deserializer import *
 from .channel_message import *
-from .message import MessageBuilder
+from .hashed_message_builder import HashedMessageBuilder
 import logging
+import hashlib
 
-RESULT_FIELDS_QUERY_1 = ["year", "hour", "sum"]
+
+GROUP_BY_FIELDS_1 = ["year", "hour", "sum"]
 
 def not_none(itm):
     return itm != None
 
-def parse_result_task_body(row):
+def parse_groupby_body(row):
     try:
         row["year"] = int(row["year"])
         row["hour"] = int(row["hour"])
@@ -19,7 +21,7 @@ def parse_result_task_body(row):
         logging.error(f"Failed deserial of row {row} invalid {e}")
         return None
 
-class ResultMessage(ChannelMessage):
+class GroupbyMessage(ChannelMessage):
     def __init__(self, ch, method, headers, payload):
         super().__init__(ch, method, headers, payload)
 
@@ -28,21 +30,21 @@ class ResultMessage(ChannelMessage):
         # Check fields?
 
     def _deserialize_payload(self, payload): # Do nothing with it.
-        return CSVPayloadDeserializer(RESULT_FIELDS_QUERY_1, payload)
+        return CSVPayloadDeserializer(GROUP_BY_FIELDS_1, payload)
 
     def clone_with(self, queries_id, queries_type):
-        return ResultMessage(self.tag, queries_id, queries_type, self.payload)
+        return GroupbyMessage(self.tag, queries_id, queries_type, self.payload)
 
     def stream_rows(self):
-        return filter(not_none, map(parse_result_task_body, self.payload)) # payload is already a stream, assumed only will be iterated once.
+        return filter(not_none, map(parse_groupby_body, self.payload)) # payload is already a stream, assumed only will be iterated once.
 
-class ResultMessageBuilder(MessageBuilder):
-    def __init__(self,queries_id, queries_type):
-        super().__init__(queries_id, queries_type)
+class GroupbyMessageBuilder(HashedMessageBuilder):
+    def __init__(self,queries_id, queries_type, key_hash):
+        super().__init__(queries_id, queries_type, key_hash)
 
     def add_row(self,row):
         vls = []
-        for itm in RESULT_FIELDS_QUERY_1: # Just to make it more expressive let it be a {"year": vl}
+        for itm in GROUP_BY_FIELDS_1: # Just to make it more expressive let it be a {"year": vl}
             vls.append(str(int(row[itm])))
 
         # Check all of fields are there first
@@ -50,4 +52,4 @@ class ResultMessageBuilder(MessageBuilder):
 
 
 def result_from_msg(msg, ind):
-    return ResultMessageBuilder([msg.ids[ind]], [msg.types[ind]])
+    return GroupbyMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.ids[ind])
