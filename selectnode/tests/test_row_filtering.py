@@ -1,5 +1,5 @@
 import unittest
-from src.row_filtering import * 
+from selectnode.src.row_filtering import * 
 
 class TestRowFilter(unittest.TestCase):
 

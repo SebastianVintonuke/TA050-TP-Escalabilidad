@@ -1,6 +1,6 @@
 import unittest
-from src.selectnode import * 
-from src.row_filtering import * 
+from selectnode.src.selectnode import * 
+from selectnode.src.row_filtering import * 
 
 class MockSender:
     def __init__(self):
