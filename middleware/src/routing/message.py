@@ -76,3 +76,4 @@ class Message:
 
 	def stream_rows(self):
 		logging.info(f"action: stream_rows | result: success | data: {self.payload}")
+		return []

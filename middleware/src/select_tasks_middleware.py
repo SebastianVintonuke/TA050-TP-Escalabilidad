@@ -4,7 +4,7 @@ from . import routing
 SELECT_TASKS_QUEUE_BASE = "select_tasks_queue"
 
 class SelectTasksMiddleware(RabbitQueueMiddleware):
-    def __init__(self, host = routing.RABBITMQ_HOST):
+	def __init__(self, host = routing.RABBITMQ_HOST):
 		super().__init__(SELECT_TASKS_QUEUE_BASE, host)
 
 

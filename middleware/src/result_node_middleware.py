@@ -4,7 +4,7 @@ from . import routing
 RESULTS_QUEUE_BASE = "results_queue"
 
 class ResultNodeMiddleware(RabbitQueueMiddleware):
-    def __init__(self, host = routing.RABBITMQ_HOST):
+	def __init__(self, host = routing.RABBITMQ_HOST):
 		super().__init__(RESULTS_QUEUE_BASE, host)
 
 	def _callback_wrapper(self, callback):

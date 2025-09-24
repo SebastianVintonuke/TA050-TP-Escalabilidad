@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+import traceback
 import os
 from configparser import ConfigParser
 
@@ -8,7 +9,8 @@ from common import test_shared
 
 from middleware import routing 
 from middleware.result_node_middleware import * 
-from middleware.select_node_middleware import * 
+from middleware.select_tasks_middleware import * 
+from middleware.errors import * 
 
 from src.selectnode import SelectNode 
 from src.row_filtering import * 
@@ -78,8 +80,6 @@ def main() -> None:
     )
 
     try:
-        conn = routing.try_open_connection()
-
         """
         Transacciones (Id y monto) realizadas durante 2024 y 2025 entre las 06:00 AM y las
         11:00 PM con monto total mayor o igual a 75.
@@ -138,7 +138,15 @@ NOT_EQUALS = "not_equals"
         node = SelectNode(SelectTasksMiddleware(), types_config)
 
         test_shared("selectnode")
-        node.start()
+        restart = True
+        while restart:
+            try:
+                node.start()
+                restart = False
+            except MessageMiddlewareMessageError as e:
+                traceback.print_exc()
+                logging.error(f"Non fatal fail {e}")
+
         
         node.close()
     except Exception as e:
