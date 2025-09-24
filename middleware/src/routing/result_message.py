@@ -14,6 +14,7 @@ def parse_select_task_body(row):
         row["year"] = int(row["year"])
         row["hour"] = int(row["hour"])
         row["sum"] = int(row["sum"])
+        return row
     except Exception as e:
         logging.error(f"Failed deserial of row {row} invalid {e}")
         return None
@@ -38,18 +39,17 @@ class ResultMessage(ChannelMessage):
 class ResultMessageBuilder(MessageBuilder):
     def __init__(self,queries_id, queries_type):
         super().__init__(queries_id, queries_type)
+
     def add_row(self,row):
         vls = []
         for itm in RESULT_FIELDS_QUERY_1: # Just to make it more expressive let it be a {"year": vl}
             vls.append(str(int(row[itm])))
 
         # Check all of fields are there first
-        for vl in vls:
-            self.payload.append(vl)
+        self.payload.append(",".join(vls))
 
     def serialize_payload(self):
-        return (",".join(self.payload)).encode()
-
+        return ("\n".join(self.payload)).encode()
 
 def result_from_msg(msg, ind):
     return ResultMessageBuilder([msg.ids[ind]], [msg.types[ind]])

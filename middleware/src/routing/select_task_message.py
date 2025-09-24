@@ -14,6 +14,7 @@ def parse_select_task_body(row):
         row["year"] = int(row["year"])
         row["hour"] = int(row["hour"])
         row["sum"] = int(row["sum"])
+        return row
     except Exception as e:
         logging.error(f"Failed deserial of row {row} invalid {e}")
         return None
@@ -44,8 +45,11 @@ class SelectTaskMessageBuilder(MessageBuilder):
             vls.append(str(int(row[itm])))
 
         # Check all of fields are there first
-        for vl in vls:
-            self.payload.append(vl)
+        self.payload.append(",".join(vls))
 
     def serialize_payload(self):
-        return (",".join(self.payload)).encode()
+        return ("\n".join(self.payload)).encode()
+
+
+def select_task_from_msg(msg, ind):
+    return SelectTaskMessageBuilder([msg.ids[ind]], [msg.types[ind]])

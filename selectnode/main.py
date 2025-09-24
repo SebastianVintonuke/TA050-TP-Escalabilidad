@@ -107,17 +107,7 @@ NOT_EQUALS = "not_equals"
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
                 ["sum", GREATER_THAN_OP, [75]],
             ],
-            
-            "query_2": [
-                ["year", EQUALS_ANY, [2024, 2025]],
-            ],
-            "query_3": [
-                ["year", EQUALS_ANY, [2024, 2025]],
-                ["hour", BETWEEN_THAN_OP, [6, 23]],
-            ],
-            "query_4": [
-                ["year", EQUALS_ANY, [2024, 2025]],
-            ],
+ 
         }
 
         result_middleware = ResultNodeMiddleware()
@@ -125,15 +115,6 @@ NOT_EQUALS = "not_equals"
         types_config["query_1"] = TypeConfiguration(types_config["query_1"], 
                                     result_middleware, result_message.result_from_msg)
 
-        # To modify...
-        types_config["query_2"] = TypeConfiguration(types_config["query_2"], 
-                                    result_middleware, result_message.result_from_msg)
-
-        types_config["query_3"] = TypeConfiguration(types_config["query_3"], 
-                                    result_middleware, result_message.result_from_msg)
-
-        types_config["query_4"] = TypeConfiguration(types_config["query_4"], 
-                                    result_middleware, result_message.result_from_msg)
 
         node = SelectNode(SelectTasksMiddleware(), types_config)
 

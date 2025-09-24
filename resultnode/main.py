@@ -151,9 +151,9 @@ def main() -> None:
     )
 
     def handle_result(result_msg):
-        print("GOT RESULT MSG? ", result_msg)
+        logging.info(f"GOT RESULT MSG? {result_msg}")
         for itm in result_msg.stream_rows():
-            print("ROW", itm)
+            logging.info(f"ROW {itm}")
 
     result_middleware.start_consuming(handle_result)
     #start_notifying((results_ip, results_port))
