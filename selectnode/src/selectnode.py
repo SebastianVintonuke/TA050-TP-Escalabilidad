@@ -1,5 +1,5 @@
 #from .type_config import TypeConfiguration
-
+import logging
 class TypeHandler:
 	def __init__(self, type_conf, msg_builder):
 		self.type_conf = type_conf
@@ -10,8 +10,12 @@ class TypeHandler:
 		self.msg_builder = type_conf.new_builder_for(msg, ind)
 
 	def check(self, row):
+
 		if self.type_conf.should_keep(row):
+			#logging.info("CHECK ROW KEEP IT ---> ", row)
 			self.msg_builder.add_row(row)
+		#else:
+		#	logging.info("CHECK ROW DROP IT ---> ", row)
 
 	def send_built(self):
 		self.type_conf.send(self.msg_builder)

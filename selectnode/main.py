@@ -10,6 +10,8 @@ from common import test_shared
 from middleware import routing 
 from middleware.result_node_middleware import * 
 from middleware.select_tasks_middleware import * 
+
+from middleware.routing import result_message
 from middleware.errors import * 
 
 from src.selectnode import SelectNode 
@@ -63,9 +65,6 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-def result_msg_builder_creator(msg, ind) -> routing.MessageBuilder:
-    return routing.MessageBuilder(msg.ids[ind], msg.types[ind])
-
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
@@ -108,6 +107,7 @@ NOT_EQUALS = "not_equals"
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
                 ["sum", GREATER_THAN_OP, [75]],
             ],
+            
             "query_2": [
                 ["year", EQUALS_ANY, [2024, 2025]],
             ],
@@ -123,17 +123,17 @@ NOT_EQUALS = "not_equals"
         result_middleware = ResultNodeMiddleware()
         # Wrap and add output management, I.e middlewares
         types_config["query_1"] = TypeConfiguration(types_config["query_1"], 
-                                    result_middleware, result_msg_builder_creator)
+                                    result_middleware, result_message.result_from_msg)
 
         # To modify...
         types_config["query_2"] = TypeConfiguration(types_config["query_2"], 
-                                    result_middleware, result_msg_builder_creator)
+                                    result_middleware, result_message.result_from_msg)
 
         types_config["query_3"] = TypeConfiguration(types_config["query_3"], 
-                                    result_middleware, result_msg_builder_creator)
+                                    result_middleware, result_message.result_from_msg)
 
         types_config["query_4"] = TypeConfiguration(types_config["query_4"], 
-                                    result_middleware, result_msg_builder_creator)
+                                    result_middleware, result_message.result_from_msg)
 
         node = SelectNode(SelectTasksMiddleware(), types_config)
 

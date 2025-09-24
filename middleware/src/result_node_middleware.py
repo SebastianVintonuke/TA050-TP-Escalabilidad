@@ -1,5 +1,6 @@
 from .rabbitmq_middleware import *
 from . import routing
+from middleware.routing import result_message
 
 RESULTS_QUEUE_BASE = "results_queue"
 
@@ -12,7 +13,7 @@ class ResultNodeMiddleware(RabbitQueueMiddleware):
 			logging.info(f"action: result_rcv_msg | result: success | method: {method} | props: {properties} | body:{body}")
 			
 			# Wrap specific message
-			wrapped_msg = routing.ChannelMessage(ch, method, properties.headers, body)
+			wrapped_msg = result_message.ResultMessage(ch, method, properties.headers, body)
 
 			return callback(wrapped_msg)
 		return real_callback
