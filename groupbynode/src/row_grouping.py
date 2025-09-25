@@ -11,12 +11,17 @@ class CountAction:
 
 	def add_value(self, acc): # Ignore value completely.. just add to it
 		return acc+1
+	def get_result(self, acc):
+		return acc
+
 
 class SumAction:
 	def new(self, value):
 		return value
 	def add_value(self, acc, value):
 		return acc+value
+	def get_result(self, acc):
+		return acc
 
 class MaxAction:
 	def new(self, value):
@@ -24,16 +29,22 @@ class MaxAction:
 
 	def add_value(self, acc, value):
 		return value if value > acc else acc
+	def get_result(self, acc):
+		return acc
 
 
 class AvgAction:
 	def new(self, value):
-		return (1, float(value)) #(count , curr_avg)
+		return [1, float(value)] #(count , curr_avg)
 	def add_value(self, acc, value):
-		factor = (float(acc[0]))/acc[0]+1 # (n/n+1)
-		acc[1]+= value*factor # curr_avg + value*(n/n+1)
+		factor = (float(acc[0]))/(acc[0]+1) # (n/n+1)
+		value = float(value)/(acc[0]+1)
+
+		acc[1]= acc[1] *factor + value # curr_avg + value*(n/n+1)
 		acc[0]+=1 # count+=1
 		return acc
+	def get_result(self, acc):
+		return acc[1]
 
 
 
@@ -95,6 +106,24 @@ class RowGrouper:
 
 		for key,action in self.group_actions.items():
 			acc[key] = action.add_value(acc[key], row[key])
+
+
+	# Expands to a list of rows in dict mode {}
+	def expand_with_key(self, key, acc):
+		base = {}
+		ind = 0
+		for field in self.fields_key:
+			base[field] = key[ind]
+			ind+=1
+
+		for field in self.count_out_fields:
+			base[field] = acc[field]
+		
+		for key,action in self.group_actions.items():
+			base[key] = action.get_result(acc[key])
+
+		return base
+
 
 
 FILTER_FIELDS_NAME = 0
