@@ -1,7 +1,7 @@
 
 from .csv_payload_deserializer import *
 from .channel_message import *
-from .hashed_message_builder import HashedMessageBuilder
+from .message_building import HashedMessageBuilder
 import logging
 import hashlib
 
@@ -39,8 +39,8 @@ class GroupbyMessage(ChannelMessage):
         return filter(not_none, map(parse_groupby_body, self.payload)) # payload is already a stream, assumed only will be iterated once.
 
 class GroupbyMessageBuilder(HashedMessageBuilder):
-    def __init__(self,queries_id, queries_type, key_hash):
-        super().__init__(queries_id, queries_type, key_hash)
+    def __init__(self,queries_id, queries_type, key_hash, partition = 0):
+        super().__init__(queries_id, queries_type, key_hash, partition)
 
     def add_row(self,row):
         vls = []

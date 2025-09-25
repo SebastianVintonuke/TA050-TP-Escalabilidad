@@ -1,7 +1,7 @@
 
 from .csv_payload_deserializer import *
 from .channel_message import *
-from .message import MessageBuilder
+from .message_building import MessageBuilder
 import logging
 
 RESULT_FIELDS_QUERY_1 = ["year", "hour", "sum"]
@@ -37,8 +37,8 @@ class ResultMessage(ChannelMessage):
         return filter(not_none, map(parse_result_task_body, self.payload)) # payload is already a stream, assumed only will be iterated once.
 
 class ResultMessageBuilder(MessageBuilder):
-    def __init__(self,queries_id, queries_type):
-        super().__init__(queries_id, queries_type)
+    def __init__(self,queries_id, queries_type, partition = 0):
+        super().__init__(queries_id, queries_type, partition)
 
     def add_row(self,row):
         vls = []

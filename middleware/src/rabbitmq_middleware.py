@@ -2,7 +2,6 @@ from .middleware import *
 from .errors import *
 from . import routing
 import logging
-import pika
 
 DEFAULT_EXCHANGE = ''
 class RabbitExchangeMiddleware(MessageMiddleware):
@@ -26,9 +25,7 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Serial basic _send
 	def _send(self, routing_key, headers, serial_msg):
 		self.channel.basic_publish(exchange=self.exch_type, routing_key=routing_key, body=serial_msg,  
-			properties=pika.BasicProperties(
-				headers=headers
-			))
+			properties=routing.build_headers(headers))
 
 	# Wrapper for rbmq messages, subclasses might override this in case they want to have specific types of messages
 	def _callback_wrapper(self, callback):

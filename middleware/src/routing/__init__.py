@@ -23,6 +23,11 @@ RoutingConnectionErrors = (
     StreamLostError,
 )
 
+def build_headers(headers):
+	return pika.BasicProperties(
+				headers=headers
+			)
+	
 def try_open_connection(host,max_attempts):
 	for i in range(1,max_attempts):
 		try:

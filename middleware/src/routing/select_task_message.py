@@ -1,7 +1,7 @@
 
 from .csv_payload_deserializer import *
 from .channel_message import *
-from .message import MessageBuilder
+from .message_building import MessageBuilder
 import logging
 
 SELECT_FIELDS_QUERY_1 = ["year", "hour", "sum"]
@@ -37,8 +37,8 @@ class SelectTaskMessage(ChannelMessage):
         return filter(not_none, map(parse_select_task_body, self.payload)) # payload is already a stream, assumed only will be iterated once.
 
 class SelectTaskMessageBuilder(MessageBuilder):
-    def __init__(self,queries_id, queries_type):
-        super().__init__(queries_id, queries_type)
+    def __init__(self,queries_id, queries_type, partition = 0):
+        super().__init__(queries_id, queries_type, partition)
     def add_row(self,row):
         vls = []
         for itm in SELECT_FIELDS_QUERY_1: # Just to make it more expressive let it be a {"year": vl}

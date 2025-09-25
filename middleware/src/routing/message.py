@@ -1,30 +1,6 @@
 import logging
 from .header_fields import *
 
-# Message builder
-class MessageBuilder:
-	def __init__(self,queries_id, queries_type, partition):
-		self.ids = queries_id
-		self.types = queries_type
-		self.payload = []
-		self.partition_ind = partition
-
-	def add_row(self,row):
-		#assert len(row) == len(fields) # Same size of fields 
-		self.payload.append(str(row))
-
-
-    def serialize_payload(self):
-        return ("\n".join(self.payload)).encode()
-
-	def get_headers(self):
-		return {
-			FIELD_QUERY_ID: self.ids,
-			FIELD_QUERY_TYPE: self.types,
-			FIELD_PARTITION_IND: self.partition_ind,
-		}
-
-
 # Defines basic initialization and header management
 class Message:
 	def _verify_headers(self):
