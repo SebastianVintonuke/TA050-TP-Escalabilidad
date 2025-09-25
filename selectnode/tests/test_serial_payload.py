@@ -6,7 +6,7 @@ from middleware.routing.result_message import *
 class MethodClass:
     def __init__(self, tag):
         self.delivery_tag =tag
-class TestSelectTask(unittest.TestCase):
+class TestSerialPayload(unittest.TestCase):
 
     def test_serial_deserial_select(self):
         msg_build = SelectTaskMessageBuilder(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"])

@@ -11,7 +11,6 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 		try:
 			self._conn = routing.try_open_connection(host, 10) # Can fail but should we wrap the error on a MessageMiddlewareDisconnectedError?
 			self.channel = self._conn.channel()
-			self._init_bind()
 		except Exception as e:
 			raise MessageMiddlewareConnectError(f"RabbitMQ connect failed: {e}") from e
 
@@ -42,7 +41,8 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Si se pierde la conexión con el middleware eleva MessageMiddlewareDisconnectedError.
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
 	def start_consuming(self, on_message_callback):
-		try:		
+		try:
+			self._init_bind()	
 			self.channel.basic_consume(
 				queue=self.queue_name, on_message_callback=self._callback_wrapper(on_message_callback), auto_ack=False)
 			self.channel.start_consuming()
