@@ -28,6 +28,16 @@ class SelectNode:
 	def handle_task(self, msg):
 		msg.describe()
 
+		if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+			for ind in range(msg.len_queries()):
+				conf = self.types_configurations[msg.types[ind]]
+				self.type_conf.send(
+					conf.new_builder_for(msg, ind) #Empty message that has same headers splitting to each destination.
+				)
+			msg.ack_self()
+			return
+			#logging.info(f"Should handle EOF, or error in send, code {msg.partition}")
+
 		outputs = []
 		ind = 0
 		for type in msg.types:
