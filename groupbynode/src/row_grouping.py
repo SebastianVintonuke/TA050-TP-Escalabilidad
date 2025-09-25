@@ -132,7 +132,7 @@ FILTER_FIELD_ACTIONS = 1
 # filters serial should be [["fieldTarget", "operation", ["constraint1", "constraint2"]], ["fieldTarget", "operation", ["constraint1", "constraint2"]]]
 # rows are {"field":vl, "field2":vl2}
 def load_grouper(grouper_serial):
-	return RowGrouper(grouper[FILTER_FIELDS_NAME], grouper[FILTER_FIELD_ACTIONS])
+	return RowGrouper(grouper_serial[FILTER_FIELDS_NAME], grouper_serial[FILTER_FIELD_ACTIONS])
 
 def load_groupers(groupers_serial):
 	all_groupers = []

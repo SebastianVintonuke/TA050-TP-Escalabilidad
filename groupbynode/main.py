@@ -13,9 +13,10 @@ from middleware.groupby_middleware import *
 
 from middleware.routing import result_message
 from middleware.errors import * 
+from middleware.routing.query_types import *
 
-from src.selectnode import SelectNode 
-from src.row_filtering import * 
+from src.groupbynode import GroupbyNode 
+from src.row_grouping import * 
 from src.type_config import * 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -52,10 +53,10 @@ def initialize_config():  # type: ignore[no-untyped-def]
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
     except KeyError as e:
-        raise KeyError("Key was not found. Error: {} .Aborting selectnode".format(e))
+        raise KeyError("Key was not found. Error: {} .Aborting groupbynode".format(e))
     except ValueError as e:
         raise ValueError(
-            "Key could not be parsed. Error: {}. Aborting selectnode".format(e)
+            "Key could not be parsed. Error: {}. Aborting groupbynode".format(e)
         )
 
     return config_params
@@ -91,8 +92,45 @@ def main() -> None:
 
     try:
 
+        """
+       Transacciones (Id y monto) realizadas durante 2024 y 2025 entre las 06:00 AM y las
+        11:00 PM con monto total mayor o igual a 75.
+        2. Productos más vendidos (nombre y cant) y productos que más ganancias han generado
+        (nombre y monto), para cada mes en 2024 y 2025.
+        3. TPV (Total Payment Value) por cada semestre en 2024 y 2025, para cada sucursal, para
+        transacciones realizadas entre las 06:00 AM y las 11:00 PM.
+        4. Fecha de cumpleaños de los 3 clientes que han hecho más compras durante 2024 y
+        2025, para cada sucursal.           
+        """
+
+        types_config = {
+            QUERY_2:[
+                ["month", "product_id"], {
+                    "monto": SUM_ACTION,
+                    "quantity_sold": COUNT_ACTION
+                }],
+            QUERY_3:[
+                ["semestre", "month_id"], {
+                    "sum": SUM_ACTION,
+                }],
+            QUERY_4:[
+                ["store_id", "year", "user_id"], {
+                    "cost": SUM_ACTION,
+                    "purchase_count": COUNT_ACTION
+                }],
+        }
+        result_middleware = ResultNodeMiddleware()
+
+        types_config[QUERY_2] = TypeConfiguration(types_config[QUERY_2], 
+                                    result_middleware, result_message.result_from_msg)
+        types_config[QUERY_3] = TypeConfiguration(types_config[QUERY_3], 
+                                    result_middleware, result_message.result_from_msg)
+        types_config[QUERY_4] = TypeConfiguration(types_config[QUERY_4], 
+                                    result_middleware, result_message.result_from_msg)
+
+
         middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind)
-        node = SelectNode(SelectTasksMiddleware(), types_config)
+        node = GroupbyNode(middleware_group, types_config)
 
         test_shared("groupbynode")
         restart = True
@@ -108,7 +146,7 @@ def main() -> None:
         node.close()
     except Exception as e:
         logging.error(
-            f"action: select_node_main | result: error | err:{e}"
+            f"action: groupby_node_main | result: error | err:{e}"
             )
 
 if __name__ == "__main__":

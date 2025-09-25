@@ -12,6 +12,7 @@ from middleware.result_node_middleware import *
 from middleware.select_tasks_middleware import * 
 
 from middleware.routing import result_message
+from middleware.routing.query_types import *
 from middleware.errors import * 
 
 from src.selectnode import SelectNode 
@@ -102,7 +103,7 @@ NOT_EQUALS = "not_equals"
 
         # Basic filter description
         types_config = {
-            "query_1": [
+            QUERY_1: [
                 ["year", EQUALS_ANY, [2024, 2025]],
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
                 ["sum", GREATER_THAN_OP, [75]],
@@ -112,7 +113,7 @@ NOT_EQUALS = "not_equals"
 
         result_middleware = ResultNodeMiddleware()
         # Wrap and add output management, I.e middlewares
-        types_config["query_1"] = TypeConfiguration(types_config["query_1"], 
+        types_config[QUERY_1] = TypeConfiguration(types_config["query_1"], 
                                     result_middleware, result_message.result_from_msg)
 
 

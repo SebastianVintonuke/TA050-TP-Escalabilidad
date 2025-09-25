@@ -17,6 +17,12 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	def _get_routing_key(self):
 		return self.queue_name
 	def _init_bind(self):
+		self.channel.exchange_declare(
+		    exchange=self.exch_type,
+		    exchange_type='direct',
+		    #durable=True 
+		)
+		
 		self.channel.queue_declare(queue=self.queue_name)
 		self.channel.queue_bind(queue=self.queue_name, exchange=self.exch_type, routing_key=self._get_routing_key())
 

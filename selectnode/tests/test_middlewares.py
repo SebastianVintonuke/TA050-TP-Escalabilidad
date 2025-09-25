@@ -29,6 +29,9 @@ class MockChannel:
         self.queues = {}
         self.host = host
 
+    def exchange_declare(self, exchange, exchange_type,durable = False):
+        pass
+        
     def declared_queues(self):
         return self.queues.keys()
 
