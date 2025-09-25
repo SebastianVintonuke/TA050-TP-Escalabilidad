@@ -13,14 +13,14 @@ class QueryAccumulator:
 		self.msg_builder = type_conf.new_builder_for(msg, ind)
 
 	def check(self, row):
-		key = self.type_conf.get_group_key(row)
+		key = self.type_conf.grouper.get_group_key(row)
 
 		acc = self.groups.get(key, None)
 		if acc == None:
-			acc = self.type_conf.new_group_acc(row)
+			acc = self.type_conf.grouper.new_group_acc(row)
 			self.groups[key] = acc
 		else:
-			self.type_conf.add_group_acc(acc, row)
+			self.type_conf.grouper.add_group_acc(acc, row)
 			#acc.add_row(row) # Better in design? who knows
 
 	def send_built(self): # What happens If the groupbynode fails here/shutdowns here?

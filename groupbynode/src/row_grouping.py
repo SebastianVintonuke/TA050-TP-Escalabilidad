@@ -6,10 +6,10 @@ MAX_ACTION = "max"
 COUNT_ACTION = "count"
 
 class CountAction:
-	def new(self, value): # By default it doesnt do anything? just return 1
+	def new(self): # By default it doesnt do anything? just return 1
 		return 1 
 
-	def add_value(self, acc, value): # Ignore value completely.. just add to it
+	def add_value(self, acc): # Ignore value completely.. just add to it
 		return acc+1
 
 class SumAction:
@@ -42,35 +42,57 @@ NUMBER_ACTIONS = {
 	SUM_ACTION: SumAction,
 	MAX_ACTION: MaxAction,
 	AVG_ACTION: AvgAction,
-	COUNT_ACTION: CountAction,
 }
+
+#ROW_ACTIONS = {
+#	COUNT_ACTION: CountAction,
+#}
+
+#[fields, group_acc_actions]
+
 
 
 def resolve_action(op_name):
 	creator = NUMBER_ACTIONS.get(op_name, None)
-
-	# Assert not None creator!
-	assert creator
-
+	assert creator != None
 	return creator() # Create creator.
 
 class RowGrouper:
 	def __init__(self, fields_key, group_actions):
 		self.fields_key = fields_key
 		self.group_actions = {}
-		
+		self.count_out_fields = []
+
 		for col, action in group_actions.items():
+			# Not the most efficient I guess..
+			if action == COUNT_ACTION:
+				self.count_out_fields.append(col)
+				continue
+
 			self.group_actions[col] = resolve_action(action)
 
+	def get_group_key(self, row):
+		key = []
+
+		for field in self.fields_key:
+			key.append(row[field])
+
+		return tuple(key) 
 
 	def new_group_acc(self, row):
 		acc ={} 
+		for field in self.count_out_fields:
+			acc[field] = 1
+
 		for key,action in self.group_actions.items():
 			acc[key] = action.new(row[key])
 
 		return acc
 
 	def add_group_acc(self, acc, row):
+		for field in self.count_out_fields:
+			acc[field] += 1
+
 		for key,action in self.group_actions.items():
 			acc[key] = action.add_value(acc[key], row[key])
 
@@ -80,6 +102,9 @@ FILTER_FIELD_ACTIONS = 1
 
 # filters serial should be [["fieldTarget", "operation", ["constraint1", "constraint2"]], ["fieldTarget", "operation", ["constraint1", "constraint2"]]]
 # rows are {"field":vl, "field2":vl2}
+def load_grouper(grouper_serial):
+	return RowGrouper(grouper[FILTER_FIELDS_NAME], grouper[FILTER_FIELD_ACTIONS])
+
 def load_groupers(groupers_serial):
 	all_groupers = []
 	for grouper in groupers_serial:
