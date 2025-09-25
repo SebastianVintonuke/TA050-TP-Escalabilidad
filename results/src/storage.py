@@ -1,8 +1,11 @@
+import logging
+import shutil
 import threading
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
-from common.protocol.results import QueryId
+from common import QueryId
+from common.middleware.tasks.result import ResultTask
 from common.results.query import QueryResult
 
 
@@ -23,13 +26,28 @@ class ResultStorage:
         )
         self._users_lock = threading.Lock()
 
-    def append_results(
+    def handle(self, result_task: ResultTask) -> None:
+        logging.info(
+            f"action: handle_task | result: in-progress | {result_task.user_id}:{result_task.query_id}"
+        )
+
+        if result_task.abort:
+            self.__delete_results(result_task.user_id)
+            return
+
+        self.__append_results(
+            result_task.user_id, result_task.query_id, result_task.data
+        )
+        if result_task.eof:
+            self.__ready_results(result_task.user_id, result_task.query_id)
+
+    def __append_results(
         self, user_id: str, query_id: QueryId, partial_results: Sequence[QueryResult]
     ) -> None:
         self.__if_absent_create_user_for(user_id)
 
         file_path = self._dir_path / user_id / self.__file_name_for(query_id)
-        with self._results[user_id][QueryId.Query4]:
+        with self._results[user_id][query_id]:
             with file_path.open("a", encoding="utf-8") as file_descriptor:
                 for partial_result in partial_results:
                     line = partial_result.to_bytes().decode("utf-8")
@@ -37,15 +55,15 @@ class ResultStorage:
                         line += "\n"
                     file_descriptor.write(line)
 
-    def notify_eof_results(self, user_id: str, query_id: QueryId) -> None:
+    def __ready_results(self, user_id: str, query_id: QueryId) -> None:
         file_path = self._dir_path / user_id / self.__file_name_for(query_id)
         ready_file_path = (
             self._dir_path / user_id / f"ready_{self.__file_name_for(query_id)}"
         )
-        with self._results[user_id][QueryId.Query4]:
+        with self._results[user_id][query_id]:
             file_path.rename(ready_file_path)
 
-    def results_are_ready(self, user_id: str) -> bool:
+    def __results_are_ready(self, user_id: str) -> bool:
         with self._users_lock:
             if user_id not in self._results:
                 return False
@@ -67,9 +85,17 @@ class ResultStorage:
                 (user_dir / file_name).touch()
                 self._results[user_id][query_id] = threading.Lock()
 
+    def __delete_results(self, user_id: str) -> None:
+        with self._users_lock:
+            if user_id not in self._results:
+                return
+        user_dir = self._dir_path / user_id
+        self._results.pop(user_id, None)
+        shutil.rmtree(user_dir)
+
     def __file_name_for(self, query_id: QueryId) -> str:
-        for query_id, file_name in self._FILE_NAMES:
-            if query_id == query_id:
+        for query, file_name in self._FILE_NAMES:
+            if query == query_id:
                 return file_name
         raise Exception(f"Unknown query id: {query_id}")
 

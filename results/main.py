@@ -3,9 +3,13 @@
 import logging
 import os
 import signal
+import time
 from configparser import ConfigParser
 
+from pika.exceptions import AMQPConnectionError
 from src.result import ResultServer
+
+from common.middleware.middleware import MessageMiddlewareQueue
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -55,6 +59,8 @@ def initialize_log(logging_level: int) -> None:
         level=logging_level,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+    logging.getLogger("pika").setLevel(logging.WARNING)
+    logging.getLogger("pika.adapters").setLevel(logging.WARNING)
 
 
 def main() -> None:
@@ -71,7 +77,16 @@ def main() -> None:
         f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | dir_path: {dir_path} | logging_level: {logging_level}"
     )
 
-    result_server = ResultServer(port, listen_backlog, dir_path)
+    while True:
+        try:
+            middleware = MessageMiddlewareQueue("middleware", "results")
+            break
+        except AMQPConnectionError:
+            time.sleep(5)  # Reintentar hasta que RabbitMQ esté disponible
+        except Exception as e:
+            logging.error(f"action: init_middleware | result: fail | error: {e}")
+
+    result_server = ResultServer(port, listen_backlog, dir_path, middleware)
     signal.signal(signal.SIGTERM, result_server.graceful_shutdown)
 
     result_server.run()

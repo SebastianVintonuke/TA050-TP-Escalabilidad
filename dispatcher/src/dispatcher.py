@@ -76,7 +76,6 @@ class DispatcherServer:
         protocol = DispatcherProtocol(client_socket)
         try:
             protocol.handle_requests()
-            pass
         except Exception as e:
             logging.error(f"action: error | result: fail | error: {e}")
         finally:

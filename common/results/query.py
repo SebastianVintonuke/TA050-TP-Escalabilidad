@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type, TypeVar
+from typing import Type, ClassVar, TypeVar
 
 T = TypeVar("T", bound="QueryResult")
 

@@ -17,11 +17,11 @@ class QueryResult3(QueryResult):
         line = data.decode("utf-8").strip()
         fields = line.split(",")
 
-        year_created_at = datetime.strptime(fields[0], "%Y").date()
-        half_created_at = fields[1].strip()
-        store_id = int(fields[2])
-        tpv = float(fields[3])
-        store_name = fields[4].strip()
+        year_str, half_created_at = fields[0].split("-")
+        year_created_at = datetime.strptime(year_str, "%Y").date()
+        store_id = int(fields[1])
+        tpv = float(fields[2])
+        store_name = fields[3].strip()
 
         return cls(year_created_at=year_created_at, half_created_at=half_created_at, store_id=store_id, tpv=tpv, store_name=store_name)
 

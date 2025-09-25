@@ -5,7 +5,12 @@ import threading
 from types import FrameType
 from typing import List, Optional, Tuple
 
+from pika.channel import Channel
+from pika.spec import Basic, BasicProperties
+
 from common import ResultsProtocol
+from common.middleware.middleware import MessageMiddlewareQueue
+from common.middleware.tasks.result import ResultTask
 
 from .storage import ResultStorage
 
@@ -30,12 +35,22 @@ class ResultServer:
                     f"action: close_{socket_name_to_log} | result: fail | error: {e}"
                 )
 
-    def __init__(self, port: int, listen_backlog: int, dir_path: str) -> None:
+    def __init__(
+        self,
+        port: int,
+        listen_backlog: int,
+        dir_path: str,
+        middleware: MessageMiddlewareQueue,
+    ) -> None:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(("", port))
         self._server_socket.listen(listen_backlog)
         self._was_stopped = False
         self._clients: List[Tuple[threading.Thread, socket.socket]] = []
+        self._middleware = middleware
+        self._result_consumer: threading.Thread = threading.Thread(
+            target=self.__handle_consumer_connection
+        )
         self._results_storage = ResultStorage(dir_path)
 
     def run(self) -> None:
@@ -45,6 +60,7 @@ class ResultServer:
         Server that accepts new connections and spawns a new thread
         for each client. Each client is handled independently.
         """
+        self._result_consumer.start()
         while not self._was_stopped:
             self.__cleanup_client_threads()
             client_socket = self.__accept_new_connection()
@@ -68,6 +84,9 @@ class ResultServer:
         for client_thread, client_socket in self._clients:
             self.__try_close(client_socket, "client_socket")
             client_thread.join()
+        self._middleware.close()
+        self._middleware.delete()
+        self._result_consumer.join()
         logging.info("action: exit | result: success")
 
     def __handle_client_connection(self, client_socket: socket.socket) -> None:
@@ -78,10 +97,7 @@ class ResultServer:
         """
         protocol = ResultsProtocol(client_socket)
         try:
-            protocol.handle_requests(
-                self._results_storage.append_results,
-                self._results_storage.notify_eof_results,
-            )
+            protocol.handle_requests()
         except Exception as e:
             logging.error(f"action: error | result: fail | error: {e}")
         finally:
@@ -124,3 +140,23 @@ class ResultServer:
             else:
                 thread.join()
         self._clients = alive_clients
+
+    def __handle_consumer_connection(self) -> None:
+        try:
+            self._middleware.start_consuming(self.__on_message_callback)
+        except Exception as e:
+            logging.error(f"action: run_consumer | result: fail | error: {e}")
+
+    def __on_message_callback(
+        self,
+        channel: Channel,
+        deliver: Basic.Deliver,
+        _basic_properties: BasicProperties,
+        data: bytes,
+    ) -> None:
+        try:
+            result_task = ResultTask.from_bytes(data)
+            self._results_storage.handle(result_task)
+            channel.basic_ack(deliver.delivery_tag)
+        except Exception as e:
+            logging.error(f"action: message_callback | result: fail | error: {e}")

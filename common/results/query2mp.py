@@ -8,7 +8,7 @@ from common.results.query import QueryResult
 class QueryResult2MostProfit(QueryResult):
     year_month_created_at: date
     item_id: int
-    profit_sum: int
+    profit_sum: float
     item_name: str
 
     @classmethod
@@ -18,7 +18,7 @@ class QueryResult2MostProfit(QueryResult):
 
         year_month_created_at = datetime.strptime(fields[0], "%Y-%m").date()
         item_id = int(fields[1])
-        profit_sum = int(fields[2])
+        profit_sum = float(fields[2])
         item_name = fields[3].strip()
 
         return cls(year_month_created_at=year_month_created_at, item_id=item_id, profit_sum=profit_sum, item_name=item_name)
