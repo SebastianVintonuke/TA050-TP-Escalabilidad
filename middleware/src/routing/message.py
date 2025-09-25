@@ -53,5 +53,8 @@ class Message:
 	def is_partition_eof(self):
 		return self.payload == None
 
-	def is_eof(self):
+	def is_last_message(self):
 		return self.partition < 0 # Negative partition es eof, be it an error or actual eof.
+
+	def is_eof(self):
+		return self.partition == EOF_SIGNAL

@@ -9,6 +9,7 @@ class MessageBuilder:
         self.types = queries_type
         self.payload = []
         self.partition_ind = partition
+        self.should_be_eof = False
 
     def add_row(self,row):
         #assert len(row) == len(fields) # Same size of fields 
@@ -16,6 +17,9 @@ class MessageBuilder:
 
 
     def serialize_payload(self):
+        if self.should_be_eof:
+            return b""
+
         return ("\n".join(self.payload)).encode()
 
     def get_headers(self):
@@ -24,6 +28,20 @@ class MessageBuilder:
             FIELD_QUERY_TYPE: self.types,
             FIELD_PARTITION_IND: self.partition_ind,
         }
+
+    def set_as_eof(self):
+        self.should_be_eof = True
+
+    def set_finish_signal(self):
+        self.set_as_eof()
+        self.partition_ind = EOF_SIGNAL
+
+    def set_error(self, code = DEFAULT_ERROR_SIGNAL):
+        self.set_as_eof()
+        if code >=EOF_SIGNAL:
+            self.partition_ind = DEFAULT_ERROR_SIGNAL
+        else:
+            self.partition_ind = code
 
 
 
