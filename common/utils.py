@@ -1,6 +1,7 @@
+import hashlib
 import uuid
 from enum import Enum
-from typing import List, Tuple, Type
+from typing import Type
 
 from common.results.query import QueryResult
 from common.results.query1 import QueryResult1
@@ -40,3 +41,5 @@ def query_result_for(query_id: QueryId) -> Type[QueryResult]:
     else:
         raise ValueError(f"No QueryResult found for query_id: {query_id}")
 
+def stable_hash(value: str) -> int:
+    return int(hashlib.md5(value.encode("utf-8")).hexdigest(), 16)

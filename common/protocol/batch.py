@@ -1,10 +1,12 @@
+import logging
 import socket
-from typing import Callable, List
+from typing import Callable, List, Iterable
 
 from .byte import ByteProtocol
 
 class BatchProtocol:
     _MAX_BATCH_SIZE = 8 * 1024  # 8 kB
+    _MAX_BATCH_COUNT = 255
 
     def __init__(self, a_socket: socket.socket):
         self._byte_protocol = ByteProtocol(a_socket)
@@ -21,7 +23,7 @@ class BatchProtocol:
         - First send the batch size (as uint8)
         - Then send each item in the batch
         """
-        if len(batch) > 255:
+        if len(batch) > self._MAX_BATCH_COUNT:
             raise ValueError("Batch size too large for uint8")
 
         total_size = sum(len(item) for item in batch)
@@ -33,6 +35,23 @@ class BatchProtocol:
         self._byte_protocol.send_uint8(len(batch))
         for item in batch:
             self._byte_protocol.send_bytes(item)
+
+    def send_all(self, lines: Iterable[bytes]) -> None:
+        batch: List[bytes] = []
+        current_size = 0
+
+        for line in lines:
+            line_size = len(line)
+            if batch and (current_size + line_size > self._MAX_BATCH_SIZE or len(batch) >= self._MAX_BATCH_COUNT):
+                self.send_batch(batch)
+                batch = []
+                current_size = 0
+
+            batch.append(line)
+            current_size += line_size
+
+        if batch:
+            self.send_batch(batch)
 
     def wait_batch(self) -> List[bytes]:
         """

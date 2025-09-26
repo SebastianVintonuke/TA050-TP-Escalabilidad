@@ -35,12 +35,14 @@ echo "  results:
     environment:
       - PYTHONUNBUFFERED=1
       - LISTEN_BACKLOG=1
+      - DIR_PATH=/storage
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./results/config.ini:/config.ini:ro
+      - ./.data/storage:/results/storage
 " >> "$output_file_name"
 
 echo "  server:
@@ -63,14 +65,16 @@ echo "  client:
     entrypoint: python3 /client/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - DATA_DIR=/archive
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
     networks:
       - testing_net
     depends_on:
       - server
     volumes:
       - ./client/config.ini:/config.ini:ro
-      - ./.data/archive:/archive:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results:/output:rw
 " >> "$output_file_name"
 
 echo "  dispatcher:

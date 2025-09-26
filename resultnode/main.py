@@ -5,13 +5,9 @@ import os
 import time
 from configparser import ConfigParser
 
-from common import QueryId, QueryResult1, new_uuid
+from common import QueryId
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
-from common.results.query2bs import QueryResult2BestSelling
-from common.results.query2mp import QueryResult2MostProfit
-from common.results.query3 import QueryResult3
-from common.results.query4 import QueryResult4
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -79,8 +75,11 @@ def main() -> None:
     logging.getLogger("pika").setLevel(logging.WARNING)
     logging.getLogger("pika.adapters").setLevel(logging.WARNING)
     message_middleware_queue = MessageMiddlewareQueue("middleware", "results")
-    fake_user_id = new_uuid()
+    # fake_user_id = new_uuid()
 
+    eof = ResultTask("test_user_id", QueryId.Query1, True, False, []).to_bytes()
+    message_middleware_queue.send(eof)
+    """
     # CONSULTA 1
     partial_results_1 = [
         QueryResult1.from_bytes(
@@ -190,6 +189,7 @@ def main() -> None:
     ).to_bytes()
     message_middleware_queue.send(message_8)
     message_middleware_queue.send(message_9)
+    """
 
 
 if __name__ == "__main__":

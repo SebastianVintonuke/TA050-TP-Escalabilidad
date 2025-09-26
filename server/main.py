@@ -2,10 +2,10 @@
 
 import logging
 import os
-import socket
+import signal
 from configparser import ConfigParser
 
-from common import BatchProtocol, Model, SignalProtocol
+from server.src.server import Server
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -69,32 +69,14 @@ def main() -> None:
         f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level}"
     )
 
-    _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    _socket.bind(("", port))
-    _socket.listen(listen_backlog)
+    server = Server(
+        port, listen_backlog, ["dispatcher:12347"], ["results:12349"]
+    )  # TODO parametrizar
+    signal.signal(signal.SIGTERM, server.graceful_shutdown)
 
-    client_socket, addr = _socket.accept()
-    logging.info(f"action: accept_connections | result: success | ip: {addr[0]}")
+    server.run()
 
-    signal_protocol = SignalProtocol(client_socket)
-    batch_protocol = BatchProtocol(client_socket)
-
-    # count = 0
-    try:
-        batch = batch_protocol.wait_batch()
-        header = batch[0]
-        model = Model.model_for(header)
-        while len(batch) > 0:  # el fin se indica con un batch vacio
-            # count += 1
-            # if count == 3:
-            #    raise Exception("prueba del protocolo de error")  # Descomentar para ver propagacion de errores
-            batch = batch_protocol.wait_batch()
-            signal_protocol.send_ack()
-            for item in batch:
-                print(model.from_bytes_and_project(item))
-    except Exception as e:
-        print(e)
-        signal_protocol.send_error(str(e))
+    logging.shutdown()
 
 
 if __name__ == "__main__":

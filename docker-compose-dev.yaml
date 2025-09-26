@@ -18,14 +18,14 @@ services:
     entrypoint: python3 /results/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - DIR_PATH=/results
+      - DIR_PATH=/storage
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./results/config.ini:/config.ini:ro
-      - ./.data/results:/results/results
+      - ./.data/storage:/results/storage
 
   server:
     container_name: server
@@ -46,14 +46,16 @@ services:
     entrypoint: python3 /client/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - DATA_DIR=/archive
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
     networks:
       - testing_net
     depends_on:
       - server
     volumes:
       - ./client/config.ini:/config.ini:ro
-      - ./.data/archive:/archive:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results:/output:rw
 
   dispatcher:
     container_name: dispatcher

@@ -97,7 +97,10 @@ class ResultServer:
         """
         protocol = ResultsProtocol(client_socket)
         try:
-            protocol.handle_requests()
+            protocol.handle_requests(
+                self._results_storage.assert_exists,
+                self._results_storage.do_with_results_when_ready,
+            )
         except Exception as e:
             logging.error(f"action: error | result: fail | error: {e}")
         finally:

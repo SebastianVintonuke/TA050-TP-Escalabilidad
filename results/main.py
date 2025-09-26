@@ -7,9 +7,9 @@ import time
 from configparser import ConfigParser
 
 from pika.exceptions import AMQPConnectionError
-from src.result import ResultServer
 
 from common.middleware.middleware import MessageMiddlewareQueue
+from results.src.result import ResultServer
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
