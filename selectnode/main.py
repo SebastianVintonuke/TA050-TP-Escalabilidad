@@ -4,8 +4,6 @@ import logging
 import os
 from configparser import ConfigParser
 
-from common import test_shared
-
 from middleware import routing
 from middleware.result_node_middleware import *
 from middleware.select_tasks_middleware import *
@@ -166,7 +164,6 @@ NOT_EQUALS = "not_equals"
 
         node = SelectNode(SelectTasksMiddleware(), types_config)
 
-        test_shared("selectnode")
         restart = True
         while restart:
             try:

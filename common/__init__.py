@@ -14,7 +14,6 @@ from common.results.query4 import QueryResult4
 
 from .protocol.batch import BatchProtocol
 from .protocol.signal import SignalProtocol
-from .protocol.dispatcher import DispatcherProtocol
 from .protocol.results import ResultsProtocol
 from .protocol.server import ServerProtocol
 

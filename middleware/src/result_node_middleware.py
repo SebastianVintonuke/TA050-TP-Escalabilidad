@@ -1,6 +1,5 @@
 from .rabbitmq_middleware import *
 from . import routing
-from middleware.routing import result_message
 
 RESULTS_QUEUE_BASE = "results_queue"
 

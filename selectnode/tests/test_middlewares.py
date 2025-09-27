@@ -120,7 +120,7 @@ class TestMiddlewares(unittest.TestCase):
         channel = conn.channels[0]
         declared_queues = list(channel.declared_queues())
         # Not defined yet, declared on consume start
-        self.assertEqual(len(declared_queues), 0)
+        self.assertEqual(len(declared_queues), 1)
         self.assertFalse(channel.consuming)
 
 

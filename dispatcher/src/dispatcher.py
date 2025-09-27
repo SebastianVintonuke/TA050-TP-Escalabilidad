@@ -5,7 +5,7 @@ import threading
 from types import FrameType
 from typing import List, Optional, Tuple
 
-from common import DispatcherProtocol
+from common.protocol.dispatcher import DispatcherProtocol
 
 
 class DispatcherServer:

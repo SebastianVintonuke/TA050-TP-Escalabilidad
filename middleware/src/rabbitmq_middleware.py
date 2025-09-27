@@ -12,6 +12,8 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 		try:
 			self._conn = routing.try_open_connection(host, 10) # Can fail but should we wrap the error on a MessageMiddlewareDisconnectedError?
 			self.channel = self._conn.channel()
+			self._init_bind()
+
 		except Exception as e:
 			raise MessageMiddlewareConnectError(f"RabbitMQ connect failed: {e}") from e
 
@@ -40,7 +42,7 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Wrapper for rbmq messages, subclasses might override this in case they want to have specific types of messages
 	def _callback_wrapper(self, callback):
 		def real_callback(ch, method, properties, body):
-			logging.info(f"action: msg_recv | result: success | queue: {self.queue_name} | method: {method} | props: {properties} | body:{body}")
+			#logging.info(f"action: msg_recv | result: success | queue: {self.queue_name} | method: {method} | props: {properties} | body:{body}")
 			
 			wrapped_msg = CSVMessage(ch, method, properties.headers, body)
 
@@ -53,7 +55,6 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
 	def start_consuming(self, on_message_callback):
 		try:
-			self._init_bind()	
 			self.channel.basic_consume(
 				queue=self.queue_name, on_message_callback=self._callback_wrapper(on_message_callback), auto_ack=False)
 			self.channel.start_consuming()

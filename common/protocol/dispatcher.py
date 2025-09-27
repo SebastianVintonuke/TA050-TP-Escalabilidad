@@ -2,11 +2,14 @@ import socket
 from typing import Callable
 
 from common.models.model import Model
+from common.models.transaction import Transaction
 from common.utils import new_uuid
 
 from common.protocol.byte import ByteProtocol
 from common.protocol.signal import SignalProtocol
 from common.protocol.batch import BatchProtocol
+from middleware.src.routing.csv_message import CSVMessageBuilder
+from middleware.src.select_tasks_middleware import SelectTasksMiddleware
 
 
 class DispatcherProtocol:
@@ -23,14 +26,21 @@ class DispatcherProtocol:
 
     def handle_requests(self) -> None:
         user_id = new_uuid()
+        middleware = SelectTasksMiddleware()
+
+        msg_build = CSVMessageBuilder([user_id], ["query_1"])
 
         recv_batch = self._batch_protocol.wait_batch()
         while recv_batch:
             header = recv_batch.pop(0)
-            model = Model.model_for(header)
+            model = Transaction
+
             while recv_batch:
                 for line in recv_batch:
-                    print(model.from_bytes_and_project(line)) # Dispatch task (model)
+                    item: Transaction = model.from_bytes_and_project(line)
+                    msg_build.add_row([item.transaction_id, item.created_at.year, item.created_at.hour, item.final_amount])
+                    middleware.send(msg_build)
+
                 recv_batch = self._batch_protocol.wait_batch()
             recv_batch = self._batch_protocol.wait_batch()
 

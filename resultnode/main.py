@@ -5,13 +5,8 @@ import os
 from configparser import ConfigParser
 
 from middleware import routing
-from middleware.result_node_middleware import *
-from middleware.select_tasks_middleware import *
 from middleware.errors import *
-from middleware.routing.select_task_message import *
 from middleware.result_node_middleware import *
-from middleware.routing.csv_message import *
-from middleware.select_tasks_middleware import *
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -64,8 +59,8 @@ def initialize_log(logging_level: int) -> None:
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
-    results_ip = config_params["results_ip"]
-    results_port = config_params["results_port"]
+    #results_ip = config_params["results_ip"]
+    #results_port = config_params["results_port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
 
@@ -77,37 +72,6 @@ def main() -> None:
     )
 
     result_middleware = ResultNodeMiddleware()
-    tmp_send_middle = SelectTasksMiddleware()
-
-    msg_build = CSVMessageBuilder(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"])
-
-    ## From test
-    rows_pass = [
-        {'year': 2024, 'hour': 7, 'sum': 88},
-        {'year': 2025, 'hour': 23, 'sum': 942},
-        {'year': 2024, 'hour': 6, 'sum': 942},
-    ]
-    rows_fail = [
-        {'year': 2027, 'hour': 7, 'sum': 88},
-        {'year': 2025, 'hour': 24, 'sum': 942},
-        {'year': 2024, 'hour': 6, 'sum': 55},
-    ]
-
-    for itm in rows_pass:
-        msg_build.add_row(itm)
-
-    for itm in rows_fail:
-        msg_build.add_row(itm)
-
-    logging.info(
-        f"action: select_msg_build | result: success | {msg_build.get_headers()} | {msg_build.serialize_payload()}"
-    )
-
-    tmp_send_middle.send(msg_build)
-
-    logging.info(
-        f"action: start_consuming | result: success"
-    )
 
     def handle_result(result_msg):
         logging.info(f"GOT RESULT MSG? {result_msg}")
