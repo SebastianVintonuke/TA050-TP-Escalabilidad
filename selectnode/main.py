@@ -17,7 +17,8 @@ from middleware.errors import *
 
 from src.selectnode import SelectNode 
 from src.row_filtering import * 
-from src.type_config import * 
+from src.select_type_config import * 
+from src.row_mapping import * 
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -102,19 +103,66 @@ NOT_EQUALS = "not_equals"
         """
 
         # Basic filter description
-        types_config = {
-        }
+        types_config = {}
 
         result_middleware = ResultNodeMiddleware()
         # The config receives middleware, msgbuilder creator, then configurations specific to filtering
-        types_config[QUERY_1] = TypeConfiguration(result_middleware, csv_message.csv_msg_from_msg,
-            all_fields=["id", "year", "hour", "sum"], # In order
+        types_config[QUERY_1] = SelectTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg,
+            in_fields=["transaction_id", "year", "hour", "sum"], # In order
             filters_conf = [
-                ["year", EQUALS_ANY, [2024, 2025]],
+                ["year", EQUALS_ANY, ["2024", "2025"]],
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
                 ["sum", GREATER_THAN_OP, [75]],
-            ])
+            ],
+            out_conf={
+                ROW_CONFIG_OUT_COLS: ["transaction_id", "sum"]
+            }
+            )
 
+        types_config[QUERY_2] = SelectTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg,
+            in_fields=["product_id", "year", "month", "revenue"], # In order
+            filters_conf = [
+                ["year", EQUALS_ANY, ["2024", "2025"]]
+            ],
+            out_conf={
+                ROW_CONFIG_ACTIONS: [
+                    [MAP_MONTH, {
+                        "init_year": 2024,
+                        "col_year": "year",
+                        "col_month": "month",
+                        "col_out": "month"
+                    }]
+                ],
+                ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue"]
+            })
+
+
+        types_config[QUERY_3] = SelectTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg,
+            in_fields=["transaction_id","store_id", "year", "month", "hour", "revenue"], # In order
+            filters_conf = [
+                ["year", EQUALS_ANY, ["2024", "2025"]],
+                ["hour", BETWEEN_THAN_OP, [6, 23]],
+            ],
+            out_conf={
+                ROW_CONFIG_ACTIONS: [
+                    [MAP_SEMESTER, {
+                        "init_year": 2024,
+                        "col_year": "year",
+                        "col_month": "month",
+                        "col_out": "mapped_semester"
+                    }]
+                ],
+                ROW_CONFIG_OUT_COLS: ["transaction_id", "store_id", "mapped_semester", "revenue"]
+            })
+
+        types_config[QUERY_4] = SelectTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg,
+            in_fields=["transaction_id","store_id","user_id", "year"], # In order
+            filters_conf = [
+                ["year", EQUALS_ANY, ["2024", "2025"]],
+            ],
+            out_conf={
+                ROW_CONFIG_OUT_COLS: ["transaction_id","store_id","user_id"]
+            })
 
         node = SelectNode(SelectTasksMiddleware(), types_config)
 

@@ -136,7 +136,7 @@ def load_all_mappers(mappers_serial):
 class RowMapper(RowProjectMapper):
 	def __init__(self, config):
 		super().__init__(config[ROW_CONFIG_OUT_COLS])
-		self.mappers = load_all_mappers(config[ROW_CONFIG_ACTIONS])
+		self.mappers = load_all_mappers(config.get(ROW_CONFIG_ACTIONS, []))
 
 	def map(self, row):
 		for mapper in self.mappers:

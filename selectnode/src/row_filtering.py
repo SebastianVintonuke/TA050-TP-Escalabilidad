@@ -9,11 +9,11 @@ EQUALS_ANY = "equals_any"
 NOT_EQUALS = "not_equals"
 
 NUMBER_OPS = {
-	GREATER_THAN_OP: lambda vl,constraints: int(vl) > int(constraints[0]),
-	GREATER_EQ_THAN_OP: lambda vl,constraints: int(vl) >= int(constraints[0]),
-	LESSER_THAN_OP: lambda vl,constraints: int(vl) < int(constraints[0]),
-	LESSER_EQ_THAN_OP: lambda vl,constraints: int(vl) <= int(constraints[0]),
-	BETWEEN_THAN_OP: lambda vl,constraints: constraints[0] <= vl <= constraints[1],
+	GREATER_THAN_OP: lambda vl,constraints: int(vl) > constraints[0],
+	GREATER_EQ_THAN_OP: lambda vl,constraints: int(vl) >= constraints[0],
+	LESSER_THAN_OP: lambda vl,constraints: int(vl) < constraints[0],
+	LESSER_EQ_THAN_OP: lambda vl,constraints: int(vl) <= constraints[0],
+	BETWEEN_THAN_OP: lambda vl,constraints: constraints[0] <= int(vl) <= constraints[1],
 }
 
 GENERAL_OPS = {
