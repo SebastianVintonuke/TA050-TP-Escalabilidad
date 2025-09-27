@@ -50,6 +50,11 @@ class Message:
 		logging.info(f"action: stream_rows | result: success | data: {self.payload}")
 		return []
 
+	def map_stream_rows(self, map_func):
+		logging.info(f"action: stream_rows_mapped | result: success | data: {self.payload}")
+		return []
+
+
 	def is_partition_eof(self):
 		return self.payload == None
 

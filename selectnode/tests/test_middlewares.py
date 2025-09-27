@@ -3,8 +3,16 @@ from selectnode.src.row_filtering import *
 from middleware import routing 
 from middleware.select_tasks_middleware import SelectTasksMiddleware 
 from middleware.groupby_middleware import GROUPBY_EXCHANGE, GroupbyTasksMiddleware,GROUPBY_TASKS_QUEUE_BASE
-from middleware.routing.select_task_message import * 
-from middleware.routing.groupby_message import * 
+from middleware.routing.csv_message import * 
+
+
+def map_dict_to_vect(row):
+    return [
+        row["year"], row["hour"], row["sum"]
+    ]
+def map_vect_to_dict(row):
+    return {'year': int(row[0]), 'hour': int(row[1]), 'sum': int(row[2])}
+
 
 class MethodClass:
     def __init__(self, tag):
@@ -154,7 +162,7 @@ class TestMiddlewares(unittest.TestCase):
         self.assertEqual(["t_1"], msg.types)
         self.assertEqual(0, msg.partition)
 
-        rows = [itm for itm in msg.stream_rows()]
+        rows = [itm for itm in msg.map_stream_rows(map_vect_to_dict)]
         self.assertEqual(1,len(rows))
         
         self.assertEqual({'year': 123, 'hour': 23, 'sum': 345}, rows[0])
@@ -179,7 +187,7 @@ class TestMiddlewares(unittest.TestCase):
         channel.queue_declare(QUEUE_NAME)
 
 
-        msg_build = SelectTaskMessageBuilder(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], partition = 2)
+        msg_build = CSVMessageBuilder(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], partition = 2)
 
         rows_pass = [
             {'year': 2024, 'hour': 7, 'sum': 88},
@@ -187,7 +195,7 @@ class TestMiddlewares(unittest.TestCase):
         ]
 
         for itm in rows_pass:
-            msg_build.add_row(itm)
+            msg_build.add_row(map_dict_to_vect(itm))
 
         middleware.send(msg_build)
 
@@ -219,7 +227,7 @@ class TestMiddlewares(unittest.TestCase):
 
         self.assertFalse(channel.consuming)
 
-        msg_build = GroupbyMessageBuilder(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], "hash_base", partition = 2)
+        msg_build = CSVHashedMessageBuilder(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], "hash_base", partition = 2)
 
         hashed_id = msg_build.hash_in(COUNT_NODES)
         TARGET_QUEUE = GROUPBY_TASKS_QUEUE_BASE.format(IND= hashed_id)
@@ -233,7 +241,7 @@ class TestMiddlewares(unittest.TestCase):
         ]
 
         for itm in rows_pass:
-            msg_build.add_row(itm)
+            msg_build.add_row(map_dict_to_vect(itm))
 
         middleware.send(msg_build)
 
@@ -294,7 +302,7 @@ class TestMiddlewares(unittest.TestCase):
         self.assertEqual(["t_1"], msg.types)
         self.assertEqual(0, msg.partition)
 
-        rows = [itm for itm in msg.stream_rows()]
+        rows = [itm for itm in msg.map_stream_rows(map_vect_to_dict)]
         self.assertEqual(1,len(rows))
         
         self.assertEqual({'year': 123, 'hour': 23, 'sum': 345}, rows[0])

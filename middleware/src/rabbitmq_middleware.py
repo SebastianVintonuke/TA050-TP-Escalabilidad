@@ -2,12 +2,13 @@ from .middleware import *
 from .errors import *
 from . import routing
 import logging
+from .routing.csv_message import CSVMessageBuilder, CSVMessage
 
 DEFAULT_EXCHANGE = ''
 class RabbitExchangeMiddleware(MessageMiddleware):
 	def __init__(self, queue_name, exchange_type = DEFAULT_EXCHANGE, host = routing.RABBITMQ_HOST):
 		self.queue_name = queue_name
-		self.exch_type = exchange_type
+		self.exch_name = exchange_type
 		try:
 			self._conn = routing.try_open_connection(host, 10) # Can fail but should we wrap the error on a MessageMiddlewareDisconnectedError?
 			self.channel = self._conn.channel()
@@ -16,28 +17,32 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 
 	def _get_routing_key(self):
 		return self.queue_name
+
+	def _get_exchage_type(self):
+		return self.exch_name
+
 	def _init_bind(self):
 		self.channel.exchange_declare(
-		    exchange=self.exch_type,
-		    exchange_type='direct',
+		    exchange=self.exch_name,
+		    exchange_type=self._get_exchage_type(),
 		    #durable=True 
 		)
 		
 		self.channel.queue_declare(queue=self.queue_name)
-		self.channel.queue_bind(queue=self.queue_name, exchange=self.exch_type, routing_key=self._get_routing_key())
+		self.channel.queue_bind(queue=self.queue_name, exchange=self.exch_name, routing_key=self._get_routing_key())
 
 
 	# Serial basic _send
 	def _send(self, routing_key, headers, serial_msg):
-		self.channel.basic_publish(exchange=self.exch_type, routing_key=routing_key, body=serial_msg,  
+		self.channel.basic_publish(exchange=self.exch_name, routing_key=routing_key, body=serial_msg,  
 			properties=routing.build_headers(headers))
 
 	# Wrapper for rbmq messages, subclasses might override this in case they want to have specific types of messages
 	def _callback_wrapper(self, callback):
 		def real_callback(ch, method, properties, body):
-			logging.info(f"action: rcv_msg | result: success | method: {method} | props: {properties} | body:{body}")
+			logging.info(f"action: msg_recv | result: success | queue: {self.queue_name} | method: {method} | props: {properties} | body:{body}")
 			
-			wrapped_msg = routing.ChannelMessage(ch, method, properties.headers, body)
+			wrapped_msg = CSVMessage(ch, method, properties.headers, body)
 
 			return callback(wrapped_msg)
 		return real_callback
@@ -60,7 +65,7 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Envía un mensaje a la cola o al tópico con el que se inicializó el exchange.
 	# Si se pierde la conexión con el middleware eleva MessageMiddlewareDisconnectedError.
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
-	def send(self, message_builder):
+	def send(self, message_builder: CSVMessageBuilder):
 		try:
 			self._send(self.queue_name, message_builder.get_headers(),message_builder.serialize_payload())
 		except routing.RoutingConnectionErrors as e:
