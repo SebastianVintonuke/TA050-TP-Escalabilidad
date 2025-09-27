@@ -1,9 +1,13 @@
 import socket
 from typing import Callable
 
+from common.models.model import Model
+from common.utils import new_uuid
+
 from .byte import ByteProtocol
 from .signal import SignalProtocol
 from .batch import BatchProtocol
+
 
 class DispatcherProtocol:
     def __init__(self, a_socket: socket.socket):
@@ -18,4 +22,21 @@ class DispatcherProtocol:
         self._byte_protocol.close_with(closure_to_close)
 
     def handle_requests(self) -> None:
-        pass
+        user_id = new_uuid()
+
+        recv_batch = self._batch_protocol.wait_batch()
+        
+        while recv_batch:
+            header = recv_batch.pop(0)
+
+            model = Model.model_for(header)
+
+            while recv_batch:
+                for line in recv_batch:
+                    print(model.from_bytes_and_project(line))
+                
+                recv_batch = self._batch_protocol.wait_batch()
+
+            recv_batch = self._batch_protocol.wait_batch()
+
+        self._byte_protocol.send_bytes(user_id.encode())

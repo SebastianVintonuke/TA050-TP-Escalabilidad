@@ -51,9 +51,30 @@ class ClientProtocol:
         Return the client_id assigned by the dispatcher
         """
 
-        time.sleep(10) # simulamos que toma tiempo subir el archivo
-        return "test_user_id_"
+        csv_paths = [
+            #input_dir / "stores" / "stores.csv",
+            input_dir / "transactions" / "transactions.csv",
+            #input_dir / "users" / "users.csv",
+            # TODO: Agregar más archivos según sea necesario
+            # TODO: recursivamente abrir todos los archivos del directorio
+        ]
 
+        for file in csv_paths:
+            reader = open_file(file)
+            try:
+                self._batch_protocol.send_all(reader)
+                self._batch_protocol.send_batch([])
+                
+            except Exception as e:
+                close_file(reader)
+                raise e
+        
+        self._batch_protocol.send_batch([])
+
+        user_id = self._byte_protocol.wait_bytes().decode()
+
+        return user_id
+            
     def download_results(self,
                          output_dir: Path,
                          client_id: str,
