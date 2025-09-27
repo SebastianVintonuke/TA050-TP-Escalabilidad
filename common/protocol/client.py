@@ -1,3 +1,4 @@
+import logging
 import socket
 import time
 from io import BufferedWriter, BufferedReader
@@ -52,15 +53,18 @@ class ClientProtocol:
         """
 
         csv_paths = [
-            #input_dir / "stores" / "stores.csv",
-            input_dir / "transactions" / "transactions.csv",
-            #input_dir / "users" / "users.csv",
+            input_dir / "menu_items" / "menu_items.csv",
+            input_dir / "stores" / "stores.csv",
+            input_dir / "transaction_items" / "transaction_items_202502.csv",
+            input_dir / "transactions" / "transactions_202501.csv",
+            input_dir / "users" / "users_202501.csv",
             # TODO: Agregar más archivos según sea necesario
             # TODO: recursivamente abrir todos los archivos del directorio
         ]
 
         for file in csv_paths:
             reader = open_file(file)
+            logging.info(f"action: upload_file | result: success | file: {file.name}")
             try:
                 self._batch_protocol.send_all(reader)
                 self._batch_protocol.send_batch([])

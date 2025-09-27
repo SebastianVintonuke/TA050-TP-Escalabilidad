@@ -28,7 +28,7 @@ class Transaction(Model):
 
         transaction_id = fields[0].strip()
         store_id = int(fields[1])
-        user_id = int(fields[4]) if fields[4] else None
+        user_id = int(float(fields[4])) if fields[4] else None
         original_amount = float(fields[5])
         final_amount = float(fields[7])
         created_at = datetime.strptime(fields[8], "%Y-%m-%d %H:%M:%S")

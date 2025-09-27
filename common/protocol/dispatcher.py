@@ -30,10 +30,11 @@ class DispatcherProtocol:
             header = recv_batch.pop(0)
 
             model = Model.model_for(header)
+            print(model)
 
             while recv_batch:
                 for line in recv_batch:
-                    print(model.from_bytes_and_project(line))
+                    print(model.from_bytes_and_project(line)) # Dispatch task (model)
                 
                 recv_batch = self._batch_protocol.wait_batch()
 
