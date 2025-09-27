@@ -94,6 +94,8 @@ services:
       - testing_net
     depends_on:
       - middleware
+    links:
+      - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
 

@@ -3,12 +3,12 @@ FROM python:3.9.7-slim
 RUN pip install pika
 
 WORKDIR /
-COPY selectnode /selectnode
+COPY groupbynode /groupbynode
 COPY common /common
 COPY middleware/src /middleware
 ENV PYTHONPATH=/
 
-RUN python -m unittest discover -s selectnode/tests -p 'test_*.py'
+RUN python -m unittest discover -s groupbynode/tests -p 'test_*.py'
 
-#RUN python -m unittest selectnode/tests/
+#RUN python -m unittest groupbynode/tests/
 ENTRYPOINT ["/bin/sh"]

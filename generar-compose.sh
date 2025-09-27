@@ -34,15 +34,13 @@ echo "  results:
     entrypoint: python3 /results/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - LISTEN_BACKLOG=1
-      - DIR_PATH=/storage
+      - LISTEN_BACKLOG=$result_node_number
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./results/config.ini:/config.ini:ro
-      - ./.data/storage:/results/storage
 " >> "$output_file_name"
 
 echo "  server:
@@ -53,8 +51,6 @@ echo "  server:
       - PYTHONUNBUFFERED=1
     networks:
       - testing_net
-    depends_on:
-      - dispatcher
     volumes:
       - ./server/config.ini:/config.ini:ro
 " >> "$output_file_name"
@@ -102,7 +98,6 @@ for ((i=1; i<=result_node_number; i++)); do
       - testing_net
     depends_on:
       - middleware
-      - results
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
 " >> "$output_file_name"
