@@ -1,7 +1,7 @@
 import unittest
 
 from selectnode.src.row_filtering import * 
-from selectnode.src.type_config import * 
+from selectnode.src.select_type_config import * 
 from selectnode.src.selectnode import * 
 
 from middleware.middleware import * 
@@ -82,7 +82,7 @@ class TestSelectNode(unittest.TestCase):
         in_middle = MockMiddleware()
 
         type_map = {
-            "query_t_1": TypeConfiguration(result_grouper, MockMessageBuilder, in_fields = in_fields, filters_conf=filters_serial)
+            "query_t_1": SelectTypeConfiguration(result_grouper, MockMessageBuilder, in_fields = in_fields, filters_conf=filters_serial)
         }
 
         node = SelectNode(in_middle, type_map)
@@ -133,8 +133,8 @@ class TestSelectNode(unittest.TestCase):
         in_middle = MockMiddleware()
 
         type_map = {
-            "query_t_1": TypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial),
-            "query_t_2": TypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial2)
+            "query_t_1": SelectTypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial),
+            "query_t_2": SelectTypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial2)
         }
 
         node = SelectNode(in_middle, type_map)
