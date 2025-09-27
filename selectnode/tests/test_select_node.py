@@ -8,6 +8,15 @@ from middleware.middleware import *
 from middleware.routing.message import * 
 
 
+
+def map_dict_to_vect(row):
+    return [
+        row["year"], row["hour"], row["sum"]
+    ]
+def map_vect_to_dict(row):
+    return {'year': int(row[0]), 'hour': int(row[1]), 'sum': int(row[2])}
+
+
 class MockMiddleware(MessageMiddleware):
     def __init__(self):
         self.msgs= []
@@ -55,7 +64,7 @@ class MockMessage(Message):
         return MockMessage(self.tag, queries_id, queries_type, self.payload)
 
     def stream_rows(self):
-        return iter(self.payload)
+        return map(map_dict_to_vect, iter(self.payload))
 
 
 
@@ -63,6 +72,7 @@ class MockMessage(Message):
 class TestSelectNode(unittest.TestCase):
 
     def test_query_1_selectnode(self):
+        in_fields = ["year", "hour", "sum"]
         filters_serial = [
                 ["year", EQUALS_ANY, [2024, 2025]],
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
@@ -72,7 +82,7 @@ class TestSelectNode(unittest.TestCase):
         in_middle = MockMiddleware()
 
         type_map = {
-            "query_t_1": TypeConfiguration(filters_serial, result_grouper, MockMessageBuilder)
+            "query_t_1": TypeConfiguration(result_grouper, MockMessageBuilder, in_fields = in_fields, filters_conf=filters_serial)
         }
 
         node = SelectNode(in_middle, type_map)
@@ -99,7 +109,7 @@ class TestSelectNode(unittest.TestCase):
         self.assertTrue(result_grouper.msgs[0].ind == 0)
         self.assertTrue(result_grouper.msgs[0].msg_from == message)
 
-        got_result = result_grouper.msgs[0].payload
+        got_result = [map_vect_to_dict(el) for el in result_grouper.msgs[0].payload]
 
         for elem in rows_pass:
             self.assertTrue(elem in got_result)
@@ -107,6 +117,7 @@ class TestSelectNode(unittest.TestCase):
         self.assertTrue(len(got_result) == len(rows_pass))
 
     def test_multiquery_selectnode(self):
+        in_fields = ["year", "hour", "sum"]
         filters_serial = [
                 ["year", EQUALS_ANY, [2024, 2025]],
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
@@ -122,8 +133,8 @@ class TestSelectNode(unittest.TestCase):
         in_middle = MockMiddleware()
 
         type_map = {
-            "query_t_1": TypeConfiguration(filters_serial, result_grouper, MockMessageBuilder),
-            "query_t_2": TypeConfiguration(filters_serial2, result_grouper, MockMessageBuilder)
+            "query_t_1": TypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial),
+            "query_t_2": TypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial2)
         }
 
         node = SelectNode(in_middle, type_map)
@@ -151,7 +162,7 @@ class TestSelectNode(unittest.TestCase):
         self.assertTrue(result_grouper.msgs[0].ind == 0)
         self.assertTrue(result_grouper.msgs[0].msg_from == message)
 
-        got_result = result_grouper.msgs[0].payload
+        got_result = [map_vect_to_dict(el) for el in result_grouper.msgs[0].payload]
 
         for elem in rows_pass:
             self.assertTrue(elem in got_result)
@@ -162,7 +173,7 @@ class TestSelectNode(unittest.TestCase):
         # CHECK QUERY 2
         self.assertTrue(result_grouper.msgs[1].ind == 1)
         self.assertTrue(result_grouper.msgs[1].msg_from == message)
-        got_result = result_grouper.msgs[1].payload
+        got_result = [map_vect_to_dict(el) for el in result_grouper.msgs[1].payload]
 
         rows_pass2 = [
             {'year': 2024, 'hour': 7, 'sum': 88},

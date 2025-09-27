@@ -54,4 +54,7 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
 
 
 def csv_msg_from_msg(msg, ind):
-    return CSVMessageBuilder([msg.ids[ind]], [msg.types[ind]])
+    return CSVMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.partition)
+
+def csv_hashed_from_msg(msg, ind):
+    return CSVHashedMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.ids[ind], msg.partition)
