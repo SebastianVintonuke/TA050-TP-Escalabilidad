@@ -1,6 +1,6 @@
 import logging
 import socket
-import time
+
 from io import BufferedWriter, BufferedReader
 from pathlib import Path
 from typing import Callable, Union
@@ -51,34 +51,20 @@ class ClientProtocol:
         Upload the files to a dispatcher
         Return the client_id assigned by the dispatcher
         """
-
-        csv_paths = [
-            input_dir / "menu_items" / "menu_items.csv",
-            input_dir / "stores" / "stores.csv",
-            input_dir / "transaction_items" / "transaction_items_202502.csv",
-            input_dir / "transactions" / "transactions_202501.csv",
-            input_dir / "users" / "users_202501.csv",
-            # TODO: Agregar más archivos según sea necesario
-            # TODO: recursivamente abrir todos los archivos del directorio
-        ]
-
-        for file in csv_paths:
+        for file in input_dir.rglob("*.csv"):
             reader = open_file(file)
-            logging.info(f"action: upload_file | result: success | file: {file.name}")
+            logging.info(f"action: upload_file | result: in-progress | file: {file.name} | size: {file.stat().st_size}")
             try:
                 self._batch_protocol.send_all(reader)
                 self._batch_protocol.send_batch([])
-                
             except Exception as e:
                 close_file(reader)
                 raise e
-        
         self._batch_protocol.send_batch([])
 
         user_id = self._byte_protocol.wait_bytes().decode()
-
         return user_id
-            
+
     def download_results(self,
                          output_dir: Path,
                          client_id: str,

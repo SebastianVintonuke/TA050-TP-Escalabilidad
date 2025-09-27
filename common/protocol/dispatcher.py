@@ -4,9 +4,9 @@ from typing import Callable
 from common.models.model import Model
 from common.utils import new_uuid
 
-from .byte import ByteProtocol
-from .signal import SignalProtocol
-from .batch import BatchProtocol
+from common.protocol.byte import ByteProtocol
+from common.protocol.signal import SignalProtocol
+from common.protocol.batch import BatchProtocol
 
 
 class DispatcherProtocol:
@@ -25,19 +25,13 @@ class DispatcherProtocol:
         user_id = new_uuid()
 
         recv_batch = self._batch_protocol.wait_batch()
-        
         while recv_batch:
             header = recv_batch.pop(0)
-
             model = Model.model_for(header)
-            print(model)
-
             while recv_batch:
                 for line in recv_batch:
                     print(model.from_bytes_and_project(line)) # Dispatch task (model)
-                
                 recv_batch = self._batch_protocol.wait_batch()
-
             recv_batch = self._batch_protocol.wait_batch()
 
         self._byte_protocol.send_bytes(user_id.encode())

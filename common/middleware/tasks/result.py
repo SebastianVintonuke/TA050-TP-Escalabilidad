@@ -1,6 +1,6 @@
 from typing import ClassVar, Sequence
 
-from common import QueryId
+from common.utils import QueryId
 from common.results.query import QueryResult
 from common.utils import query_result_for
 
