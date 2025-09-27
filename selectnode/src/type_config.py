@@ -1,6 +1,6 @@
 
 from .row_filtering import load_all_filters, should_keep
-from .row_mapping import map_dict_to_vec, create_mapper_function
+from .row_mapping import map_dict_to_vec, RowMapper
 import logging
 
 
@@ -17,7 +17,7 @@ class TypeConfiguration:
 		self.map_to_output = lambda row: map_dict_to_vec(self.in_fields, row)
 
 		if out_conf != None:
-			self.map_to_output= create_mapper_function(out_conf)
+			self.map_to_output= RowMapper(out_conf)
 
 	def should_keep(self, row):
 		return should_keep(self.filters, row)

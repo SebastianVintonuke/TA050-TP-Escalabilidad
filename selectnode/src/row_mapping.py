@@ -10,9 +10,9 @@ class MapMonthAction:
 		self.col_month = col_month
 		self.col_out = col_out
 
-	def map_in(row):
-		months = (int(row[col_year])- self.init_year) * 12 + int(row[col_month])
-		row[col_out] = months
+	def map_in(self, row):
+		months = (int(row[self.col_year])- self.init_year) * 12 + int(row[self.col_month])
+		row[self.col_out] = months
 
 class MapSemesterAction:
 	def __init__(self, init_year, col_year, col_month, col_out):
@@ -21,9 +21,9 @@ class MapSemesterAction:
 		self.col_month = col_month
 		self.col_out = col_out
 
-	def map_in(row):
-		months = (int(row[col_year])- self.init_year) * 12 + int(row[col_month])
-		row[col_out] = months//3
+	def map_in(self, row):
+		months = (int(row[self.col_year])- self.init_year) * 12 + int(row[self.col_month])
+		row[self.col_out] = months//3
 
 
 
@@ -53,23 +53,21 @@ def load_all_mappers(mappers_serial):
 		all_mappers.append(load_mapper(mapper_serial))
 	return all_mappers
 
-
-def map_all(mappers, row):
-	for mapper in mappers:
-		mapper.map_in(row) #in place.
-
-	return row # Just for chaining
-
 def map_dict_to_vec(fields, row):
 	res=[]
 	for col in fields:
 		res.append(str(row[col]))
 	return res
 
-def create_mapper_function(config):
-	mappers = load_all_mappers(config["actions"])
-	cols = config["out_cols"]
-	def map_func(row):
-		return map_dict_to_vec(cols, map_all(mappers, row))
+class RowMapper:
+	def __init__(self, config):
+		self.mappers = load_all_mappers(config["actions"])
+		self.cols = config["out_cols"]
 
-	return map_func
+	def map_all(self, row):
+		for mapper in self.mappers:
+			mapper.map_in(row) #in place.
+		return row # Just for chaining
+
+	def __call__(self, row):
+		return map_dict_to_vec(self.cols, self.map_all(row))
