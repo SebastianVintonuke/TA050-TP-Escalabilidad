@@ -15,8 +15,9 @@ class SelectTypeConfiguration(BaseDictTypeConfiguration):
 	def should_keep(self, row):
 		return should_keep(self.filters, row)
 
-	def filter_map_row(self, row):
+	def filter_map(self, row):
 		try:
+			# No pad needed ? self.pad_copy_row(row), mapping to dict and if not enough rows... fail
 			row = self.mapper.map_input(row)
 			if self.should_keep(row):
 				return self.mapper(row)

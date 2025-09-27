@@ -3,10 +3,7 @@ import unittest
 from selectnode.src.row_filtering import * 
 from selectnode.src.select_type_config import * 
 from selectnode.src.selectnode import * 
-
-from middleware.middleware import * 
-from middleware.routing.message import * 
-
+from selectnode.src.mocks_middleware import * 
 
 
 def map_dict_to_vect(row):
@@ -15,58 +12,6 @@ def map_dict_to_vect(row):
     ]
 def map_vect_to_dict(row):
     return {'year': int(row[0]), 'hour': int(row[1]), 'sum': int(row[2])}
-
-
-class MockMiddleware(MessageMiddleware):
-    def __init__(self):
-        self.msgs= []
-        self.callback = None
-    def send(self, msg):
-        self.msgs.append(msg)
-
-    def push_msg(self, msg):
-        self.callback(msg)
-
-    def start_consuming(self, on_message_callback):
-        self.callback = on_message_callback
-
-    def stop_consuming(self):
-        pass
-    def close(self):
-        pass
-
-    def delete(self):
-        pass
-
-
-class MockMessageBuilder:
-    def __init__(self,msg, ind):
-        self.msg_from = msg
-        self.ind= ind
-        self.payload = []
-        self.fields= []
-
-    def set_fields(self, fields):
-        # set field names!
-        self.fields = fields
-
-    def add_row(self,row):
-        #assert len(row) == len(fields) # Same size of fields 
-        self.payload.append(row)
-
-class MockMessage(Message):
-    def __init__(self, tag, queries_id, queries_type, payload):
-        super().from_data(tag,queries_type,queries_type, payload)
-    def _deserialize_payload(self, payload): # Do nothing with it.
-        return payload
-
-    def clone_with(self, queries_id, queries_type):
-        return MockMessage(self.tag, queries_id, queries_type, self.payload)
-
-    def stream_rows(self):
-        return map(map_dict_to_vect, iter(self.payload))
-
-
 
 
 class TestSelectNode(unittest.TestCase):
@@ -100,7 +45,7 @@ class TestSelectNode(unittest.TestCase):
         ]
 
         message = MockMessage("tag1",["query_3323"], ["query_t_1"],
-            rows_pass+ rows_fail
+            rows_pass+ rows_fail, map_dict_to_vect
         )
 
         in_middle.push_msg(message);
@@ -152,7 +97,7 @@ class TestSelectNode(unittest.TestCase):
         ]
 
         message = MockMessage("tag1",["query_3323", "query_3342"], ["query_t_1", "query_t_2"],
-            rows_pass+ rows_fail
+            rows_pass+ rows_fail, map_dict_to_vect
         )
 
         in_middle.push_msg(message);

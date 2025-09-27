@@ -10,7 +10,7 @@ class TypeHandler:
 		self.msg_builder = type_conf.new_builder_for(msg, ind)
 
 	def check(self, row):
-		row = self.type_conf.filter_map_row(row)
+		row = self.type_conf.filter_map(row)
 		if row != None:
 			self.msg_builder.add_row(row)
 

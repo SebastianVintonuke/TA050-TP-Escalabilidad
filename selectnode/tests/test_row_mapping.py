@@ -41,6 +41,35 @@ class TestRowMappers(unittest.TestCase):
         output = mapper(row)
         self.assertEqual(output, ["15"])  # (1 * 12 + 3)
 
+
+    def test_dict_row_mapper_map_month_reorder_cols(self):
+        in_cols = ["year", "month", "store_id","user_id"]
+        out_cols = ["store_id","user_id","mapped_month"]
+
+        config = {
+            ROW_CONFIG_ACTIONS: [
+                [MAP_MONTH, {
+                    "init_year": 2020,
+                    "col_year": "year",
+                    "col_month": "month",
+                    "col_out": "mapped_month"
+                }]
+            ],
+            ROW_CONFIG_OUT_COLS: out_cols
+        }
+
+        mapper =  DictConvertWrapperMapper(
+            in_cols=in_cols,
+            inner_mapper=RowMapper(config),
+            out_cols=out_cols
+        )
+        row = ["2021", "3", "store_1", "user_2"]
+        output = mapper(mapper.map_input(row))
+        self.assertEqual(output, ["store_1", "user_2", "15"])  # (1 * 12 + 3)
+
+
+
+
     def test_dict_row_mapper_map_semester(self):
         in_cols = ["year", "month"]
         out_cols = ["mapped_semester"]

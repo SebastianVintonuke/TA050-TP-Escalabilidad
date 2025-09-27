@@ -21,9 +21,13 @@ class BaseTypeConfiguration:
 	def send(self, builder):
 		return self.middleware.send(builder)
 	
-	def filter_map_row(self, row):
+	# Filter map is in place.. do this first and pad just in case, for when wants to add cols
+	def pad_copy_row(self,row):
+		return row + [None] * (self.in_fields_count - len(row))
+
+	def filter_map(self, row):
 		try:
-			return self.mapper(row)
+			return self.mapper(self.pad_copy_row(row))
 		except Exception as e:
 			logging.error(f"Failed filter map of row {row} invalid {e}")
 			return None
@@ -36,16 +40,12 @@ class BaseDictTypeConfiguration(BaseTypeConfiguration):
 			self.load_mapper(out_conf)
 			self.mapper	= DictConvertWrapperMapper(in_fields, self.mapper, out_conf[ROW_CONFIG_OUT_COLS])		
 		else:
-			self.mapper	= DictConvertWrapperMapper(in_fields, self.mapper, in_fields)		
+			self.mapper	= DictConvertWrapperMapper(in_fields, self.mapper, in_fields)
 
-
-	def _map_input_row(self, row):
-		return row
-
-	# By default it doesnt do anything, row its already a vector with its values
-	# But If converted to something it should get the vector of values from row
-	def _default_map_output(self, row):
-		return row
-
-
-
+	# mapper does the mapping of input, not needed to pad.
+	def filter_map(self, row):
+		try:
+			return self.mapper(self.mapper.map_input(row))
+		except Exception as e:
+			logging.error(f"Failed filter map of row {row} invalid {e}")
+			return None
