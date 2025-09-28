@@ -1,6 +1,7 @@
 KEEP_ALL_ROWS = "keep_all_rows"
 KEEP_TOP_K = "keep_top_k"
 KEEP_LEAST_K = "keep_least_k"
+KEEP_TOP = "keep_top_row"
 
 ### ROW ACTIONS
 class KeepAllRowsAction:
@@ -13,6 +14,18 @@ class KeepAllRowsAction:
 	def add_to(self, current_grouped, row):
 		current_grouped.append(row)
 
+class KeepTopAction:
+	def __init__(self, comp_key):
+		self.comp_key = comp_key
+
+	def add_new(self, current_grouped, row):
+		current_grouped.append(row)
+
+	def add_to(self, current_grouped, row):
+		# Assumed len of grouped has to be one, you wont call this method without new.
+		if row[self.comp_key] > current_grouped[0][self.comp_key]:
+			current_grouped[0] = row
+
 class KeepTopKAction:
 	def __init__(self, comp_key, limit):
 		self.comp_key = comp_key
@@ -24,7 +37,7 @@ class KeepTopKAction:
 		lo, hi = 0, len(current_grouped)
 		while lo < hi:
 			mid = (lo + hi) // 2
-			if current_grouped[mid][self.comp_key] < key:
+			if key <= current_grouped[mid][self.comp_key] :
 			    lo = mid + 1
 			else:
 			    hi = mid
@@ -55,7 +68,7 @@ class KeepLeastKAction(KeepTopKAction):
 		# Binary search directly on current_grouped using row[self.comp_key]
 		while lo < hi:
 			mid = (lo + hi) // 2
-			if current_grouped[mid][self.comp_key] > key: 
+			if key >= current_grouped[mid][self.comp_key]: 
 			    lo = mid + 1
 			else:
 			    hi = mid
@@ -65,6 +78,7 @@ ROW_ACTIONS = {
 	KEEP_ALL_ROWS: KeepAllRowsAction,
 	KEEP_TOP_K: KeepTopKAction,
 	KEEP_LEAST_K: KeepLeastKAction,
+	KEEP_TOP: KeepTopAction,
 }
 
 class RowGrouper:
