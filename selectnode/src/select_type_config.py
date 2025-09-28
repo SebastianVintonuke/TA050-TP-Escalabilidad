@@ -21,7 +21,7 @@ class SelectTypeConfiguration(BaseDictTypeConfiguration):
         try:
             # No pad needed ? self.pad_copy_row(row), mapping to dict and if not enough rows... fail
             row = self.mapper.map_input(row)
-            logging.info("MAPPED ROW",row)
+            #logging.info(f"MAPPED ROW {row}")
             if self.should_keep(row):
                 return self.mapper(row)
             return None

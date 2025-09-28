@@ -84,7 +84,7 @@ def main() -> None:
             msg.ack_self()
             return
         logging.info(f"GOT RESULT MSG? FROM QUERIES {msg.ids}")
-        for itm in result_msg.stream_rows():
+        for itm in msg.stream_rows():
             logging.info(f"ROW {itm}")
         
         msg.ack_self()

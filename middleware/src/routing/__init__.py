@@ -30,13 +30,14 @@ def build_headers(headers):
 	
 def try_open_connection(host,max_attempts):
 	for i in range(1,max_attempts):
+		time.sleep(5)
 		try:
 			return pika.BlockingConnection(pika.ConnectionParameters(host=host))
 		except Exception as e:
 			logging.warning(
 				f"action: open_connection_middleware | result: in_progress | err:{e} | {i}"
 			)
-			time.sleep(1)
 
+	time.sleep(5)
 	# Last attempt
 	return pika.BlockingConnection(pika.ConnectionParameters(host=host))
