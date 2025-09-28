@@ -42,12 +42,12 @@ class DispatcherProtocol:
         select_middleware = SelectTasksMiddleware()
 
         batch = self._batch_protocol.wait_batch()
-        while batch:
+        while batch: # While files
             header = batch.pop(0)
             model = Model.model_for(header)
             logging.info(f"action: receive_file | result: in_progress | data_type: {model.__name__}")
 
-            while batch: # While file
+            while batch: # While batch of file
                 if model is Transaction:
                     self.__send_task_select_transaction(user_id, select_middleware, model, batch)
                 elif model is TransactionItem:
@@ -64,12 +64,16 @@ class DispatcherProtocol:
                 batch = self._batch_protocol.wait_batch() # End of batch
             batch = self._batch_protocol.wait_batch() # End of file
 
+            #select_task = CSVMessageBuilder([user_id], ["query_1"])
+            #select_task.set_as_eof()
+            #select_middleware.send(select_task)
+
         self._byte_protocol.send_bytes(user_id.encode())
 
     @staticmethod
     def __send_task_select_transaction(user_id: str, select_middleware: SelectTasksMiddleware, model: Transaction, batch: List[bytes]) -> None:
         select_task = CSVMessageBuilder([user_id], ["query_1"])
-        for line in batch:  # While batch
+        for line in batch:
             transaction = model.from_bytes_and_project(line)
             select_task.add_row([
                 transaction.transaction_id,

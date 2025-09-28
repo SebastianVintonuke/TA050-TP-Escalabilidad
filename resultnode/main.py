@@ -3,7 +3,12 @@
 import logging
 import os
 from configparser import ConfigParser
+from typing import List
 
+from common import QueryId
+from common.middleware.middleware import MessageMiddlewareQueue
+from common.middleware.tasks.result import ResultTask
+from common.results.query1 import QueryResult1
 from middleware.src.result_node_middleware import ResultNodeMiddleware
 
 
@@ -70,27 +75,37 @@ def main() -> None:
 
     result_middleware = ResultNodeMiddleware()
 
+    results_storage_middleware = MessageMiddlewareQueue("middleware", "results")
+
+
     def handle_result(msg):
+        data: List[QueryResult1] = []
+        for line in msg.stream_rows():
+            data.append(QueryResult1(transaction_id=line[0], final_amount=line[1]))
 
-        if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
-            if msg.is_last_message():
-                if msg.is_eof():
-                    logging.info(f"Received final eof OF {msg.ids}")
-                else:
-                    logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
-            else:
-                logging.info(f"RESULT STORAGE RECEIVED PARITION EOF? IGNORED, partition {msg.partition}, ids:{msg.ids}")
-
-            msg.ack_self()
-            return
-        logging.info(f"GOT RESULT MSG? FROM QUERIES {msg.ids}")
-        for itm in msg.stream_rows():
-            logging.info(f"ROW {itm}")
-        
+        result_task = ResultTask(msg.ids[0], QueryId.Query1, msg.is_partition_eof(), False, data).to_bytes()
+        results_storage_middleware.send(result_task)
         msg.ack_self()
 
+
+        #if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+        #    if msg.is_last_message():
+        #        if msg.is_eof():
+        #            logging.info(f"Received final eof OF {msg.ids}")
+        #        else:
+        #            logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
+        #    else:
+        #        logging.info(f"RESULT STORAGE RECEIVED PARITION EOF? IGNORED, partition {msg.partition}, ids:{msg.ids}")
+
+        #    msg.ack_self()
+        #    return
+        #logging.info(f"GOT RESULT MSG? FROM QUERIES {msg.ids}")
+        #for itm in msg.stream_rows():
+        #    logging.info(f"ROW {itm}")
+        
+        #msg.ack_self()
+
     result_middleware.start_consuming(handle_result)
-    # start_notifying((results_ip, results_port))
 
 
 if __name__ == "__main__":

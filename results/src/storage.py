@@ -16,10 +16,6 @@ class ResultStorage:
         self._users_lock = threading.Lock()
 
     def handle(self, result_task: ResultTask) -> None:
-        logging.info(
-            f"action: handle_task | result: in-progress | {result_task.user_id}:{result_task.query_id}"
-        )
-
         if result_task.abort:
             self.__delete_results(result_task.user_id)
             return
@@ -30,6 +26,9 @@ class ResultStorage:
         if result_task.eof:
             self.__get_or_create_user(result_task.user_id).mark_ready(
                 result_task.query_id
+            )
+            logging.info(
+                f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
             )
 
     def do_with_results_when_ready(
