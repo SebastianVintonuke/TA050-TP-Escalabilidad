@@ -1,0 +1,51 @@
+#!/bin/bash
+
+../cleaner
+
+DOCKER_COMPOSE_FILE="docker-compose-dev.yaml"
+
+# Handle -t (build-only) flag
+if [[ "$1" == "-t" ]]; then
+    BUILD_ONLY=true
+    shift # Remove -t from arguments, $1 becomes the first service name or empty
+else
+    BUILD_ONLY=false
+fi
+
+# If no service names are provided, run/build all services
+if [[ $# -eq 0 ]]; then
+    SERVICES=""
+else
+	SERVICES=("$@")  # preserve all original arguments
+fi
+
+
+# Build and optionally start containers
+if [ "$BUILD_ONLY" = true ]; then
+    echo "-->Building services only: ${SERVICES:-all}"
+
+    #echo "${SERVICES:-all}" | xargs -n 1 -I {} docker build -f ./{}/Dockerfile -t {}:latest ./{}
+    #echo "${SERVICES:-all}" | xargs -n 1 -I {} 
+	for service in "${SERVICES[@]}"; do
+		docker build -f ./$service/Dockerfile -t "$service:latest" .
+		#python -m unittest discover -s <test_folder> -p 'test_*.py'
+	
+	done
+
+    
+    #docker compose -f "$DOCKER_COMPOSE_FILE" build $SERVICES
+else
+    echo "------>Starting services: SERVICES ${SERVICES[@]}"
+	if [ "$SERVICES" == "" ]; then
+		make docker-compose-up
+	else
+		for service in "${SERVICES[@]}"; do
+			docker build -f ./$service/Dockerfile -t "$service:latest" .
+		done
+		docker compose -f "$DOCKER_COMPOSE_FILE" up -d --build middleware "${SERVICES[@]}"
+	fi
+
+fi
+
+make docker-compose-logs
+

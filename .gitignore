@@ -6,6 +6,4 @@ bin/
 
 # Data
 .data
-runner
-cleaner
 __pycache__/
