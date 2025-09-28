@@ -1,9 +1,11 @@
 import unittest
-from groupbynode.src.row_grouping import * 
+from groupbynode.src.row_aggregate import *
+from groupbynode.src.row_key_parsing import *
+#from groupbynode.src.row_grouping import * 
 
 import unittest
 
-class TestRowGrouper(unittest.TestCase):
+class TestRowAggregator(unittest.TestCase):
 
     def test_sum_action_with_zero_and_negatives(self):
         fields_grouped_by = ["region"]
@@ -11,7 +13,7 @@ class TestRowGrouper(unittest.TestCase):
             "sales": SUM_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row1 = {"region": "north", "sales": 0}
         acc = grouper.new_group_acc(row1)
@@ -30,7 +32,7 @@ class TestRowGrouper(unittest.TestCase):
             "score": MAX_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row1 = {"user": "A", "score": 10}
         acc = grouper.new_group_acc(row1)
@@ -45,11 +47,13 @@ class TestRowGrouper(unittest.TestCase):
 
     def test_avg_action(self):
         fields_grouped_by = ["product"]
+        key_parser = KeyGroupParser(fields_grouped_by)
+
         fields_acc = {
             "price": AVG_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row1 = {"product": "apple", "price": 10}
         acc = grouper.new_group_acc(row1)
@@ -64,10 +68,9 @@ class TestRowGrouper(unittest.TestCase):
         # approximate float equality
         self.assertAlmostEqual(avg, 20.0)
 
-        res = grouper.expand_with_key(
-            grouper.get_group_key(row1),
-            acc
-        )
+        res = key_parser.get_base_key(key_parser.get_group_key(row1))
+        grouper.add_aggregated_to(res, acc)
+
         self.assertEqual(res, {"product":"apple", "price":20.0})
 
 
@@ -77,7 +80,7 @@ class TestRowGrouper(unittest.TestCase):
             "views": COUNT_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row1 = {"category": "tech", "views": 100}
         acc = grouper.new_group_acc(row1)
@@ -93,7 +96,7 @@ class TestRowGrouper(unittest.TestCase):
             "cost": SUM_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row1 = {"country": "USA"}  # Missing 'cost'
 
@@ -106,7 +109,7 @@ class TestRowGrouper(unittest.TestCase):
             "value": SUM_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row1 = {"x": 1, "value": 0}
         acc = grouper.new_group_acc(row1)
@@ -118,7 +121,7 @@ class TestRowGrouper(unittest.TestCase):
             "val": SUM_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row1 = {"group": "A", "val": 5}
         acc = grouper.new_group_acc(row1)
@@ -136,7 +139,7 @@ class TestRowGrouper(unittest.TestCase):
             "num": COUNT_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
         row = {"group": "B", "val": 1}
         acc = grouper.new_group_acc(row)
@@ -149,53 +152,53 @@ class TestRowGrouper(unittest.TestCase):
 
     def test_group_key_is_tuple(self):
         fields_grouped_by = ["year", "region"]
+        key_parser = KeyGroupParser(fields_grouped_by)
         fields_acc = {
             "revenue": SUM_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
-
         row = {"year": 2025, "region": "EU", "revenue": 100}
-        key = grouper.get_group_key(row)
+        key = key_parser.get_group_key(row)
         self.assertEqual(key, (2025, "EU"))
 
     def test_simple_two_groups_have_diff_keys(self):
         fields_grouped_by = ["year", "store_id", "user_id"]
+        key_parser = KeyGroupParser(fields_grouped_by)
+        
         fields_acc = {
                 "cost": SUM_ACTION,
                 "purchase_count": COUNT_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
-
         row1 = {"year":2025,"store_id":1,"user_id":1,"cost":12}
 
-        key1 = grouper.get_group_key(row1)
+        key1 = key_parser.get_group_key(row1)
 
         row2 = {"year":2025,"store_id":2,"user_id":1,"cost":12}
         
-        key2 = grouper.get_group_key(row2)
+        key2 = key_parser.get_group_key(row2)
 
         row3 = {"year":2025,"store_id":1,"user_id":1,"cost":54}
-        key3 = grouper.get_group_key(row3)
+        key3 = key_parser.get_group_key(row3)
 
         self.assertEqual(key1,key3)
         self.assertFalse(key1 == key2)
 
     def test_simple_two_row_group_sum_and_count(self):
         fields_grouped_by = ["year", "store_id", "user_id"]
+        key_parser = KeyGroupParser(fields_grouped_by)
         fields_acc = {
                 "cost": SUM_ACTION,
                 "purchase_count": COUNT_ACTION
         }
 
-        grouper = RowGrouper(fields_grouped_by, fields_acc)
+        grouper = RowAggregator(fields_acc)
 
 
 
         row1 = {"year":2025,"store_id":1,"user_id":1,"cost":12}
 
-        key = grouper.get_group_key(row1)
+        key = key_parser.get_group_key(row1)
         self.assertEqual(key, (2025,1,1))
 
         acc = grouper.new_group_acc(row1)
@@ -211,6 +214,7 @@ class TestRowGrouper(unittest.TestCase):
         for field in fields_grouped_by:
             self.assertFalse(field in acc)
 
-        res = grouper.expand_with_key(key,acc)            
+        res = key_parser.get_base_key(key)
+        grouper.add_aggregated_to(res, acc)
         expected = {"year":2025,"store_id":1,"user_id":1,"cost":27, "purchase_count":2}
         self.assertEqual(res, expected)

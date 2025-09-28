@@ -4,6 +4,7 @@ from middleware.mocks.middleware import *
 from common.config.row_mapping import *
 from common.config.type_expander import *
 
+from groupbynode.src.row_aggregate import *
 from groupbynode.src.row_grouping import *
 
 from groupbynode.src.groupby_type_config import *
@@ -24,7 +25,7 @@ def map_vect_to_dict_cols(cols, row):
     return res
 
 
-class TestSelectNode(unittest.TestCase):
+class TestGroupbyNode(unittest.TestCase):
 
     def test_groupbynode_does_not_send_result_if_not_eof(self):
 

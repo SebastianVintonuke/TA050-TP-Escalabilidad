@@ -1,151 +1,93 @@
+KEEP_ALL_ROWS = "keep_all_rows"
+KEEP_TOP_K = "keep_top_k"
+KEEP_LEAST_K = "keep_least_k"
+
+### ROW ACTIONS
+class KeepAllRowsAction:
+	def __init__(self):
+		pass
+
+	def add_new(self, current_grouped, row):
+		current_grouped.append(row)
+
+	def add_to(self, current_grouped, row):
+		current_grouped.append(row)
+
+class KeepTopKAction:
+	def __init__(self, comp_key, limit):
+		self.comp_key = comp_key
+		self.limit = limit
+
+	def _binary_insert_ind(self, current_grouped, row):
+		key = row[self.comp_key]
+		# Binary search directly on current_grouped using row[self.comp_key]
+		lo, hi = 0, len(current_grouped)
+		while lo < hi:
+			mid = (lo + hi) // 2
+			if current_grouped[mid][self.comp_key] < key:
+			    lo = mid + 1
+			else:
+			    hi = mid
+		return lo
+
+	def add_new(self, current_grouped, row):
+		current_grouped.append(row)
+
+	def add_to(self, current_grouped, row):
+		#Current grouped is assumed ordered since this is ordering it.
+		if len(current_grouped) >= self.limit:
+			ind =self._binary_insert_ind(current_grouped, row)
+			if ind < self.limit: # Only insert If its on the top K
+				current_grouped.insert(ind, row)
+				current_grouped.pop()
+		else: # No concerns about limit/top k, add it wherever
+			current_grouped.insert(self._binary_insert_ind(current_grouped, row)
+				, row)
 
 
-SUM_ACTION = "sum"
-AVG_ACTION = "avg"
-MAX_ACTION = "max"
-COUNT_ACTION = "count"
+class KeepLeastKAction(KeepTopKAction):
+	def __init__(self, comp_key, limit):
+		super().__init__(comp_key, limit)
 
-class CountAction:
-	def new(self): # By default it doesnt do anything? just return 1
-		return 1 
+	def _binary_insert_ind(self, current_grouped, row):
+		key = row[self.comp_key]
+		lo, hi = 0, len(current_grouped)
+		# Binary search directly on current_grouped using row[self.comp_key]
+		while lo < hi:
+			mid = (lo + hi) // 2
+			if current_grouped[mid][self.comp_key] > key: 
+			    lo = mid + 1
+			else:
+			    hi = mid
+		return lo
 
-	def add_value(self, acc): # Ignore value completely.. just add to it
-		return acc+1
-	def get_result(self, acc):
-		return acc
-
-
-class SumAction:
-	def new(self, value):
-		return float(value)
-	def add_value(self, acc, value):
-		return acc+float(value)
-	def get_result(self, acc):
-		return acc
-
-class MaxAction:
-	def new(self, value):
-		return float(value)
-
-	def add_value(self, acc, value):
-		value = float(value)
-		return value if value > acc else acc
-	def get_result(self, acc):
-		return acc
-
-
-class AvgAction:
-	def new(self, value):
-		return [1, float(value)] #(count , curr_avg)
-	def add_value(self, acc, value):
-		factor = (float(acc[0]))/(acc[0]+1) # (n/n+1)
-		value = float(value)/(acc[0]+1)
-
-		acc[1]= acc[1] *factor + value # curr_avg + value*(n/n+1)
-		acc[0]+=1 # count+=1
-		return acc
-	def get_result(self, acc):
-		return acc[1]
-
-
-
-
-NUMBER_ACTIONS = {
-	SUM_ACTION: SumAction,
-	MAX_ACTION: MaxAction,
-	AVG_ACTION: AvgAction,
+ROW_ACTIONS = {
+	KEEP_ALL_ROWS: KeepAllRowsAction,
+	KEEP_TOP_K: KeepTopKAction,
+	KEEP_LEAST_K: KeepLeastKAction,
 }
 
-#ROW_ACTIONS = {
-#	COUNT_ACTION: CountAction,
-#}
-
-#[fields, group_acc_actions]
-
-
-
-def resolve_action(op_name):
-	creator = NUMBER_ACTIONS.get(op_name, None)
-	assert creator != None
-	return creator() # Create creator.
-
 class RowGrouper:
-	def __init__(self, fields_key, group_actions):
-		self.fields_key = fields_key
-		self.group_actions = {}
-		self.count_out_fields = []
-
-		for col, action in group_actions.items():
-			# Not the most efficient I guess..
-			if action == COUNT_ACTION:
-				self.count_out_fields.append(col)
-				continue
-
-			self.group_actions[col] = resolve_action(action)
-
-	def get_group_key(self, row):
-		key = []
-
-		for field in self.fields_key:
-			key.append(row[field])
-
-		return tuple(key) 
+	def __init__(self, grouping_config):
+		self.grouper = load_grouper_action(grouping_config)
 
 	def new_group_acc(self, row):
-		acc ={} 
-		for field in self.count_out_fields:
-			acc[field] = 1
-
-		for key,action in self.group_actions.items():
-			acc[key] = action.new(row[key])
-
+		acc =[] # Acc is list of rows
+		self.grouper.add_new(acc, row)
 		return acc
 
 	def add_group_acc(self, acc, row):
-		for field in self.count_out_fields:
-			acc[field] += 1
+		self.grouper.add_to(acc, row)
 
-		for key,action in self.group_actions.items():
-			acc[key] = action.add_value(acc[key], row[key])
+	def iterate_rows(self, acc):
+		return iter(acc) # acc is the list of rows basically
 
-
-	# Expands to a list of rows in dict mode {}
-	def expand_with_key(self, key, acc):
-		base = {}
-		ind = 0
-		for field in self.fields_key:
-			base[field] = key[ind]
-			ind+=1
-
-		for field in self.count_out_fields:
-			base[field] = acc[field]
-		for key,action in self.group_actions.items():
-			base[key] = action.get_result(acc[key])
-
-		return base
-
-
-
-GROUPED_KEY_FIELDS = 0
-GROUPED_FIELDS_ACTIONS = 1
-
-# filters serial should be [["fieldTarget", "operation", ["constraint1", "constraint2"]], ["fieldTarget", "operation", ["constraint1", "constraint2"]]]
-# rows are {"field":vl, "field2":vl2}
-def load_grouper(grouper_serial):
-	return RowGrouper(grouper_serial[GROUPED_KEY_FIELDS], grouper_serial[GROUPED_FIELDS_ACTIONS])
-
-def load_grouper_mapped(mapped_fields, grouper_serial):
-	key_fields = [mapped_fields.index(field) for field in grouper_serial[GROUPED_KEY_FIELDS]]
-	actions = {}
-
-	for field, action in grouper_serial[GROUPED_FIELDS_ACTIONS].items():
-		actions[mapped_fields.index(field)] = action
-	return RowGrouper(key_fields, actions)
-
-
-def load_groupers(groupers_serial):
-	all_groupers = []
-	for grouper in groupers_serial:
-		all_groupers.append(RowGrouper(grouper[GROUPED_KEY_FIELDS],
-			grouper[GROUPED_FIELDS_ACTIONS]))
-	return all_groupers
+MAP_GROUP_ACTION = 0
+MAP_ACTION_PARAMS = 1
+#
+## Eg: ["keep_all_rows", {}]
+## Eg: ["keep_top_k", {"comp_col":"ganancia", "limit": 3}]
+def load_grouper_action(grouper_serial):
+	creator = ROW_ACTIONS.get(grouper_serial[MAP_GROUP_ACTION], None)
+	assert creator != None
+	return creator(**grouper_serial[MAP_ACTION_PARAMS])

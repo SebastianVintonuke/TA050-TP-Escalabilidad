@@ -19,7 +19,7 @@ class QueryAccumulator:
 
 	def check(self, row):
 		row = self.type_conf.map_input_row(row)
-		key = self.type_conf.grouper.get_group_key(row)
+		key = self.type_conf.key_parser.get_group_key(row)
 
 		acc = self.groups.get(key, None)
 		if acc == None:
@@ -31,7 +31,7 @@ class QueryAccumulator:
 
 	def send_built(self): # What happens If the groupbynode fails here/shutdowns here?
 		for group, acc in self.groups.items():
-			self.msg_builder.add_row(self.type_conf.get_output(group, acc))
+			self.type_conf.add_output(self.msg_builder, group, acc)
 
 		logging.info(f"payload: {self.msg_builder.payload}")
 		self.type_conf.send(self.msg_builder)
