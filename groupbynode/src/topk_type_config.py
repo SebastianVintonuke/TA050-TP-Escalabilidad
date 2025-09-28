@@ -2,11 +2,12 @@
 from common.config.row_mapping import DictConvertWrapperMapper,NoActionRowMapper, ROW_CONFIG_OUT_COLS
 
 from .row_grouping import RowGrouper
+from .row_key_parsing import *
 
 TOPK_KEY_FIELDS = 0
 TOPK_FIELDS_ACTIONS = 1
 
-class TopKTypeConfig:
+class TopKTypeConfiguration:
 	def __init__(self, out_middleware, builder_creator, in_fields, grouping_conf, out_conf=None):
 		self.middleware = out_middleware
 		self.builder_creator = builder_creator
@@ -22,7 +23,7 @@ class TopKTypeConfig:
 		return self.mapper.map_input(row)
 
 	def add_output(self, msg_builder, group_key, acc):
-		for row in self.grouper.iterate_rows():
+		for row in self.grouper.iterate_rows(acc):
 			msg_builder.add_row(self.mapper.project_out(row))
 
 
