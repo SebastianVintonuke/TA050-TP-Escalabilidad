@@ -1,6 +1,8 @@
 from middleware.routing.message import *
 
 from middleware.middleware import *
+from middleware.routing.message_building import *
+from middleware.routing.header_fields import *
 
 
 class MockMiddleware(MessageMiddleware):
@@ -27,23 +29,16 @@ class MockMiddleware(MessageMiddleware):
         pass
 
 
-class MockMessageBuilder:
+class MockMessageBuilder(HashedMessageBuilder):
     def __init__(self, msg, ind):
+        super().__init__([], [], "key_hash", msg.partition)
         self.msg_from = msg
         self.ind = ind
         self.payload = []
-        self.fields = []
-
-    def set_fields(self, fields):
-        # set field names!
-        self.fields = fields
 
     def add_row(self, row):
         # assert len(row) == len(fields) # Same size of fields
         self.payload.append(row)
-
-    def has_payload(self):
-        return len(self.payload) > 0
 
 
 class MockMessage(Message):
@@ -60,3 +55,14 @@ class MockMessage(Message):
     def stream_rows(self):
         return map(self.map_to_vec, iter(self.payload))
         
+
+    def set_partition_eof(self):
+        self.payload = None
+
+    def set_error(self, code):
+        self.set_partition_eof()
+        self.partition =code # Negative partition es eof, be it an error or actual eof.
+
+    def set_eof(self):
+        self.set_partition_eof()
+        self.partition = EOF_SIGNAL

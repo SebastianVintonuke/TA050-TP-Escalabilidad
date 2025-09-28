@@ -5,19 +5,17 @@ import traceback
 import os
 from configparser import ConfigParser
 
-from common import test_shared
-
 from middleware import routing 
 from middleware.result_node_middleware import * 
 from middleware.groupby_middleware import * 
 
-from middleware.routing import result_message
+from middleware.routing import csv_message
 from middleware.errors import * 
 from middleware.routing.query_types import *
 
 from src.groupbynode import GroupbyNode 
 from src.row_grouping import * 
-from src.type_config import * 
+from src.groupby_type_config import * 
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -103,36 +101,38 @@ def main() -> None:
         2025, para cada sucursal.           
         """
 
-        types_config = {
-            QUERY_2:[
-                ["month", "product_id"], {
-                    "monto": SUM_ACTION,
+        result_middleware = ResultNodeMiddleware()
+        types_config = {}
+
+        types_config[QUERY_2] = GroupbyTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg, 
+                in_fields = ["product_id", "month", "revenue"], #EQUALS to out cols from select node main 
+                grouping_conf = [["product_id", "month"], {
+                    "revenue": SUM_ACTION,
                     "quantity_sold": COUNT_ACTION
                 }],
-            QUERY_3:[
-                ["semestre", "month_id"], {
-                    "sum": SUM_ACTION,
+                out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity_sold"]},
+        )
+
+        types_config[QUERY_3] = GroupbyTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg, 
+                in_fields = ["store_id","mapped_semester","revenue"],  
+                grouping_conf= [["store_id", "mapped_semester"], {
+                    "revenue": SUM_ACTION,
                 }],
-            QUERY_4:[
-                ["store_id", "year", "user_id"], {
-                    "cost": SUM_ACTION,
+                out_conf={ROW_CONFIG_OUT_COLS: ["store_id","mapped_semester", "revenue"]},                
+        )
+
+        types_config[QUERY_4] = GroupbyTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg,
+                in_fields= ["transaction_id", "store_id", "user_id"],
+                grouping_conf= [["store_id", "user_id"], {
                     "purchase_count": COUNT_ACTION
                 }],
-        }
-        result_middleware = ResultNodeMiddleware()
-
-        types_config[QUERY_2] = TypeConfiguration(types_config[QUERY_2], 
-                                    result_middleware, result_message.result_from_msg)
-        types_config[QUERY_3] = TypeConfiguration(types_config[QUERY_3], 
-                                    result_middleware, result_message.result_from_msg)
-        types_config[QUERY_4] = TypeConfiguration(types_config[QUERY_4], 
-                                    result_middleware, result_message.result_from_msg)
+                out_conf={ROW_CONFIG_OUT_COLS: ["store_id","user_id", "purchase_count"]},                
+        )
 
 
         middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind)
         node = GroupbyNode(middleware_group, types_config)
 
-        test_shared("groupbynode")
         restart = True
         while restart:
             try:

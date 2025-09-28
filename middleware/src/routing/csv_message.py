@@ -58,3 +58,6 @@ def csv_msg_from_msg(msg, ind):
 
 def csv_hashed_from_msg(msg, ind):
     return CSVHashedMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.ids[ind], msg.partition)
+
+def msg_from_credentials(uuid, type, partition):
+    return CSVMessageBuilder([uuiid], [type], partition)

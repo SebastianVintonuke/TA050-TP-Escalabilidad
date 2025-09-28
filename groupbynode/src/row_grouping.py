@@ -17,17 +17,18 @@ class CountAction:
 
 class SumAction:
 	def new(self, value):
-		return value
+		return float(value)
 	def add_value(self, acc, value):
-		return acc+value
+		return acc+float(value)
 	def get_result(self, acc):
 		return acc
 
 class MaxAction:
 	def new(self, value):
-		return value
+		return float(value)
 
 	def add_value(self, acc, value):
+		value = float(value)
 		return value if value > acc else acc
 	def get_result(self, acc):
 		return acc
@@ -118,7 +119,6 @@ class RowGrouper:
 
 		for field in self.count_out_fields:
 			base[field] = acc[field]
-		
 		for key,action in self.group_actions.items():
 			base[key] = action.get_result(acc[key])
 
@@ -126,17 +126,26 @@ class RowGrouper:
 
 
 
-FILTER_FIELDS_NAME = 0
-FILTER_FIELD_ACTIONS = 1
+GROUPED_KEY_FIELDS = 0
+GROUPED_FIELDS_ACTIONS = 1
 
 # filters serial should be [["fieldTarget", "operation", ["constraint1", "constraint2"]], ["fieldTarget", "operation", ["constraint1", "constraint2"]]]
 # rows are {"field":vl, "field2":vl2}
 def load_grouper(grouper_serial):
-	return RowGrouper(grouper_serial[FILTER_FIELDS_NAME], grouper_serial[FILTER_FIELD_ACTIONS])
+	return RowGrouper(grouper_serial[GROUPED_KEY_FIELDS], grouper_serial[GROUPED_FIELDS_ACTIONS])
+
+def load_grouper_mapped(mapped_fields, grouper_serial):
+	key_fields = [mapped_fields.index(field) for field in grouper_serial[GROUPED_KEY_FIELDS]]
+	actions = {}
+
+	for field, action in grouper_serial[GROUPED_FIELDS_ACTIONS].items():
+		actions[mapped_fields.index(field)] = action
+	return RowGrouper(key_fields, actions)
+
 
 def load_groupers(groupers_serial):
 	all_groupers = []
 	for grouper in groupers_serial:
-		all_groupers.append(RowGrouper(grouper[FILTER_FIELDS_NAME],
-			grouper[FILTER_FIELD_ACTIONS]))
+		all_groupers.append(RowGrouper(grouper[GROUPED_KEY_FIELDS],
+			grouper[GROUPED_FIELDS_ACTIONS]))
 	return all_groupers

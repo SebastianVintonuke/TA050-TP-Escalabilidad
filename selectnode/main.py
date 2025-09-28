@@ -94,7 +94,7 @@ def main() -> None:
         types_expander.add_configuration_to_many( 
             SelectTypeConfiguration(
                 result_middleware,
-                csv_message.csv_msg_from_msg, # Message builder creator
+                lambda msg,ind: csv_message.msg_from_credentials(msg.ids[ind], QUERY_1, msg.partition),
                 in_fields=["transaction_id", "year", "hour", "sum"],  # In order
                 filters_conf=[
                     ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -142,7 +142,7 @@ def main() -> None:
         types_expander.add_configurations(ALL_FOR_TRANSACTIONS, 
             SelectTypeConfiguration(
                 result_middleware,
-                csv_message.csv_msg_from_msg,
+                lambda msg,ind: csv_message.msg_from_credentials(msg.ids[ind], QUERY_3, msg.partition),
                 in_fields=[
                     "transaction_id",
                     "store_id",
@@ -168,7 +168,6 @@ def main() -> None:
                         ]
                     ],
                     ROW_CONFIG_OUT_COLS: [
-                        "transaction_id",
                         "store_id",
                         "mapped_semester",
                         "revenue",
@@ -184,12 +183,12 @@ def main() -> None:
         types_expander.add_configurations(ALL_FOR_TRANSACTIONS, 
             SelectTypeConfiguration(
                 result_middleware,
-                csv_message.csv_msg_from_msg,
+                lambda msg,ind: csv_message.msg_from_credentials(msg.ids[ind], QUERY_4, msg.partition),
                 in_fields=["transaction_id", "store_id", "user_id", "year"],  # In order
                 filters_conf=[
                     ["year", EQUALS_ANY, ["2024", "2025"]],
                 ],
-                out_conf={ROW_CONFIG_OUT_COLS: ["transaction_id", "store_id", "user_id"]},
+                out_conf={ROW_CONFIG_OUT_COLS: ["store_id", "user_id"]},
             )
         )
 

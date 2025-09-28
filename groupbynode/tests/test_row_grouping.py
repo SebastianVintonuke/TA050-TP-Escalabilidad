@@ -126,7 +126,7 @@ class TestRowGrouper(unittest.TestCase):
         # Passing a string instead of a number should raise
         row2 = {"group": "A", "val": "oops"}
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             grouper.add_group_acc(acc, row2)
 
     def test_multiple_adds(self):
