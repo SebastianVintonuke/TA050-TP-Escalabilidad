@@ -1,11 +1,12 @@
 import unittest
 
-from selectnode.src.mocks_middleware import *
-from selectnode.src.row_filtering import *
-from selectnode.src.row_mapping import *
+from middleware.mocks.middleware import *
+from common.config.row_filtering import *
+from common.config.row_mapping import *
+from common.config.type_expander import *
+
 from selectnode.src.select_type_config import *
 from selectnode.src.selectnode import *
-from selectnode.src.type_expander import *
 
 
 def map_dict_to_vect_cols(cols, row):

@@ -1,6 +1,6 @@
 import unittest
 
-from selectnode.src.row_mapping import *
+from common.config.row_mapping import *
 
 
 class TestRowMappers(unittest.TestCase):

@@ -9,10 +9,12 @@ from middleware.result_node_middleware import *
 from middleware.routing import csv_message
 from middleware.routing.query_types import *
 from middleware.select_tasks_middleware import *
-from src.row_filtering import *
-from src.row_mapping import *
+
+from common.config.row_filtering import *
+from common.config.row_mapping import *
+from common.config.type_expander import *
+
 from src.select_type_config import *
-from src.type_expander import *
 from src.selectnode import SelectNode
 
 from middleware import routing

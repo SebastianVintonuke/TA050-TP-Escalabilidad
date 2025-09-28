@@ -1,7 +1,7 @@
 import logging
 
-from .base_type_config import BaseDictTypeConfiguration, BaseTypeConfiguration
-from .row_filtering import load_all_filters, should_keep
+from common.config.base_type_config import BaseDictTypeConfiguration, BaseTypeConfiguration
+from common.config.row_filtering import load_all_filters, should_keep
 
 
 class SelectTypeConfiguration(BaseDictTypeConfiguration):

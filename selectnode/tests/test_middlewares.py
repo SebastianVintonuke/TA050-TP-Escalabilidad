@@ -9,7 +9,7 @@ from middleware.routing.csv_message import *
 from middleware.select_tasks_middleware import SelectTasksMiddleware
 
 from middleware import routing
-from selectnode.src.row_filtering import *
+from common.config.row_filtering import *
 
 
 def map_dict_to_vect(row):
