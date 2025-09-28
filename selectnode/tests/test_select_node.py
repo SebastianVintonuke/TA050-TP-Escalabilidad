@@ -470,7 +470,7 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle = MockMiddleware()
 
-        node = SelectNode(in_middle, type_map)
+        node = SelectNode(in_middle, type_map, {"t_all":["t4","t3","t1"]})
         node.start()
 
         # in_cols_final = ["transaction_id", "year", "store_id","user_id", "month", "hour", "revenue"]
@@ -538,8 +538,8 @@ class TestSelectNode(unittest.TestCase):
 
         message = MockMessage(
             "tag1",
-            ["q4", "q3", "q1"],
-            ["t4", "t3", "t1"],
+            ["user_id"],
+            ["t_all"],
             rows,
             lambda r: map_dict_to_vect_cols(in_cols_final, r),
         )

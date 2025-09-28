@@ -183,8 +183,11 @@ def main() -> None:
             ],
             out_conf={ROW_CONFIG_OUT_COLS: ["transaction_id", "store_id", "user_id"]},
         )
-
-        node = SelectNode(SelectTasksMiddleware(), types_config)
+        type_expander= {
+            "transactions": [QUERY_1, QUERY_3, QUERY_4],
+            "transactions_items": [QUERY_2],
+        }
+        node = SelectNode(SelectTasksMiddleware(), types_config, type_expander)
 
         restart = True
         while restart:

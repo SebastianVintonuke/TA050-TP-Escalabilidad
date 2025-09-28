@@ -23,12 +23,13 @@ class TypeHandler:
             logging.info(f"action: filtered_full_msg | result: success | complete message for {self.msg_builder.types} was filtered")
 
 class SelectNode:
-    def __init__(self, select_middleware, types_confs):
+    def __init__(self, select_middleware, types_confs, type_expander = {}):
         self.middleware = select_middleware
         self.types_configurations = types_confs
+        self.expander = type_expander
 
     def handle_task(self, msg):
-        msg.describe()
+        #msg.describe()
 
         if (
             msg.is_partition_eof()
@@ -46,7 +47,15 @@ class SelectNode:
 
         outputs = []
         ind = 0
+        types=set()
         for type in msg.types:
+            expansions = self.expander.get(type, [type])            
+            for expansion in expansions:
+                types.add(expansion)
+
+
+        for type in types:
+            
             outputs.append(TypeHandler(self.types_configurations[type], msg, ind))
             ind += 1
 
