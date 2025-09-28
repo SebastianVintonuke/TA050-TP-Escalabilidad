@@ -4,9 +4,10 @@ import logging
 import os
 from configparser import ConfigParser
 
-from middleware import routing
 from middleware.errors import *
 from middleware.result_node_middleware import *
+
+from middleware import routing
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -56,11 +57,12 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
-    #results_ip = config_params["results_ip"]
-    #results_port = config_params["results_port"]
+    # results_ip = config_params["results_ip"]
+    # results_port = config_params["results_port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
 
@@ -79,7 +81,7 @@ def main() -> None:
             logging.info(f"ROW {itm}")
 
     result_middleware.start_consuming(handle_result)
-    #start_notifying((results_ip, results_port))
+    # start_notifying((results_ip, results_port))
 
 
 if __name__ == "__main__":

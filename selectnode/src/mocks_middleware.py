@@ -1,11 +1,13 @@
-from middleware.middleware import * 
-from middleware.routing.message import * 
+from middleware.routing.message import *
+
+from middleware.middleware import *
 
 
 class MockMiddleware(MessageMiddleware):
     def __init__(self):
-        self.msgs= []
+        self.msgs = []
         self.callback = None
+
     def send(self, msg):
         self.msgs.append(msg)
 
@@ -17,6 +19,7 @@ class MockMiddleware(MessageMiddleware):
 
     def stop_consuming(self):
         pass
+
     def close(self):
         pass
 
@@ -25,25 +28,27 @@ class MockMiddleware(MessageMiddleware):
 
 
 class MockMessageBuilder:
-    def __init__(self,msg, ind):
+    def __init__(self, msg, ind):
         self.msg_from = msg
-        self.ind= ind
+        self.ind = ind
         self.payload = []
-        self.fields= []
+        self.fields = []
 
     def set_fields(self, fields):
         # set field names!
         self.fields = fields
 
-    def add_row(self,row):
-        #assert len(row) == len(fields) # Same size of fields 
+    def add_row(self, row):
+        # assert len(row) == len(fields) # Same size of fields
         self.payload.append(row)
+
 
 class MockMessage(Message):
     def __init__(self, tag, queries_id, queries_type, payload, map_to_vec):
-        super().from_data(tag,queries_type,queries_type, payload)
+        super().from_data(tag, queries_type, queries_type, payload)
         self.map_to_vec = map_to_vec
-    def _deserialize_payload(self, payload): # Do nothing with it.
+
+    def _deserialize_payload(self, payload):  # Do nothing with it.
         return payload
 
     def clone_with(self, queries_id, queries_type):
@@ -51,4 +56,3 @@ class MockMessage(Message):
 
     def stream_rows(self):
         return map(self.map_to_vec, iter(self.payload))
-
