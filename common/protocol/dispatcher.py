@@ -1,8 +1,12 @@
 import socket
 from typing import Callable
 
+from common.models.menuitem import MenuItem
 from common.models.model import Model
+from common.models.store import Store
 from common.models.transaction import Transaction
+from common.models.transactionitem import TransactionItem
+from common.models.user import User
 from common.utils import new_uuid
 
 from common.protocol.byte import ByteProtocol
@@ -24,24 +28,40 @@ class DispatcherProtocol:
         """
         self._byte_protocol.close_with(closure_to_close)
 
+
     def handle_requests(self) -> None:
         user_id = new_uuid()
-        middleware = SelectTasksMiddleware()
+        select_middleware = SelectTasksMiddleware()
 
-        msg_build = CSVMessageBuilder([user_id], ["query_1"])
+        batch = self._batch_protocol.wait_batch()
+        while batch:
+            header = batch.pop(0)
+            model = Model.model_for(header)
 
-        recv_batch = self._batch_protocol.wait_batch()
-        while recv_batch:
-            header = recv_batch.pop(0)
-            model = Transaction
+            while batch: # While file
+                if model is Transaction:
+                    select_task = CSVMessageBuilder([user_id], ["query_1"])
+                    for line in batch: # While batch
+                        transaction = model.from_bytes_and_project(line)
+                        select_task.add_row([
+                            transaction.transaction_id,
+                            transaction.created_at.year,
+                            transaction.created_at.hour,
+                            transaction.final_amount,
+                        ])
+                    select_middleware.send(select_task)
+                elif model is TransactionItem:
+                    pass # Mandar a select
+                elif model is MenuItem:
+                    pass # Mandar a join
+                elif model is User:
+                    pass # Mandar a join
+                elif model is Store:
+                    pass # Mandar a join
+                else:
+                    raise Exception(f"Unknown model: {model}")
 
-            while recv_batch:
-                for line in recv_batch:
-                    item: Transaction = model.from_bytes_and_project(line)
-                    msg_build.add_row([item.transaction_id, item.created_at.year, item.created_at.hour, item.final_amount])
-                    middleware.send(msg_build)
-
-                recv_batch = self._batch_protocol.wait_batch()
-            recv_batch = self._batch_protocol.wait_batch()
+                batch = self._batch_protocol.wait_batch() # End of batch
+            batch = self._batch_protocol.wait_batch() # End of file
 
         self._byte_protocol.send_bytes(user_id.encode())
