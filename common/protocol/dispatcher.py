@@ -64,20 +64,26 @@ class DispatcherProtocol:
                 batch = self._batch_protocol.wait_batch() # End of batch
             batch = self._batch_protocol.wait_batch() # End of file
 
-            #select_task = CSVMessageBuilder([user_id], ["query_1"])
-            #select_task.set_as_eof()
-            #select_middleware.send(select_task)
+        select_task = CSVMessageBuilder([user_id, user_id], ["query_1", "query_3"])
+        select_task.set_as_eof()
+        select_middleware.send(select_task)
+
+        select_task.set_finish_signal()
+        select_middleware.send(select_task)
 
         self._byte_protocol.send_bytes(user_id.encode())
 
     @staticmethod
     def __send_task_select_transaction(user_id: str, select_middleware: SelectTasksMiddleware, model: Transaction, batch: List[bytes]) -> None:
-        select_task = CSVMessageBuilder([user_id], ["query_1"])
+        select_task = CSVMessageBuilder([user_id], ["transactions"])
         for line in batch:
             transaction = model.from_bytes_and_project(line)
             select_task.add_row([
                 transaction.transaction_id,
                 transaction.created_at.year,
+                transaction.store_id,
+                transaction.user_id,
+                transaction.created_at.month,
                 transaction.created_at.hour,
                 transaction.final_amount,
             ])

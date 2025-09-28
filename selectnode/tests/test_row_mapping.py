@@ -89,7 +89,7 @@ class TestRowMappers(unittest.TestCase):
 
         row = {"year": "2022", "month": "6"}
         output = mapper(row)
-        self.assertEqual(output, ["10"])  # (2 * 12 + 6) // 3 = 30 // 3 = 10
+        self.assertEqual(output, ["5"])  # (2 * 12 + 6) // 3 = 30 // 3 = 10
 
     def test_vector_input_with_dict_convert_wrapper(self):
         in_cols = ["year", "month"]

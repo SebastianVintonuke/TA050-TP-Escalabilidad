@@ -90,6 +90,7 @@ services:
     entrypoint: python3 /selectnode/main.py
     environment:
       - SELECT_NODE_ID=1
+      - GROUPBY_NODE_COUNT=1
     networks:
       - testing_net
     depends_on:
@@ -98,6 +99,22 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+
+  groupbynode1:
+    container_name: groupbynode1
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
 
 networks:
   testing_net:

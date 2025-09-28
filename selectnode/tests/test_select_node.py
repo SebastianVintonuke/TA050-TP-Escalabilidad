@@ -240,13 +240,13 @@ class TestSelectNode(unittest.TestCase):
             [
                 "tr2",
                 "str2",
-                "7",
+                "3",
                 "942",
             ],  # since 2024 start, 23 months, 7 semesters, in middle of it?
             [
                 "tr3",
                 "str3",
-                "3",
+                "1",
                 "942",
             ],  # since 2024 start, 9 months, 3 semesters? 9//3 = 3
         ]
@@ -538,8 +538,8 @@ class TestSelectNode(unittest.TestCase):
 
         # out_cols3 = ["transaction_id", "store_id", "mapped_semester", "revenue"]
         expected3 = [
-            ["tr3", "str1", "5", "75"],  # (12+5)//3 == 5
-            ["tr4", "str1", "6", "90"],  # (12+8)//3 == 6
+            ["tr3", "str1", "2", "75"],  # (12+5)//6 == 2
+            ["tr4", "str1", "3", "90"],  # (12+8)//6 == 3
         ]
 
         message = MockMessage(

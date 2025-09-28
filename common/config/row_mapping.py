@@ -98,7 +98,7 @@ class MapSemesterAction:
         months = (int(row[self.col_year]) - self.init_year) * 12 + int(
             row[self.col_month]
         )
-        row[self.col_out] = months // 3
+        row[self.col_out] = months // 6
 
 
 # Somebody external... might add actions here? somethinglike row_mapping.GENERAL_MAP_ACTIONS["action"]: ClassName

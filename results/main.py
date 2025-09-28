@@ -82,7 +82,7 @@ def main() -> None:
             middleware = MessageMiddlewareQueue("middleware", "results")
             break
         except AMQPConnectionError:
-            time.sleep(5)  # Reintentar hasta que RabbitMQ esté disponible
+            time.sleep(1)  # Reintentar hasta que RabbitMQ esté disponible
         except Exception as e:
             logging.error(f"action: init_middleware | result: fail | error: {e}")
 

@@ -3,13 +3,16 @@
 import logging
 import os
 from configparser import ConfigParser
+from datetime import datetime
 from typing import List
 
 from common import QueryId
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
 from common.results.query1 import QueryResult1
+from common.results.query3 import QueryResult3, HalfCreatedAt
 from middleware.src.result_node_middleware import ResultNodeMiddleware
+from middleware.src.routing.query_types import QUERY_3, QUERY_1
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -79,31 +82,34 @@ def main() -> None:
 
 
     def handle_result(msg):
-        data: List[QueryResult1] = []
-        for line in msg.stream_rows():
-            data.append(QueryResult1(transaction_id=line[0], final_amount=line[1]))
+        query_type = msg.types[0]
+        if msg.is_partition_eof():
+            logging.critical("es EOF")
+        else:
+            if query_type == QUERY_1:
+                data: List[QueryResult1] = []
+                for line in msg.stream_rows():
+                    data.append(QueryResult1(transaction_id=line[0], final_amount=float(line[1])))
+                result_task = ResultTask(msg.ids[0], QueryId.Query1, msg.is_eof(), False, data).to_bytes()
+                results_storage_middleware.send(result_task)
+                msg.ack_self()
 
-        result_task = ResultTask(msg.ids[0], QueryId.Query1, msg.is_partition_eof(), False, data).to_bytes()
-        results_storage_middleware.send(result_task)
-        msg.ack_self()
+            if query_type == QUERY_3:
+                data: List[QueryResult3] = []
+                for line in msg.stream_rows():
+                    year_semester = int(line[1])
+                    year = (year_semester * 6 // 12) + 2024
+                    if year_semester % 2 == 0:
+                        semester = "H1"
+                    else:
+                        semester = "H2"
+                    data.append(QueryResult3(year_created_at=datetime.strptime(str(year), "%Y").date(),
+                                             half_created_at=HalfCreatedAt(semester), tpv=float(line[2]),
+                                             store_name=line[0]))
 
-
-        #if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
-        #    if msg.is_last_message():
-        #        if msg.is_eof():
-        #            logging.info(f"Received final eof OF {msg.ids}")
-        #        else:
-        #            logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
-        #    else:
-        #        logging.info(f"RESULT STORAGE RECEIVED PARITION EOF? IGNORED, partition {msg.partition}, ids:{msg.ids}")
-
-        #    msg.ack_self()
-        #    return
-        #logging.info(f"GOT RESULT MSG? FROM QUERIES {msg.ids}")
-        #for itm in msg.stream_rows():
-        #    logging.info(f"ROW {itm}")
-        
-        #msg.ack_self()
+                result_task = ResultTask(msg.ids[0], QueryId.Query3, msg.is_eof(), False, data).to_bytes()
+                results_storage_middleware.send(result_task)
+                msg.ack_self()
 
     result_middleware.start_consuming(handle_result)
 

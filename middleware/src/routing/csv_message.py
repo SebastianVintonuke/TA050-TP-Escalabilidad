@@ -42,6 +42,8 @@ class CSVMessageBuilder(MessageBuilder):
         self.payload.append(",".join(map(str, row)))
     def add_row_dict(self,row):
         self.add_row_vec(row.values())
+    def clone(self):
+        return CSVMessageBuilder(self.ids, self.types, self.partition_ind)
 
 class CSVHashedMessageBuilder(HashedMessageBuilder):
     def __init__(self,queries_id, queries_type, key_hash, partition = 0):

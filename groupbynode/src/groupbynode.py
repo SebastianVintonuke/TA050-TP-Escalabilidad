@@ -1,6 +1,8 @@
 #from .type_config import TypeConfiguration
 import logging
 
+
+
 class QueryAccumulator:
 	def __init__(self, type_conf, msg_builder):
 		self.type_conf = type_conf
@@ -31,7 +33,13 @@ class QueryAccumulator:
 		for group, acc in self.groups.items():
 			self.msg_builder.add_row(self.type_conf.get_output(group, acc))
 
+		logging.info(f"payload: {self.msg_builder.payload}")
 		self.type_conf.send(self.msg_builder)
+		eof_signal = self.msg_builder.clone()
+		eof_signal.set_as_eof()
+		self.type_conf.send(eof_signal)
+		eof_signal.set_finish_signal()
+		self.type_conf.send(eof_signal)
 
 	def describe(self):
 		logging.info(f"curr status accumulator:")
@@ -60,6 +68,7 @@ class GroupbyNode:
 					logging.info(f"Received final eof OF {msg.ids}")
 					for query_id in msg.ids:
 						acc = self.accumulators.get(query_id, None)
+						logging.info(f"ACC: {acc}")
 						if acc:
 							acc.send_built()
 					#self.propagate_signal(msg)
@@ -91,9 +100,6 @@ class GroupbyNode:
 		for row in msg.stream_rows():
 			for output in outputs:
 				output.check(row)
-
-		for output in outputs:
-			output.describe()
 
 		msg.ack_self()
 

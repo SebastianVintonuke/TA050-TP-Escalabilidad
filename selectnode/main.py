@@ -21,6 +21,13 @@ from src.selectnode import SelectNode
 from middleware import routing
 import traceback
 
+IN_FIELDS = ["transaction_id",
+    "year",
+    "store_id",
+    "user_id",
+    "month",
+    "hour",
+    "revenue",]
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -101,13 +108,13 @@ def main() -> None:
             SelectTypeConfiguration(
                 result_middleware,
                 lambda msg,ind: csv_message.msg_from_credentials(msg.ids[ind], QUERY_1, msg.partition),
-                in_fields=["transaction_id", "year", "hour", "sum"],  # In order
+                in_fields=IN_FIELDS,  # In order
                 filters_conf=[
                     ["year", EQUALS_ANY, ["2024", "2025"]],
                     ["hour", BETWEEN_THAN_OP, [6, 23]],
-                    ["sum", GREATER_THAN_OP, [75]],
+                    ["revenue", GREATER_EQ_THAN_OP, [75]],
                 ],
-                out_conf={ROW_CONFIG_OUT_COLS: ["transaction_id", "sum"]},
+                out_conf={ROW_CONFIG_OUT_COLS: ["transaction_id", "revenue"]},
             )
             , ALL_FOR_TRANSACTIONS, QUERY_1 # add to query 1 independently for testing and so on.
         )
@@ -121,7 +128,7 @@ def main() -> None:
             SelectTypeConfiguration(
                 result_middleware,
                 csv_message.csv_msg_from_msg,
-                in_fields=["product_id", "year", "month", "revenue"],  # In order
+                in_fields=IN_FIELDS,  # In order
                 filters_conf=[["year", EQUALS_ANY, ["2024", "2025"]]],
                 out_conf={
                     ROW_CONFIG_ACTIONS: [
@@ -149,14 +156,7 @@ def main() -> None:
             SelectTypeConfiguration(
                 groupby_middleware,
                 lambda msg,ind: csv_message.hashed_msg_from_credentials(msg.ids[ind], QUERY_3, msg.partition),
-                in_fields=[
-                    "transaction_id",
-                    "store_id",
-                    "year",
-                    "month",
-                    "hour",
-                    "revenue",
-                ],  # In order
+                in_fields=IN_FIELDS,  # In order
                 filters_conf=[
                     ["year", EQUALS_ANY, ["2024", "2025"]],
                     ["hour", BETWEEN_THAN_OP, [6, 23]],
@@ -190,7 +190,7 @@ def main() -> None:
             SelectTypeConfiguration(
                 result_middleware,
                 lambda msg,ind: csv_message.msg_from_credentials(msg.ids[ind], QUERY_4, msg.partition),
-                in_fields=["transaction_id", "store_id", "user_id", "year"],  # In order
+                in_fields=IN_FIELDS,  # In order
                 filters_conf=[
                     ["year", EQUALS_ANY, ["2024", "2025"]],
                 ],

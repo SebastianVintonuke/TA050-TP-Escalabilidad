@@ -45,6 +45,8 @@ class MessageBuilder:
         else:
             self.partition_ind = code
 
+    def clone(self):
+        return MessageBuilder(self.ids, self.types, self.partition_ind)
 
 
 # HashedMessage Builder, add key hash methods

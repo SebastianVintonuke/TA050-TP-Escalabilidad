@@ -35,14 +35,9 @@ def initialize_config():  # type: ignore[no-untyped-def]
     config_params = {}
     try:
         config_params["port"] = int(os.getenv("PORT", config["DEFAULT"]["PORT"]))
-        config_params["node_id"] = os.getenv(
-            "NODE_ID", config["DEFAULT"]["NODE_ID"]
-        )
-
         config_params["node_ind"] = os.getenv(
             "NODE_IND", config["DEFAULT"]["NODE_IND"]
         )
-
         config_params["node_count"] = os.getenv(
             "NODE_COUNT", config["DEFAULT"]["NODE_COUNT"]
         )
@@ -76,7 +71,6 @@ def initialize_log(logging_level: int) -> None:
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
-    node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
     node_ind = config_params["node_ind"]
     node_count = config_params["node_count"]
@@ -85,7 +79,7 @@ def main() -> None:
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level} | node_ind:{node_ind} | node_count:{node_count}"
+        f"action: config | result: success | port: {port} | logging_level: {logging_level} | node_ind: {node_ind} | node_count:{node_count}"
     )
 
     try:
@@ -118,7 +112,7 @@ def main() -> None:
                 grouping_conf= [["store_id", "mapped_semester"], {
                     "revenue": SUM_ACTION,
                 }],
-                out_conf={ROW_CONFIG_OUT_COLS: ["store_id","mapped_semester", "revenue"]},                
+                out_conf={ROW_CONFIG_OUT_COLS: ["store_id","mapped_semester", "revenue"]},
         )
 
         types_config[QUERY_4] = GroupbyTypeConfiguration(result_middleware, csv_message.csv_msg_from_msg,
