@@ -9,6 +9,7 @@ from middleware.result_node_middleware import *
 from middleware.routing import csv_message
 from middleware.routing.query_types import *
 from middleware.select_tasks_middleware import *
+from middleware.groupby_middleware import *
 
 from common.config.row_filtering import *
 from common.config.row_mapping import *
@@ -18,6 +19,7 @@ from src.select_type_config import *
 from src.selectnode import SelectNode
 
 from middleware import routing
+import traceback
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -41,6 +43,10 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["node_id"] = os.getenv(
             "SELECT_NODE_ID", config["DEFAULT"]["SELECT_NODE_ID"]
         )
+        config_params["groupby_node_count"] = os.getenv(
+            "GROUPBY_NODE_COUNT", config["DEFAULT"]["GROUPBY_NODE_COUNT"]
+        )
+
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
@@ -73,18 +79,18 @@ def main() -> None:
     port = config_params["port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
-
+    groupby_node_count = config_params["groupby_node_count"]
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level} | groupby_node_count: {groupby_node_count}"
     )
 
     try:
         types_expander = TypeExpander()
         result_middleware = ResultNodeMiddleware()
-
+        groupby_middleware = GroupbyTasksMiddleware(groupby_node_count)
         # Basic filter description
         """
             QUERY 1
@@ -139,10 +145,10 @@ def main() -> None:
                 3. TPV (Total Payment Value) por cada semestre en 2024 y 2025, para cada sucursal, para
                 transacciones realizadas entre las 06:00 AM y las 11:00 PM.  
         """    
-        types_expander.add_configurations(ALL_FOR_TRANSACTIONS, 
+        types_expander.add_configuration_to_many( 
             SelectTypeConfiguration(
-                result_middleware,
-                lambda msg,ind: csv_message.msg_from_credentials(msg.ids[ind], QUERY_3, msg.partition),
+                groupby_middleware,
+                lambda msg,ind: csv_message.hashed_msg_from_credentials(msg.ids[ind], QUERY_3, msg.partition),
                 in_fields=[
                     "transaction_id",
                     "store_id",
@@ -173,7 +179,7 @@ def main() -> None:
                         "revenue",
                     ],
                 },
-            )
+            ),ALL_FOR_TRANSACTIONS, QUERY_3
         )
         """
             QUERY 4

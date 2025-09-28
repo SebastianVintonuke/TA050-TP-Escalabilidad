@@ -33,6 +33,11 @@ class QueryAccumulator:
 
 		self.type_conf.send(self.msg_builder)
 
+	def describe(self):
+		logging.info(f"curr status accumulator:")
+		for group, acc in self.groups.items():
+			logging.info(f"key {group} acc : {acc}")
+
 class GroupbyNode:
 	def __init__(self, group_middleware, types_confs):
 		self.middleware = group_middleware;
@@ -49,8 +54,6 @@ class GroupbyNode:
 
 
 	def handle_task(self, msg):
-		msg.describe()
-
 		if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
 			if msg.is_last_message():
 				if msg.is_eof():
@@ -88,6 +91,9 @@ class GroupbyNode:
 		for row in msg.stream_rows():
 			for output in outputs:
 				output.check(row)
+
+		for output in outputs:
+			output.describe()
 
 		msg.ack_self()
 

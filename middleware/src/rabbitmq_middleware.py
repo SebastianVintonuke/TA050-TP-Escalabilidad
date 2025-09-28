@@ -12,25 +12,26 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 		try:
 			self._conn = routing.try_open_connection(host, 10) # Can fail but should we wrap the error on a MessageMiddlewareDisconnectedError?
 			self.channel = self._conn.channel()
-			self._init_bind()
-
+			self._declares()
 		except Exception as e:
 			raise MessageMiddlewareConnectError(f"RabbitMQ connect failed: {e}") from e
 
 	def _get_routing_key(self):
 		return self.queue_name
 
-	def _get_exchage_type(self):
+	def _get_exchange_type(self):
 		return self.exch_name
 
-	def _init_bind(self):
+	def _declares(self):
+		self.channel.queue_declare(queue=self.queue_name)
+		
 		self.channel.exchange_declare(
 		    exchange=self.exch_name,
-		    exchange_type=self._get_exchage_type(),
+		    exchange_type=self._get_exchange_type(),
 		    #durable=True 
 		)
-		
-		self.channel.queue_declare(queue=self.queue_name)
+
+	def _init_bind(self):
 		self.channel.queue_bind(queue=self.queue_name, exchange=self.exch_name, routing_key=self._get_routing_key())
 
 
@@ -55,6 +56,7 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
 	def start_consuming(self, on_message_callback):
 		try:
+			self._init_bind()
 			self.channel.basic_consume(
 				queue=self.queue_name, on_message_callback=self._callback_wrapper(on_message_callback), auto_ack=False)
 			self.channel.start_consuming()
@@ -111,4 +113,7 @@ class RabbitQueueMiddleware(RabbitExchangeMiddleware):
 		super().__init__(queue_name, DEFAULT_EXCHANGE, host)
 
 	def _init_bind(self):
+		pass
+
+	def _declares(self):
 		self.channel.queue_declare(queue=self.queue_name)
