@@ -3,16 +3,19 @@
 import logging
 import os
 from configparser import ConfigParser
-from datetime import datetime
-from typing import List
+from datetime import datetime, date
+from typing import List, Tuple
 
 from common import QueryId
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
 from common.results.query1 import QueryResult1
-from common.results.query3 import HalfCreatedAt, QueryResult3
+from common.results.query2bs import QueryResult2BestSelling
+from common.results.query2mp import QueryResult2MostProfit
+from common.results.query3 import QueryResult3, HalfCreatedAt
+from common.results.query4 import QueryResult4
 from middleware.src.result_node_middleware import ResultNodeMiddleware
-from middleware.src.routing.query_types import QUERY_1, QUERY_3
+from middleware.src.routing.query_types import QUERY_1, QUERY_3, QUERY_2, QUERY_4
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -80,48 +83,98 @@ def main() -> None:
 
     results_storage_middleware = MessageMiddlewareQueue("middleware", "results")
 
+
+    def handle_query_1_result(msg, user_id: str) -> None:
+        data: List[QueryResult1] = []
+        for line in msg.stream_rows():
+            transaction_id = line[0]
+            final_amount = float(line[1])
+            data.append(QueryResult1(transaction_id=transaction_id, final_amount=final_amount))
+        result_task = ResultTask(user_id, QueryId.Query1, msg.is_eof(), False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+        msg.ack_self()
+
+    def handle_query_2_best_selling_result(msg, user_id: str) -> None:
+        data: List[QueryResult2BestSelling] = []
+        for line in msg.stream_rows():
+            # TODO check order line
+            year_month_created_at: date = datetime.strptime("2025-12", "%Y-%m").date()
+            item_name: str = "store_name"
+            sellings_qty: int = 0
+            # TODO end
+            data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
+        result_task = ResultTask(user_id, QueryId.Query2BestSelling, msg.is_eof(), False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+        msg.ack_self()
+
+    def handle_query_2_best_most_profit(msg, user_id) -> None:
+        data: List[QueryResult2MostProfit] = []
+        for line in msg.stream_rows():
+            # TODO check order line
+            year_month_created_at: date = datetime.strptime("2025-12", "%Y-%m").date()
+            item_name: str = "store_name"
+            profit_sum: float = 0.0
+            # TODO end
+            data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
+        result_task = ResultTask(user_id, QueryId.Query2MostProfit, msg.is_eof(), False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+        msg.ack_self()
+
+    def handle_query_3_result(msg, user_id: str) -> None:
+        data: List[QueryResult3] = []
+        for line in msg.stream_rows():
+            year_created_at, half_created_at = __year_semester_decode(line[1])
+            store_name = line[0]  # TODO join
+            tpv = float(line[2])
+            data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
+        result_task = ResultTask(user_id, QueryId.Query3, msg.is_eof(), False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+        msg.ack_self()
+
+    def handle_query_4_result(msg, user_id: str) -> None:
+        data: List[QueryResult4] = []
+        for line in msg.stream_rows():
+            # TODO check order line
+            store_name: str = "store name"
+            birthdate: date = datetime.strptime("2025-12-25", "%Y-%m-%d").date()
+            # TODO end
+            data.append(QueryResult4(store_name=store_name, birthdate=birthdate))
+        result_task = ResultTask(user_id, QueryId.Query4, msg.is_eof(), False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+        msg.ack_self()
+
+    def __year_semester_decode(year_semester_str: str) -> Tuple[date, HalfCreatedAt]:
+        year_semester = int(year_semester_str)
+        year_str = str((year_semester * 6 // 12) + 2024)
+        year = datetime.strptime(str(year_str), "%Y").date()
+        if year_semester % 2 == 0:
+            semester = HalfCreatedAt.H1
+        else:
+            semester = HalfCreatedAt.H2
+        return year, semester
+
     def handle_result(msg):
+        user_id = msg.ids[0]
         query_type = msg.types[0]
         if msg.is_partition_eof():
-            logging.critical("es EOF")
+            pass
         else:
             if query_type == QUERY_1:
-                data: List[QueryResult1] = []
-                for line in msg.stream_rows():
-                    data.append(
-                        QueryResult1(
-                            transaction_id=line[0], final_amount=float(line[1])
-                        )
-                    )
-                result_task = ResultTask(
-                    msg.ids[0], QueryId.Query1, msg.is_eof(), False, data
-                ).to_bytes()
-                results_storage_middleware.send(result_task)
-                msg.ack_self()
+                handle_query_1_result(msg, user_id)
 
-            if query_type == QUERY_3:
-                data: List[QueryResult3] = []
-                for line in msg.stream_rows():
-                    year_semester = int(line[1])
-                    year = (year_semester * 6 // 12) + 2024
-                    if year_semester % 2 == 0:
-                        semester = "H1"
-                    else:
-                        semester = "H2"
-                    data.append(
-                        QueryResult3(
-                            year_created_at=datetime.strptime(str(year), "%Y").date(),
-                            half_created_at=HalfCreatedAt(semester),
-                            tpv=float(line[2]),
-                            store_name=line[0],
-                        )
-                    )
+            # TODO query 2 se separa en best selling y most profit, se guardan en archivos diferentes
+            elif query_type == QUERY_2:
+                handle_query_2_best_selling_result(msg, user_id)
+            #elif query_type == QUERY_2:
+                #handle_query_2_most_profit_result(msg, user_id)
+            # TODO end
 
-                result_task = ResultTask(
-                    msg.ids[0], QueryId.Query3, msg.is_eof(), False, data
-                ).to_bytes()
-                results_storage_middleware.send(result_task)
-                msg.ack_self()
+            elif query_type == QUERY_3:
+                handle_query_3_result(msg, user_id)
+            elif query_type == QUERY_4:
+                handle_query_4_result(msg, user_id)
+            else:
+                raise ValueError(f"Unknown query type: {query_type}")
 
     result_middleware.start_consuming(handle_result)
 

@@ -1,6 +1,6 @@
 import logging
 import socket
-from typing import Callable, List
+from typing import Callable, List, Union
 
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
@@ -49,9 +49,9 @@ class DispatcherProtocol:
 
             while batch: # While batch of file
                 if model is Transaction:
-                    self.__send_task_select_transaction(user_id, select_middleware, model, batch)
-                elif model is TransactionItem:
-                    self.__send_task_select_transaction_item(user_id, select_middleware, model, batch)
+                    self.__send_task_to_select_transaction(user_id, select_middleware, model, batch)
+                if model is TransactionItem:
+                    self.__send_task_to_select_transaction_item(user_id, select_middleware, model, batch)
                 elif model is MenuItem:
                     pass # TODO Mandar a join
                 elif model is User:
@@ -64,21 +64,16 @@ class DispatcherProtocol:
                 batch = self._batch_protocol.wait_batch() # End of batch
             batch = self._batch_protocol.wait_batch() # End of file
 
-        select_task = CSVMessageBuilder([user_id, user_id], ["query_1", "query_3"])
-        select_task.set_as_eof()
-        select_middleware.send(select_task)
-
-        select_task.set_finish_signal()
-        select_middleware.send(select_task)
+        self.__send_task_eof_to_select(user_id, select_middleware)
 
         self._byte_protocol.send_bytes(user_id.encode())
 
     @staticmethod
-    def __send_task_select_transaction(user_id: str, select_middleware: SelectTasksMiddleware, model: Transaction, batch: List[bytes]) -> None:
-        select_task = CSVMessageBuilder([user_id], ["transactions"])
+    def __send_task_to_select_transaction(user_id: str, select_middleware: SelectTasksMiddleware, model: Transaction, batch: List[bytes]) -> None:
+        transaction_task = CSVMessageBuilder([user_id], ["transactions"])
         for line in batch:
-            transaction = model.from_bytes_and_project(line)
-            select_task.add_row([
+            transaction: Transaction = model.from_bytes_and_project(line)
+            transaction_task.add_row([
                 transaction.transaction_id,
                 transaction.created_at.year,
                 transaction.store_id,
@@ -87,8 +82,26 @@ class DispatcherProtocol:
                 transaction.created_at.hour,
                 transaction.final_amount,
             ])
-        select_middleware.send(select_task)
+        select_middleware.send(transaction_task)
 
     @staticmethod
-    def __send_task_select_transaction_item(user_id: str, select_middleware: SelectTasksMiddleware, model: TransactionItem, batch: List[bytes]) -> None:
-        pass
+    def __send_task_to_select_transaction_item(user_id: str, select_middleware: SelectTasksMiddleware, model: TransactionItem, batch: List[bytes]) -> None:
+        transaction_item_task = CSVMessageBuilder([user_id], ["transactions_items"])
+        for line in batch:
+            transaction_item: TransactionItem = model.from_bytes_and_project(line)
+            transaction_item_task.add_row([
+                transaction_item.transaction_id,
+                transaction_item.item_id,
+                transaction_item.quantity,
+                transaction_item.unit_price,
+                transaction_item.created_at.year,
+                transaction_item.created_at.month,
+                transaction_item.created_at.hour,
+            ])
+        select_middleware.send(transaction_item_task)
+
+    @staticmethod
+    def __send_task_eof_to_select(user_id: str, select_middleware: SelectTasksMiddleware) -> None:
+        eof_task = CSVMessageBuilder([user_id, user_id], ["query_1", "query_3"])
+        eof_task.set_as_eof()
+        select_middleware.send(eof_task)
