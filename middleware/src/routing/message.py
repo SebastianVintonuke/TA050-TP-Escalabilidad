@@ -44,7 +44,8 @@ class Message:
 		pass
 
 	def describe(self):
-		logging.info(f"action: msg_describe | result: success | tag: {self.tag} | queries_id:{self.ids} | queries_type: {self.types}")
+		pass
+		#logging.info(f"action: msg_describe | result: success | tag: {self.tag} | queries_id:{self.ids} | queries_type: {self.types}")
 
 	def stream_rows(self):
 		logging.info(f"action: stream_rows | result: success | data: {self.payload}")

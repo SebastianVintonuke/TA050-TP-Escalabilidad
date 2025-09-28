@@ -5,7 +5,7 @@ RUN pip install pika
 WORKDIR /
 COPY resultnode /resultnode
 COPY common /common
-COPY middleware/src /middleware
+COPY middleware /middleware
 
 ENV PYTHONPATH=/
 RUN python -m unittest resultnode/tests/tests.py
