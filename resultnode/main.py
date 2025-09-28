@@ -4,10 +4,7 @@ import logging
 import os
 from configparser import ConfigParser
 
-from middleware.errors import *
-from middleware.result_node_middleware import *
-
-from middleware import routing
+from middleware.src.result_node_middleware import ResultNodeMiddleware
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -61,8 +58,6 @@ def initialize_log(logging_level: int) -> None:
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
-    # results_ip = config_params["results_ip"]
-    # results_port = config_params["results_port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
 
