@@ -23,24 +23,15 @@ class TypeHandler:
             logging.info(f"action: filtered_full_msg | result: success | complete message for {self.msg_builder.types} was filtered")
 
 class SelectNode:
-    def __init__(self, select_middleware, types_confs, type_expander = {}):
+    def __init__(self, select_middleware, type_expander):
         self.middleware = select_middleware
-        self.types_configurations = types_confs
-        self.expander = type_expander
+        self.type_expander = type_expander
 
     def handle_task(self, msg):
         #msg.describe()
 
-        if (
-            msg.is_partition_eof()
-        ):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
-            for ind in range(msg.len_queries()):
-                conf = self.types_configurations[msg.types[ind]]
-                self.type_conf.send(
-                    conf.new_builder_for(
-                        msg, ind
-                    )  # Empty message that has same headers splitting to each destination.
-                )
+        if (msg.is_partition_eof()):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+            self.type_expander.propagate_signal_in(msg)
             msg.ack_self()
             return
             # logging.info(f"Should handle EOF, or error in send, code {msg.partition}")
@@ -49,14 +40,8 @@ class SelectNode:
         ind = 0
         types=set()
         for type in msg.types:
-            expansions = self.expander.get(type, [type])            
-            for expansion in expansions:
-                types.add(expansion)
-
-
-        for type in types:
-            
-            outputs.append(TypeHandler(self.types_configurations[type], msg, ind))
+            for config in self.type_expander.get_configurations_for(type):
+                outputs.append(TypeHandler(config, msg, ind))
             ind += 1
 
         for row in msg.stream_rows():
@@ -73,5 +58,4 @@ class SelectNode:
 
     def close(self):
         self.middleware.close()
-        for k, conf in self.types_configurations.items():
-            conf.close()
+        self.type_expander.close()
