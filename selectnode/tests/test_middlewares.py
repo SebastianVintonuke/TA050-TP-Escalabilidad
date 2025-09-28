@@ -8,8 +8,8 @@ from middleware.groupby_middleware import (
 from middleware.routing.csv_message import *
 from middleware.select_tasks_middleware import SelectTasksMiddleware
 
-from middleware import routing
 from common.config.row_filtering import *
+from middleware import routing
 
 
 def map_dict_to_vect(row):

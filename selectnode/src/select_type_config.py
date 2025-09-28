@@ -1,6 +1,9 @@
 import logging
 
-from common.config.base_type_config import BaseDictTypeConfiguration, BaseTypeConfiguration
+from common.config.base_type_config import (
+    BaseDictTypeConfiguration,
+    BaseTypeConfiguration,
+)
 from common.config.row_filtering import load_all_filters, should_keep
 
 
@@ -21,7 +24,7 @@ class SelectTypeConfiguration(BaseDictTypeConfiguration):
         try:
             # No pad needed ? self.pad_copy_row(row), mapping to dict and if not enough rows... fail
             row = self.mapper.map_input(row)
-            #logging.info(f"MAPPED ROW {row}")
+            # logging.info(f"MAPPED ROW {row}")
             if self.should_keep(row):
                 return self.mapper(row)
             return None

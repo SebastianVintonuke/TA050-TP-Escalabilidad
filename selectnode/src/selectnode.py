@@ -21,7 +21,8 @@ class TypeHandler:
             self.type_conf.send(self.msg_builder)
         else:
             pass
-            #logging.info(f"action: filtered_full_msg | result: success | complete message for {self.msg_builder.types} was filtered")
+            # logging.info(f"action: filtered_full_msg | result: success | complete message for {self.msg_builder.types} was filtered")
+
 
 class SelectNode:
     def __init__(self, select_middleware, type_expander):
@@ -29,9 +30,11 @@ class SelectNode:
         self.type_expander = type_expander
 
     def handle_task(self, msg):
-        #msg.describe()
+        # msg.describe()
 
-        if (msg.is_partition_eof()):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+        if (
+            msg.is_partition_eof()
+        ):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
             self.type_expander.propagate_signal_in(msg)
             msg.ack_self()
             return
@@ -39,7 +42,7 @@ class SelectNode:
 
         outputs = []
         ind = 0
-        types=set()
+        types = set()
         for type in msg.types:
             for config in self.type_expander.get_configurations_for(type):
                 outputs.append(TypeHandler(config, msg, ind))

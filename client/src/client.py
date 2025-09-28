@@ -91,7 +91,7 @@ class Client:
         self._client_socket_to_dispatcher.close()
         logging.info(f"action: data_upload | result: success | client_id: {client_id}")
 
-        time.sleep(10) # TODO sacar
+        time.sleep(10)  # TODO sacar
         # Obtengo del servidor la dirección de un results storage
         self._client_socket_to_server = self.create_client_socket(self._server_address)
         if not self._client_socket_to_server:

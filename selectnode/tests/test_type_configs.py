@@ -1,10 +1,10 @@
 import unittest
 
+from middleware.mocks.middleware import *
+
 from common.config.base_type_config import *
 from common.config.row_filtering import *
 from common.config.row_mapping import *
-
-from middleware.mocks.middleware import *
 from selectnode.src.select_type_config import *
 
 

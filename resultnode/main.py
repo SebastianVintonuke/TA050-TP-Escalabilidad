@@ -10,9 +10,9 @@ from common import QueryId
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
 from common.results.query1 import QueryResult1
-from common.results.query3 import QueryResult3, HalfCreatedAt
+from common.results.query3 import HalfCreatedAt, QueryResult3
 from middleware.src.result_node_middleware import ResultNodeMiddleware
-from middleware.src.routing.query_types import QUERY_3, QUERY_1
+from middleware.src.routing.query_types import QUERY_1, QUERY_3
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -80,7 +80,6 @@ def main() -> None:
 
     results_storage_middleware = MessageMiddlewareQueue("middleware", "results")
 
-
     def handle_result(msg):
         query_type = msg.types[0]
         if msg.is_partition_eof():
@@ -89,8 +88,14 @@ def main() -> None:
             if query_type == QUERY_1:
                 data: List[QueryResult1] = []
                 for line in msg.stream_rows():
-                    data.append(QueryResult1(transaction_id=line[0], final_amount=float(line[1])))
-                result_task = ResultTask(msg.ids[0], QueryId.Query1, msg.is_eof(), False, data).to_bytes()
+                    data.append(
+                        QueryResult1(
+                            transaction_id=line[0], final_amount=float(line[1])
+                        )
+                    )
+                result_task = ResultTask(
+                    msg.ids[0], QueryId.Query1, msg.is_eof(), False, data
+                ).to_bytes()
                 results_storage_middleware.send(result_task)
                 msg.ack_self()
 
@@ -103,11 +108,18 @@ def main() -> None:
                         semester = "H1"
                     else:
                         semester = "H2"
-                    data.append(QueryResult3(year_created_at=datetime.strptime(str(year), "%Y").date(),
-                                             half_created_at=HalfCreatedAt(semester), tpv=float(line[2]),
-                                             store_name=line[0]))
+                    data.append(
+                        QueryResult3(
+                            year_created_at=datetime.strptime(str(year), "%Y").date(),
+                            half_created_at=HalfCreatedAt(semester),
+                            tpv=float(line[2]),
+                            store_name=line[0],
+                        )
+                    )
 
-                result_task = ResultTask(msg.ids[0], QueryId.Query3, msg.is_eof(), False, data).to_bytes()
+                result_task = ResultTask(
+                    msg.ids[0], QueryId.Query3, msg.is_eof(), False, data
+                ).to_bytes()
                 results_storage_middleware.send(result_task)
                 msg.ack_self()
 
