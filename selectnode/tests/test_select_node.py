@@ -1,8 +1,10 @@
 import unittest
 
-from selectnode.src.mocks_middleware import *
-from selectnode.src.row_filtering import *
-from selectnode.src.row_mapping import *
+from middleware.mocks.middleware import *
+from common.config.row_filtering import *
+from common.config.row_mapping import *
+from common.config.type_expander import *
+
 from selectnode.src.select_type_config import *
 from selectnode.src.selectnode import *
 
@@ -44,9 +46,10 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle = MockMiddleware()
 
-        type_map = {"t1": type_conf}
+        type_exp = TypeExpander()
+        type_exp.add_configurations("t1", type_conf)
 
-        node = SelectNode(in_middle, type_map)
+        node = SelectNode(in_middle, type_exp)
         node.start()
 
         rows_pass = [
@@ -115,9 +118,10 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle = MockMiddleware()
 
-        type_map = {"t1": type_conf}
+        type_exp = TypeExpander()
+        type_exp.add_configurations("t1", type_conf)
 
-        node = SelectNode(in_middle, type_map)
+        node = SelectNode(in_middle, type_exp)
         node.start()
 
         rows_pass = [
@@ -192,9 +196,10 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle = MockMiddleware()
 
-        type_map = {"t1": type_conf}
+        type_exp = TypeExpander()
+        type_exp.add_configurations("t1", type_conf)
 
-        node = SelectNode(in_middle, type_map)
+        node = SelectNode(in_middle, type_exp)
         node.start()
 
         # in_cols = ["transaction_id","store_id", "year", "month", "hour", "revenue"]
@@ -314,9 +319,10 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle = MockMiddleware()
 
-        type_map = {"t4": type_conf}
+        type_exp = TypeExpander()
+        type_exp.add_configurations("t4", type_conf)
 
-        node = SelectNode(in_middle, type_map)
+        node = SelectNode(in_middle, type_exp)
         node.start()
 
         # in_cols = ["transaction_id","store_id","user_id", "year"]
@@ -414,7 +420,7 @@ class TestSelectNode(unittest.TestCase):
         result_grouper_4 = MockMiddleware()
         result_grouper_3 = MockMiddleware()
         result_grouper_1 = MockMiddleware()
-        type_map = {}
+        type_exp = TypeExpander()
 
         # Type 4
         type_conf = SelectTypeConfiguration(
@@ -426,7 +432,7 @@ class TestSelectNode(unittest.TestCase):
             ],
             out_conf={ROW_CONFIG_OUT_COLS: out_cols4},
         )
-        type_map["t4"] = type_conf
+        type_exp.add_configurations("t_all", type_conf)
 
         ### Type 3
         type_conf = SelectTypeConfiguration(
@@ -452,7 +458,7 @@ class TestSelectNode(unittest.TestCase):
                 ROW_CONFIG_OUT_COLS: out_cols3,
             },
         )
-        type_map["t3"] = type_conf
+        type_exp.add_configurations("t_all", type_conf)
 
         ### Type 1
         type_conf = SelectTypeConfiguration(
@@ -466,11 +472,11 @@ class TestSelectNode(unittest.TestCase):
             ],
             out_conf={ROW_CONFIG_OUT_COLS: out_cols1},
         )
-        type_map["t1"] = type_conf
+        type_exp.add_configurations("t_all", type_conf)
 
         in_middle = MockMiddleware()
 
-        node = SelectNode(in_middle, type_map)
+        node = SelectNode(in_middle, type_exp)
         node.start()
 
         # in_cols_final = ["transaction_id", "year", "store_id","user_id", "month", "hour", "revenue"]
@@ -538,8 +544,8 @@ class TestSelectNode(unittest.TestCase):
 
         message = MockMessage(
             "tag1",
-            ["q4", "q3", "q1"],
-            ["t4", "t3", "t1"],
+            ["user_id"],
+            ["t_all"],
             rows,
             lambda r: map_dict_to_vect_cols(in_cols_final, r),
         )
@@ -587,12 +593,12 @@ class TestSelectNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         in_middle = MockMiddleware()
 
-        type_map = {
+        type_exp = {
             "query_t_1": SelectTypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial),
             "query_t_2": SelectTypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial2)
         }
 
-        node = SelectNode(in_middle, type_map)
+        node = SelectNode(in_middle, type_exp)
         node.start()
 
         rows_pass = [

@@ -11,8 +11,12 @@ class QueryAccumulator:
 	def __init__(self, type_conf, msg, ind):
 		self.type_conf = type_conf
 		self.msg_builder = type_conf.new_builder_for(msg, ind)
+		
+		self.ongoing_partitions = set()
+		self.groups = {}
 
 	def check(self, row):
+		row = self.type_conf.map_input_row(row)
 		key = self.type_conf.grouper.get_group_key(row)
 
 		acc = self.groups.get(key, None)
@@ -24,7 +28,15 @@ class QueryAccumulator:
 			#acc.add_row(row) # Better in design? who knows
 
 	def send_built(self): # What happens If the groupbynode fails here/shutdowns here?
+		for group, acc in self.groups.items():
+			self.msg_builder.add_row(self.type_conf.get_output(group, acc))
+
 		self.type_conf.send(self.msg_builder)
+
+	def describe(self):
+		logging.info(f"curr status accumulator:")
+		for group, acc in self.groups.items():
+			logging.info(f"key {group} acc : {acc}")
 
 class GroupbyNode:
 	def __init__(self, group_middleware, types_confs):
@@ -42,8 +54,6 @@ class GroupbyNode:
 
 
 	def handle_task(self, msg):
-		msg.describe()
-
 		if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
 			if msg.is_last_message():
 				if msg.is_eof():
@@ -81,6 +91,9 @@ class GroupbyNode:
 		for row in msg.stream_rows():
 			for output in outputs:
 				output.check(row)
+
+		for output in outputs:
+			output.describe()
 
 		msg.ack_self()
 

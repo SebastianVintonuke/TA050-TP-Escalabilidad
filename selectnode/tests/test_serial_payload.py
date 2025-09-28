@@ -2,7 +2,7 @@ import unittest
 
 from middleware.routing.csv_message import *
 
-from selectnode.src.row_filtering import *
+from common.config.row_filtering import *
 
 
 def map_dict_to_vect(row):
