@@ -75,10 +75,24 @@ def main() -> None:
 
     result_middleware = ResultNodeMiddleware()
 
-    def handle_result(result_msg):
-        logging.info(f"GOT RESULT MSG? {result_msg}")
+    def handle_result(msg):
+
+        if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+            if msg.is_last_message():
+                if msg.is_eof():
+                    logging.info(f"Received final eof OF {msg.ids}")
+                else:
+                    logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
+            else:
+                logging.info(f"RESULT STORAGE RECEIVED PARITION EOF? IGNORED, partition {msg.partition}, ids:{msg.ids}")
+
+            msg.ack_self()
+            return
+        logging.info(f"GOT RESULT MSG? FROM QUERIES {msg.ids}")
         for itm in result_msg.stream_rows():
             logging.info(f"ROW {itm}")
+        
+        msg.ack_self()
 
     result_middleware.start_consuming(handle_result)
     # start_notifying((results_ip, results_port))

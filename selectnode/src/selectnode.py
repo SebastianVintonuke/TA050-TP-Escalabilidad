@@ -17,8 +17,10 @@ class TypeHandler:
             self.msg_builder.add_row(row)
 
     def send_built(self):
-        self.type_conf.send(self.msg_builder)
-
+        if self.msg_builder.has_payload():
+            self.type_conf.send(self.msg_builder)
+        else:
+            logging.info(f"action: filtered_full_msg | result: success | complete message for {self.msg_builder.types} was filtered")
 
 class SelectNode:
     def __init__(self, select_middleware, types_confs):

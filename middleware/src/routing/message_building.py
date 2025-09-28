@@ -15,6 +15,8 @@ class MessageBuilder:
         #assert len(row) == len(fields) # Same size of fields 
         self.payload.append(str(row))
 
+    def has_payload(self):
+        return len(self.payload) > 0
 
     def serialize_payload(self):
         if self.should_be_eof:

@@ -42,6 +42,9 @@ class MockMessageBuilder:
         # assert len(row) == len(fields) # Same size of fields
         self.payload.append(row)
 
+    def has_payload(self):
+        return len(self.payload) > 0
+
 
 class MockMessage(Message):
     def __init__(self, tag, queries_id, queries_type, payload, map_to_vec):
@@ -56,3 +59,4 @@ class MockMessage(Message):
 
     def stream_rows(self):
         return map(self.map_to_vec, iter(self.payload))
+        
