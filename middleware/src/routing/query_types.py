@@ -5,3 +5,7 @@ QUERY_4 = "query_4"
 
 ALL_FOR_TRANSACTIONS= "transactions"
 ALL_FOR_TRANSACTIONS_ITEMS= "transactions_items"
+
+QUERY_2_REVENUE = "query_2_revenue"
+QUERY_2_QUANTITY = "query_2_quantity"
+

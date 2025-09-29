@@ -55,11 +55,16 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
         self.add_row_vec(row.values())
 
 
+def builder_to_msg(builder):
+    return CSVMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.partition)
+
+
+
 def csv_msg_from_msg(msg, ind):
     return CSVMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.partition)
 
 def csv_hashed_from_msg(msg, ind):
-    return CSVHashedMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.ids[ind], msg.partition)
+    return CSVHashedMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.ids[ind]+str(msg.types[ind]), msg.partition)
 
 def msg_from_credentials(uuid, type, partition):
     return CSVMessageBuilder([uuid], [type], partition)
