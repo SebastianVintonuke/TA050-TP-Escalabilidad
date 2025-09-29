@@ -4,23 +4,64 @@ from common.config.base_type_config import (
     BaseDictTypeConfiguration,
     BaseTypeConfiguration,
 )
-from common.config.row_filtering import load_all_filters, should_keep
+from common.config.row_joining import *
 
 
 JOIN_ACTION_ID = 0
 JOIN_CONDITIONS = 1
+
+def divide_out_cols(in_left, in_right, out_cols):
+    out_left = []
+    out_right = []
+
+    for col in out_cols:
+        if col in in_left:
+            out_left.append(col)
+        else:
+            assert col in in_right
+            out_right.append(col)
+
+    return (out_left, out_right)
+
+
+def mapped_divide_out_cols(in_left, in_right, out_cols):
+    out_left = []
+    out_right = []
+
+    for col in out_cols:
+        try:
+            out_left.append(in_left.index(col))
+        except ValueError: # python bs... it means not in out left. better than a for since its cpython.
+            out_right.append(in_right.index(col))
+
+    return (out_left, out_right)
+
 
 class JoinTypeConfiguration:
 
     def __init__(
         self, out_middleware, builder_creator, 
         left_type,in_fields_left,in_fields_right, 
-        join_conf, out_mapper
+        join_conf, out_cols = None
     ):
         self.joiner = load_joiner(join_conf[JOIN_CONDITIONS])
+
+        self.joiner.map_cols(
+            lambda col_left: in_fields_left.index(col_left),
+            lambda col_right: in_fields_right.index(col_right),
+        )
+
         self.join_id = join_conf[JOIN_ACTION_ID]
         self.left_type = left_type
-        self.out_mapper = out_mapper
+
+
+        if out_conf == None:
+            self.out_mapper = JoinProjectMapperAll()
+        else:
+            out_left, out_right = mapped_divide_out_cols(self.in_fields_left, self.in_fields_right, out_cols)
+
+            self.out_mapper = JoinProjectMapper(out_left, out_right)
+
 
     def do_join_left_row(self, right_rows, left_row, join_receiver):
         for right_row in right_rows:
