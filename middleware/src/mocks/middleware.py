@@ -28,6 +28,12 @@ class MockMiddleware(MessageMiddleware):
     def delete(self):
         pass
 
+class MockCopyMiddleware(MockMiddleware):
+    def send(self, msg):
+        cloned = msg.clone()
+        cloned.payload = [itm for itm in msg.payload]
+        super().send(cloned)
+
 
 class MockMessageBuilder(HashedMessageBuilder):
     def __init__(self, msg, ind):
@@ -39,6 +45,29 @@ class MockMessageBuilder(HashedMessageBuilder):
     def add_row(self, row):
         # assert len(row) == len(fields) # Same size of fields
         self.payload.append(row)
+
+    def clone(self):
+        msg = MockMessageBuilder(self.msg_from, self.ind)
+        msg.partition_ind = self.partition_ind
+        msg.should_be_eof = self.should_be_eof
+        return msg
+
+
+class BareMockMessageBuilder(HashedMessageBuilder):
+    def __init__(self, msg, ind):
+        super().__init__([], [], "key_hash", 0)
+        self.payload = []
+
+    def add_row(self, row):
+        # assert len(row) == len(fields) # Same size of fields
+        self.payload.append(row)
+
+    def clone(self):
+        msg = BareMockMessageBuilder(None, 0)
+        msg.partition_ind = self.partition_ind
+        msg.should_be_eof = self.should_be_eof
+        return msg
+
 
 
 class MockMessage(Message):

@@ -27,8 +27,6 @@ def load_joiner(joiner_serial):
 
 
 class JoinProjectMapperAll:
-    def __init__(self):
-
     def __call__(self, row_left, row_right):
         return row_left + row_right
 

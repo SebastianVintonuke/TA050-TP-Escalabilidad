@@ -42,26 +42,33 @@ class JoinTypeConfiguration:
     def __init__(
         self, out_middleware, builder_creator, 
         left_type,in_fields_left,in_fields_right, 
-        join_conf, out_cols = None
+        join_id,join_conf, out_cols = None
     ):
-        self.joiner = load_joiner(join_conf[JOIN_CONDITIONS])
+        self.joiner = load_joiner(join_conf)
 
         self.joiner.map_cols(
             lambda col_left: in_fields_left.index(col_left),
             lambda col_right: in_fields_right.index(col_right),
         )
 
-        self.join_id = join_conf[JOIN_ACTION_ID]
+        self.join_id = join_id
         self.left_type = left_type
 
 
-        if out_conf == None:
+        if out_cols == None:
             self.out_mapper = JoinProjectMapperAll()
         else:
-            out_left, out_right = mapped_divide_out_cols(self.in_fields_left, self.in_fields_right, out_cols)
+            out_left, out_right = mapped_divide_out_cols(in_fields_left, in_fields_right, out_cols)
 
             self.out_mapper = JoinProjectMapper(out_left, out_right)
 
+        self.builder_creator = builder_creator
+        self.middleware = out_middleware
+
+    def new_builder_for(self, inp_msg, ind_query):
+        return self.builder_creator(inp_msg, ind_query)
+    def send(self, builder):
+        return self.middleware.send(builder)
 
     def do_join_left_row(self, right_rows, left_row, join_receiver):
         for right_row in right_rows:
@@ -73,15 +80,3 @@ class JoinTypeConfiguration:
         for left_row in left_rows:
             if self.joiner.should_join(left_row, right_row):
                 join_receiver(self.out_mapper(left_row, right_row))
-
-    def filter_map(self, row):
-        try:
-            # No pad needed ? self.pad_copy_row(row), mapping to dict and if not enough rows... fail
-            row = self.mapper.map_input(row)
-            # logging.info(f"MAPPED ROW {row}")
-            if self.should_keep(row):
-                return self.mapper(row)
-            return None
-        except Exception as e:
-            logging.error(f"Failed filter map of row {row} invalid {e}")
-            return None

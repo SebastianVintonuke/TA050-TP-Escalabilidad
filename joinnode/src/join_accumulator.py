@@ -1,16 +1,7 @@
 
-
+DEFAULT_LIMIT= 10000
 class JoinAccumulator:
-    def __init__(self, type_conf, msg_builder):
-        self.type_conf = type_conf
-        self.msg_builder = msg_builder
-
-        self.left_rows = []
-        self.right_rows = []
-        self.left_finished = False
-        self.right_finished = False
-
-    def __init__(self, type_conf, msg, ind):
+    def __init__(self, type_conf, msg, ind, limit = DEFAULT_LIMIT):
         self.type_conf = type_conf
         self.msg_builder = type_conf.new_builder_for(msg, ind)
 
@@ -18,10 +9,11 @@ class JoinAccumulator:
         self.right_rows = []
         self.left_finished = False
         self.right_finished = False
+        self.limit = limit
 
     def add_joined(self , row):
         self.msg_builder.add_row(row)
-        if self.msg_builder.len_payload() > 10000:
+        if self.msg_builder.len_payload() >= self.limit:
             self.type_conf.send(self.msg_builder)
             self.msg_builder.clear_payload()
 
@@ -36,7 +28,7 @@ class JoinAccumulator:
             self.type_conf.do_join_right_row(self.left_rows, right_row, self.add_joined)
 
         self.right_rows = [] # Empty it since already used.            
-        self.describe()
+        #self.describe()
 
 
     def handle_eof_right(self):
@@ -50,23 +42,23 @@ class JoinAccumulator:
             self.type_conf.do_join_left_row(self.right_rows, left_row, self.add_joined)
         
         self.left_rows = [] # Empty it since already used.
-        self.describe()
+        #self.describe()
 
     def do_join_right_row(self, right_row):
         self.type_conf.do_join_right_row(self.left_rows, right_row, self.add_joined)
-        self.describe()
+        #self.describe()
 
     def do_join_left_row(self, left_row):
         self.type_conf.do_join_left_row(self.right_rows, left_row, self.add_joined)
-        self.describe()
+        #self.describe()
 
     def add_row_left(self, left_row):
-        self.left_rows.append(row)
-        self.describe()
+        self.left_rows.append(left_row)
+        #self.describe()
 
     def add_row_right(self, right_row):
         self.right_rows.append(right_row)
-        self.describe()
+        #self.describe()
 
     def get_action_for_type(self,type):
         if type == self.type_conf.left_type:
@@ -83,6 +75,9 @@ class JoinAccumulator:
 
 
     def send_eof(self): # What happens If the groupbynode fails here/shutdowns here?
+        if self.msg_builder.has_payload(): # if it has payload send it
+            self.type_conf.send(self.msg_builder)
+
         eof_signal = self.msg_builder.clone()
         eof_signal.set_as_eof()
         self.type_conf.send(eof_signal)

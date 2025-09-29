@@ -26,12 +26,11 @@ def add_joinnode_config(types_expander, result_middleware):
     # Config for revenue on query2
     types_expander.add_configuration_to_many(
         JoinTypeConfiguration(result_middleware,csv_message.csv_hashed_from_msg,
-            type_left= QUERY_PRODUCT_NAMES, #
+            left_type= QUERY_PRODUCT_NAMES, #
+            join_id = QUERY_2_REVENUE, 
             in_fields_left=["product_id","product_name"],  # ..product names
             in_fields_right=["top_product_id", "month", "revenue"],
-            join_conf=[
-                [INNER_ON_EQ, {"col_left":"product_id", "col_right":"top_product_id"}]
-            ],
+            join_conf=[INNER_ON_EQ, {"col_left":"product_id", "col_right":"top_product_id"}],
             out_cols= ["product_id","product_name","month","revenue",]
         ),
         # Add the config to all these types... but.. internal join will separate/group content as needed
@@ -43,20 +42,12 @@ def add_joinnode_config(types_expander, result_middleware):
     #Config for quantity on query2
     types_expander.add_configuration_to_many(
         JoinTypeConfiguration(result_middleware,csv_message.csv_hashed_from_msg,
-            type_left= QUERY_PRODUCT_NAMES, #
+            left_type= QUERY_PRODUCT_NAMES, 
+            join_id=QUERY_2_QUANTITY,
             in_fields_left=["product_id","product_name"],  # ..product names
             in_fields_right=["top_product_id", "month", "quantity_sold"],
-            join_conf=[
-                [INNER_ON_EQ, {"left_col":"product_id", "right_col":"top_product_id"}]
-            ],
-            out_conf={ # Joined row has [... in left .. in right]
-                ROW_CONFIG_OUT_COLS: [
-                    "product_id",
-                    "product_name",
-                    "month",
-                    "quantity_sold",
-                ],
-            },
+            join_conf=[INNER_ON_EQ, {"col_left":"product_id", "col_right":"top_product_id"}],
+            out_cols= ["product_id","product_name","month","quantity_sold",]
         ),
         # Add the config to all these types... but.. internal join will separate/group content as needed
         QUERY_2_QUANTITY,
