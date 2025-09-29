@@ -33,7 +33,7 @@ class QueryAccumulator:
 		for group, acc in self.groups.items():
 			self.type_conf.add_output(self.msg_builder, group, acc)
 
-		logging.info(f"payload: {self.msg_builder.payload}")
+		#logging.info(f"payload: {self.msg_builder.payload}")
 		self.type_conf.send(self.msg_builder)
 		eof_signal = self.msg_builder.clone()
 		eof_signal.set_as_eof()
@@ -42,9 +42,10 @@ class QueryAccumulator:
 		self.type_conf.send(eof_signal)
 
 	def describe(self):
-		logging.info(f"curr status accumulator:")
-		for group, acc in self.groups.items():
-			logging.info(f"key {group} acc : {acc}")
+		if len(self.groups) < 100:
+			logging.info(f"curr status accumulator topk:")
+			for group, acc in self.groups.items():
+				logging.info(f"key {group} acc : {acc}")
 
 class GroupbyNode:
 	def __init__(self, group_middleware, types_confs):
@@ -65,13 +66,21 @@ class GroupbyNode:
 		if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
 			if msg.is_last_message():
 				if msg.is_eof():
-					logging.info(f"Received final eof OF {msg.ids}")
+					logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
+					ind=0
 					for query_id in msg.ids:
 						acc = self.accumulators.get(query_id, None)
-						logging.info(f"ACC: {acc}")
+						#logging.info(f"ACC: {acc}")
 						if acc:
 							acc.send_built()
-					#self.propagate_signal(msg)
+						else:
+							# propagate eof signal for this message 
+							conf = self.types_configurations[msg.types[ind]]
+							self.type_conf.send(
+								conf.new_builder_for(msg, ind) #Empty message that has same headers splitting to each destination.
+							)
+
+						ind+=1
 				else:
 					logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
 					self.propagate_signal(msg)
@@ -82,7 +91,6 @@ class GroupbyNode:
 						acc.ongoing_partitions.discard(msg.partition)
 			msg.ack_self()
 			return
-
 
 		outputs = []
 		ind = 0
@@ -100,6 +108,9 @@ class GroupbyNode:
 		for row in msg.stream_rows():
 			for output in outputs:
 				output.check(row)
+
+		#for output in outputs:
+		#	output.describe()
 
 		msg.ack_self()
 

@@ -1,6 +1,6 @@
 from middleware.middleware import *
 from middleware.routing.csv_message import *
-
+import logging
 # Do nothing but let have the contract, for the ack...
 class MemoryMessageChannel:
     def basic_ack(self, delivery_tag):
@@ -10,6 +10,7 @@ class MethodClass:
         self.delivery_tag = tag
 
 def csv_builder_to_msg(builder):
+    logging.info(f"SENDING over memory middleware {builder.get_headers()} {len(builder.payload)}")
     return CSVMessage(MemoryMessageChannel(), MethodClass(""), builder.get_headers(), builder.serialize_payload())
 
 

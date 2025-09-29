@@ -4,9 +4,10 @@ from middleware.errors import *
 from middleware.routing.query_types import *
 
 from .groupby_type_config import * 
+from .row_aggregate import * 
 
 def create_diverged_message(msg, ind):
-    return csv_message.CSVHashedMessageBuilder([msg.ids[ind]], [QUERY_2_REVENUE, QUERY_2_QUANTITY], msg.ids[ind]+str(msg.types[ind]), msg.partition)
+    return csv_message.CSVHashedMessageBuilder([msg.ids[ind], msg.ids[ind]], [QUERY_2_REVENUE, QUERY_2_QUANTITY], msg.ids[ind]+str(msg.types[ind]), msg.partition)
 
 def configure_types_groupby(join_middleware, topk_middleware):
     types_config = {}
@@ -21,7 +22,7 @@ def configure_types_groupby(join_middleware, topk_middleware):
             out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity_sold"]},
     )
 
-    types_config[QUERY_3] = GroupbyTypeConfiguration(join_middleware, csv_message.csv_msg_from_msg, 
+    types_config[QUERY_3] = GroupbyTypeConfiguration(join_middleware, csv_message.csv_hashed_from_msg, 
             in_fields = ["store_id","mapped_semester","revenue"],  
             grouping_conf= [["store_id", "mapped_semester"], {
                 "revenue": SUM_ACTION,

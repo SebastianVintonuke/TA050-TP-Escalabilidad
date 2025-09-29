@@ -91,8 +91,8 @@ def main() -> None:
         types_config_groupby = configure_types_groupby(result_middleware, topk_middleware)
 
         # In memory it doesnt actually connect to network nor block for messeging
-        types_config_topk = configure_types_groupby(result_middleware, result_middleware)
-        node_topk = GroupbyNode(middleware_group, types_config_topk)
+        types_config_topk = configure_types_topk(result_middleware)
+        node_topk = GroupbyNode(topk_middleware, types_config_topk)
         node_topk.start()
 
         node = GroupbyNode(middleware_group, types_config_groupby)
