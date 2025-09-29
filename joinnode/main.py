@@ -89,10 +89,9 @@ def main() -> None:
 
         types_expander = TypeExpander()
         result_middleware = ResultNodeMiddleware()
-        groupby_middleware = JoinTasksMiddleware(join_node_count, ind = join_node_ind)
-        add_joinnode_config(types_expander, result_middleware, groupby_middleware)
+        add_joinnode_config(types_expander, result_middleware)
 
-        node = SelectNode(SelectTasksMiddleware(), types_expander)
+        node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), types_expander)
 
         restart = True
         while restart:

@@ -2,19 +2,9 @@
 from middleware.errors import *
 from middleware.routing import csv_message
 from middleware.routing.query_types import *
-from src.select_type_config import *
-from common.config.row_filtering import *
-from common.config.row_mapping import *
 
-SHARED_IN_FIELDS = [
-    "transaction_id",
-    "year",
-    "store_id",
-    "user_id",
-    "month",
-    "hour",
-    "revenue",
-]
+from src.join_type_config import *
+from common.config.row_joining import *
 
 def add_joinnode_config(types_expander, result_middleware):
     # Basic filter description
