@@ -18,6 +18,12 @@ class MessageBuilder:
     def has_payload(self):
         return len(self.payload) > 0
 
+    def len_payload(self):
+        return len(self.payload)
+
+    def clear_payload(self):
+        self.payload = []
+
     def serialize_payload(self):
         if self.should_be_eof:
             return b""

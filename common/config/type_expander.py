@@ -34,6 +34,9 @@ class TypeExpander:
 	def get_configurations_for(self, exp):
 		return self.expansions[exp]
 
+	def get_configuration_for(self, exp):
+		return self.expansions[exp][0]
+
 	def propagate_signal_in(self, msg):
 		for ind in range(len(msg.types)):
 			# Empty message that has same headers splitting to each destination.
