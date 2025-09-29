@@ -69,6 +69,7 @@ class GroupbyNode:
 					logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
 					ind=0
 					for query_id in msg.ids:
+						query_id = query_id+str(msg.types[ind])
 						acc = self.accumulators.get(query_id, None)
 						#logging.info(f"ACC: {acc}")
 						if acc:
@@ -85,16 +86,20 @@ class GroupbyNode:
 					logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
 					self.propagate_signal(msg)
 			else: # Not last message, mark partition as ended
+				ind = 0
 				for query_id in msg.ids:
+					query_id = query_id+str(msg.types[ind])
 					acc = self.accumulators.get(query_id, None)
 					if acc:
 						acc.ongoing_partitions.discard(msg.partition)
+					ind +=1
 			msg.ack_self()
 			return
 
 		outputs = []
 		ind = 0
 		for query_id in msg.ids:
+			query_id = query_id+str(msg.types[ind]) # Change it take into account the type so we can do multiple queries at once
 			acc = self.accumulators.get(query_id, None)
 
 			if acc == None:
