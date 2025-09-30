@@ -21,7 +21,7 @@ def add_joinnode_config(types_expander, result_middleware):
             in_fields_left=["product_id","product_name"],  # ..product names
             in_fields_right=["top_product_id", "month", "revenue"],
             join_conf=[INNER_ON_EQ, {"col_left":"product_id", "col_right":"top_product_id"}],
-            out_cols= ["product_id","product_name","month","revenue",]
+            out_cols= ["product_name", "month", "revenue",]
         ),
         # Add the config to all these types... but.. internal join will separate/group content as needed
         QUERY_2_REVENUE,
@@ -37,7 +37,7 @@ def add_joinnode_config(types_expander, result_middleware):
             in_fields_left=["product_id","product_name"],  # ..product names
             in_fields_right=["top_product_id", "month", "quantity_sold"],
             join_conf=[INNER_ON_EQ, {"col_left":"product_id", "col_right":"top_product_id"}],
-            out_cols= ["product_id","product_name","month","quantity_sold",]
+            out_cols= ["product_name", "month", "quantity_sold"]
         ),
         # Add the config to all these types... but.. internal join will separate/group content as needed
         QUERY_2_QUANTITY,
@@ -56,7 +56,7 @@ def add_joinnode_config(types_expander, result_middleware):
             in_fields_left=["store_id","store_name"],  # ..store names
             in_fields_right=["store_id","mapped_semester", "tpv"],
             join_conf=[INNER_ON_EQ, {"col_left":"store_id", "col_right":"store_id"}],
-            out_cols= ["store_id","store_name","mapped_semester","tpv",]
+            out_cols= ["mapped_semester","store_name","tpv",]
         ),
         # Add the config to all these types... but.. internal join will separate/group content as needed
         QUERY_3,

@@ -97,11 +97,12 @@ def main() -> None:
     def handle_query_2_best_selling_result(msg, user_id: str) -> None:
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
-            # TODO check order line
-            year_month_created_at: date = datetime.strptime("2025-12", "%Y-%m").date()
-            item_name: str = "store_name"
-            sellings_qty: int = 0
-            # TODO end
+            item_name: str = line[0]
+            month_encoded = int(line[1])
+            year = month_encoded // 12 + 2024
+            month = month_encoded % 12 + 1
+            year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
+            sellings_qty: int = line[2]
             data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
         result_task = ResultTask(user_id, QueryId.Query2BestSelling, msg.is_eof(), False, data).to_bytes()
         results_storage_middleware.send(result_task)
@@ -110,11 +111,12 @@ def main() -> None:
     def handle_query_2_best_most_profit(msg, user_id) -> None:
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
-            # TODO check order line
-            year_month_created_at: date = datetime.strptime("2025-12", "%Y-%m").date()
-            item_name: str = "store_name"
-            profit_sum: float = 0.0
-            # TODO end
+            item_name: str = line[0]
+            month_encoded = int(line[1])
+            year = month_encoded // 12 + 2024
+            month = month_encoded % 12 + 1
+            year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
+            profit_sum: float = line[2]
             data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
         result_task = ResultTask(user_id, QueryId.Query2MostProfit, msg.is_eof(), False, data).to_bytes()
         results_storage_middleware.send(result_task)
@@ -123,8 +125,8 @@ def main() -> None:
     def handle_query_3_result(msg, user_id: str) -> None:
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
-            year_created_at, half_created_at = __year_semester_decode(line[1])
-            store_name = line[0]  # TODO join
+            year_created_at, half_created_at = __year_semester_decode(line[0])
+            store_name = line[1]  # TODO join
             tpv = float(line[2])
             data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
         result_task = ResultTask(user_id, QueryId.Query3, msg.is_eof(), False, data).to_bytes()

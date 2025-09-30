@@ -15,7 +15,8 @@ from common.utils import new_uuid, QueryId
 from common.protocol.byte import ByteProtocol
 from common.protocol.signal import SignalProtocol
 from common.protocol.batch import BatchProtocol
-from middleware.src.routing.csv_message import CSVMessageBuilder
+from middleware.src.join_tasks_middleware import JoinTasksMiddleware
+from middleware.src.routing.csv_message import CSVMessageBuilder, CSVHashedMessageBuilder
 from middleware.src.select_tasks_middleware import SelectTasksMiddleware
 
 
@@ -40,6 +41,7 @@ class DispatcherProtocol:
         #results_middleware.send(ResultTask(user_id, QueryId.Query1, False, False, []).to_bytes())
 
         select_middleware = SelectTasksMiddleware()
+        join_middleware = JoinTasksMiddleware(1)
 
         batch = self._batch_protocol.wait_batch()
         while batch: # While files
@@ -53,11 +55,11 @@ class DispatcherProtocol:
                 elif model is TransactionItem:
                     self.__send_task_to_select_transaction_item(user_id, select_middleware, model, batch)
                 elif model is MenuItem:
-                    pass # TODO Mandar a join
+                    self.__send_task_to_join_menu_item(user_id, join_middleware, model, batch)
                 elif model is User:
                     pass # TODO Mandar a join
                 elif model is Store:
-                    pass # TODO Mandar a join
+                    self.__send_task_to_join_store(user_id, join_middleware, model, batch)
                 else:
                     raise Exception(f"Unknown model: {model}")
 
@@ -65,6 +67,7 @@ class DispatcherProtocol:
             batch = self._batch_protocol.wait_batch() # End of file
 
         self.__send_task_eof_to_select(user_id, select_middleware)
+        self.__send_task_eof_to_join(user_id, join_middleware)
 
         self._byte_protocol.send_bytes(user_id.encode())
 
@@ -98,7 +101,39 @@ class DispatcherProtocol:
         select_middleware.send(transaction_item_task)
 
     @staticmethod
+    def __send_task_to_join_menu_item(user_id: str, join_middleware: JoinTasksMiddleware, model: MenuItem, batch: List[bytes]) -> None:
+        menu_item_task = CSVHashedMessageBuilder([user_id], ["query_product_names"], user_id)
+        for line in batch:
+            print(line)
+            menu_item: MenuItem = model.from_bytes_and_project(line)
+            menu_item_task.add_row([
+                menu_item.item_id,
+                menu_item.item_name,
+            ])
+        join_middleware.send(menu_item_task)
+
+    @staticmethod
+    def __send_task_to_join_store(user_id: str, join_middleware: JoinTasksMiddleware, model: Store, batch: List[bytes]) -> None:
+        store_task = CSVHashedMessageBuilder([user_id], ["query_store_names"], user_id)
+        for line in batch:
+            store: Store = model.from_bytes_and_project(line)
+            store_task.add_row([
+                store.store_id,
+                store.store_name,
+            ])
+        join_middleware.send(store_task)
+
+    @staticmethod
     def __send_task_eof_to_select(user_id: str, select_middleware: SelectTasksMiddleware) -> None:
         eof_task = CSVMessageBuilder([user_id, user_id], ["query_1", "query_3"])
         eof_task.set_as_eof()
         select_middleware.send(eof_task)
+
+    @staticmethod
+    def __send_task_eof_to_join(user_id: str, join_middleware: JoinTasksMiddleware) -> None:
+        eof_product_task = CSVHashedMessageBuilder([user_id], ["query_product_names"], user_id)
+        eof_store_task = CSVHashedMessageBuilder([user_id], ["query_store_names"], user_id)
+        eof_product_task.set_as_eof()
+        eof_store_task.set_as_eof()
+        join_middleware.send(eof_product_task)
+        join_middleware.send(eof_store_task)
