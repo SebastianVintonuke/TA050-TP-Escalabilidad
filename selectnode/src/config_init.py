@@ -48,7 +48,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
     """
 
     types_expander.add_configurations(
-        ALL_FOR_TRANSACTIONS_ITEMS,
+        QUERY_2,
         SelectTypeConfiguration(
             groupby_middleware,
             lambda msg, ind: csv_message.hashed_msg_from_credentials(
@@ -116,8 +116,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
             4. Fecha de cumpleaños de los 3 clientes que han hecho más compras durante 2024 y
             2025, para cada sucursal.
     """
-    types_expander.add_configurations(
-        ALL_FOR_TRANSACTIONS,
+    types_expander.add_configuration_to_many(
         SelectTypeConfiguration(
             groupby_middleware,
             lambda msg, ind: csv_message.hashed_msg_from_credentials(
@@ -129,4 +128,6 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
             ],
             out_conf={ROW_CONFIG_OUT_COLS: ["transaction_id", "store_id", "user_id"]},
         ),
+        ALL_FOR_TRANSACTIONS,
+        QUERY_4
     )

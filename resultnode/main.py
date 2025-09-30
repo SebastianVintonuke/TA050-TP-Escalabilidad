@@ -15,7 +15,7 @@ from common.results.query2mp import QueryResult2MostProfit
 from common.results.query3 import QueryResult3, HalfCreatedAt
 from common.results.query4 import QueryResult4
 from middleware.src.result_node_middleware import ResultNodeMiddleware
-from middleware.src.routing.query_types import QUERY_1, QUERY_3, QUERY_2, QUERY_4
+from middleware.src.routing.query_types import QUERY_1, QUERY_3, QUERY_2, QUERY_4, QUERY_2_QUANTITY, QUERY_2_REVENUE
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -85,16 +85,26 @@ def main() -> None:
 
 
     def handle_query_1_result(msg, user_id: str) -> None:
+        if msg.is_eof():
+            result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
+            results_storage_middleware.send(result_task)
+            msg.ack_self()
+            return
         data: List[QueryResult1] = []
         for line in msg.stream_rows():
             transaction_id = line[0]
             final_amount = float(line[1])
             data.append(QueryResult1(transaction_id=transaction_id, final_amount=final_amount))
-        result_task = ResultTask(user_id, QueryId.Query1, msg.is_eof(), False, data).to_bytes()
+        result_task = ResultTask(user_id, QueryId.Query1, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
         msg.ack_self()
 
     def handle_query_2_best_selling_result(msg, user_id: str) -> None:
+        if msg.is_eof():
+            result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
+            results_storage_middleware.send(result_task)
+            msg.ack_self()
+            return
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
             item_name: str = line[0]
@@ -108,7 +118,12 @@ def main() -> None:
         results_storage_middleware.send(result_task)
         msg.ack_self()
 
-    def handle_query_2_best_most_profit(msg, user_id) -> None:
+    def handle_query_2_most_profit_result(msg, user_id) -> None:
+        if msg.is_eof():
+            result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
+            results_storage_middleware.send(result_task)
+            msg.ack_self()
+            return
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
             item_name: str = line[0]
@@ -123,10 +138,15 @@ def main() -> None:
         msg.ack_self()
 
     def handle_query_3_result(msg, user_id: str) -> None:
+        if msg.is_eof():
+            result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
+            results_storage_middleware.send(result_task)
+            msg.ack_self()
+            return
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
             year_created_at, half_created_at = __year_semester_decode(line[0])
-            store_name = line[1]  # TODO join
+            store_name = line[1]
             tpv = float(line[2])
             data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
         result_task = ResultTask(user_id, QueryId.Query3, msg.is_eof(), False, data).to_bytes()
@@ -134,6 +154,11 @@ def main() -> None:
         msg.ack_self()
 
     def handle_query_4_result(msg, user_id: str) -> None:
+        if msg.is_eof():
+            result_task = ResultTask(user_id, QueryId.Query4, True, False, []).to_bytes()
+            results_storage_middleware.send(result_task)
+            msg.ack_self()
+            return
         data: List[QueryResult4] = []
         for line in msg.stream_rows():
             # TODO check order line
@@ -158,25 +183,23 @@ def main() -> None:
     def handle_result(msg):
         user_id = msg.ids[0]
         query_type = msg.types[0]
-        if msg.is_partition_eof():
-            pass
+        if query_type == QUERY_1:
+            handle_query_1_result(msg, user_id)
+        elif query_type == QUERY_2_QUANTITY:
+            logging.info(f"{QUERY_2_QUANTITY}-{msg.is_eof()}")
+            handle_query_2_best_selling_result(msg, user_id)
+        elif query_type == QUERY_2_REVENUE:
+            logging.info(f"{QUERY_2_REVENUE}-{msg.is_eof()}")
+            handle_query_2_most_profit_result(msg, user_id)
+        elif query_type == QUERY_3:
+            logging.info(f"{QUERY_3}-{msg.is_eof()}")
+            handle_query_3_result(msg, user_id)
+        elif query_type == QUERY_4:
+            logging.info(f"{QUERY_4}-{msg.is_eof()}")
+            handle_query_4_result(msg, user_id)
         else:
-            if query_type == QUERY_1:
-                handle_query_1_result(msg, user_id)
-
-            # TODO query 2 se separa en best selling y most profit, se guardan en archivos diferentes
-            elif query_type == QUERY_2:
-                handle_query_2_best_selling_result(msg, user_id)
-            #elif query_type == QUERY_2:
-                #handle_query_2_most_profit_result(msg, user_id)
-            # TODO end
-
-            elif query_type == QUERY_3:
-                handle_query_3_result(msg, user_id)
-            elif query_type == QUERY_4:
-                handle_query_4_result(msg, user_id)
-            else:
-                raise ValueError(f"Unknown query type: {query_type}")
+            logging.info(f"{msg.types}--------")
+            #raise ValueError(f"Unknown query type: {query_type}")
 
     result_middleware.start_consuming(handle_result)
 

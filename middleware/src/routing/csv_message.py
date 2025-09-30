@@ -53,6 +53,8 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
         self.payload.append(",".join(map(str, row)))
     def add_row_dict(self,row):
         self.add_row_vec(row.values())
+    def clone(self):
+        return CSVHashedMessageBuilder(self.ids, self.types, self.key_hash, self.partition_ind)
 
 
 def builder_to_msg(builder):

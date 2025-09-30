@@ -1,6 +1,6 @@
 import logging
 import socket
-from typing import Callable, List, Union
+from typing import Callable, List, Union, Optional
 
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
@@ -44,9 +44,16 @@ class DispatcherProtocol:
         join_middleware = JoinTasksMiddleware(1)
 
         batch = self._batch_protocol.wait_batch()
+        last_model: Optional[Model] = None
         while batch: # While files
             header = batch.pop(0)
             model = Model.model_for(header)
+
+            if model != last_model and last_model is not None:
+                self.__send_EOF_for(user_id, last_model, select_middleware, join_middleware)
+
+            last_model = model
+
             logging.info(f"action: receive_file | result: in_progress | data_type: {model.__name__}")
 
             while batch: # While batch of file
@@ -65,9 +72,6 @@ class DispatcherProtocol:
 
                 batch = self._batch_protocol.wait_batch() # End of batch
             batch = self._batch_protocol.wait_batch() # End of file
-
-        self.__send_task_eof_to_select(user_id, select_middleware)
-        self.__send_task_eof_to_join(user_id, join_middleware)
 
         self._byte_protocol.send_bytes(user_id.encode())
 
@@ -89,7 +93,7 @@ class DispatcherProtocol:
 
     @staticmethod
     def __send_task_to_select_transaction_item(user_id: str, select_middleware: SelectTasksMiddleware, model: TransactionItem, batch: List[bytes]) -> None:
-        transaction_item_task = CSVMessageBuilder([user_id], ["transactions_items"])
+        transaction_item_task = CSVMessageBuilder([user_id], ["query_2"])
         for line in batch:
             transaction_item: TransactionItem = model.from_bytes_and_project(line)
             transaction_item_task.add_row([
@@ -104,7 +108,6 @@ class DispatcherProtocol:
     def __send_task_to_join_menu_item(user_id: str, join_middleware: JoinTasksMiddleware, model: MenuItem, batch: List[bytes]) -> None:
         menu_item_task = CSVHashedMessageBuilder([user_id], ["query_product_names"], user_id)
         for line in batch:
-            print(line)
             menu_item: MenuItem = model.from_bytes_and_project(line)
             menu_item_task.add_row([
                 menu_item.item_id,
@@ -124,16 +127,35 @@ class DispatcherProtocol:
         join_middleware.send(store_task)
 
     @staticmethod
-    def __send_task_eof_to_select(user_id: str, select_middleware: SelectTasksMiddleware) -> None:
-        eof_task = CSVMessageBuilder([user_id, user_id], ["query_1", "query_3"])
-        eof_task.set_as_eof()
-        select_middleware.send(eof_task)
+    def __send_EOF_for(user_id: str, model: Model, select_middleware: SelectTasksMiddleware, join_middleware: JoinTasksMiddleware):
+        if model is Transaction:
+            logging.info(f"EOF FOR TRANSACTIONS")
+            eof_task = CSVMessageBuilder([user_id, user_id, user_id],
+                                         ["query_1", "query_3", "query_4"])
+            eof_task.set_as_eof()
+            eof_task.set_finish_signal()
+            select_middleware.send(eof_task)
+        elif model is TransactionItem:
+            logging.info(f"EOF FOR TRANSACTIONS_ITEMS")
+            eof_task = CSVMessageBuilder([user_id],
+                                         ["query_2"])
+            eof_task.set_as_eof()
+            eof_task.set_finish_signal()
+            select_middleware.send(eof_task)
 
-    @staticmethod
-    def __send_task_eof_to_join(user_id: str, join_middleware: JoinTasksMiddleware) -> None:
-        eof_product_task = CSVHashedMessageBuilder([user_id], ["query_product_names"], user_id)
-        eof_store_task = CSVHashedMessageBuilder([user_id], ["query_store_names"], user_id)
-        eof_product_task.set_as_eof()
-        eof_store_task.set_as_eof()
-        join_middleware.send(eof_product_task)
-        join_middleware.send(eof_store_task)
+        elif model is MenuItem:
+            logging.info(f"EOF FOR MENU_ITEMS")
+            eof_product_task = CSVHashedMessageBuilder([user_id], ["query_product_names"], user_id)
+            eof_product_task.set_as_eof()
+            eof_product_task.set_finish_signal()
+            join_middleware.send(eof_product_task)
+    
+        elif model is User:
+            pass  # TODO Mandar a join
+
+        elif model is Store:
+            logging.info(f"EOF FOR STORES")
+            eof_store_task = CSVHashedMessageBuilder([user_id], ["query_store_names"], user_id)
+            eof_store_task.set_as_eof()
+            eof_store_task.set_finish_signal()
+            join_middleware.send(eof_store_task)
