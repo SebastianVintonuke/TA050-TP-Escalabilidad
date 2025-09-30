@@ -37,6 +37,89 @@ class TestJoinAccumulator(unittest.TestCase):
 
         return (in_left, in_right, out_cols, config_type)
 
+
+    def test_simple_bordercase_mixed_out_column_order(self):
+        in_left = ["product_id","product_name"]
+        in_right = ["top_product_id","month","revenue",]
+        out_cols = ["month", "product_id","product_name","revenue",]
+        result_grouper = MockCopyMiddleware()
+
+        config = JoinTypeConfiguration(result_grouper, BareMockMessageBuilder,
+            left_type= "LEFT", #
+            in_fields_left=in_left,  # ..product names
+            in_fields_right=in_right,
+            join_id = "join_id",
+            join_conf=[INNER_ON_EQ, {"col_left":"product_id", "col_right":"top_product_id"}],
+            out_cols= out_cols
+        )
+
+        rows_left = [
+            {"product_name":"PRODUCT NAME 1", "product_id": "prod_1"},
+        ]
+
+        rows_right = [
+            {"top_product_id": "prod_1", "month": 2, "revenue": 20},
+        ]
+        rows_left = [map_dict_to_vect_cols(in_left, row) for row in rows_left]
+        rows_right = [map_dict_to_vect_cols(in_right, row) for row in rows_right]
+
+        expected_out = [
+            {"product_id": "prod_1", "product_name": "PRODUCT NAME 1", "month": 2, "revenue": 20},
+        ]
+        expected_out = [map_dict_to_vect_cols(out_cols, row) for row in expected_out]
+
+
+        out_right = []
+        for row_right in rows_right:
+            config.do_join_right_row(rows_left, row_right, out_right.append)
+
+        self.assertEqual(len(out_right), len(expected_out))
+        for i in range(len(expected_out)):
+            self.assertEqual(out_right[i], expected_out[i])
+
+
+    def test_simple_bordercase_same_name_col(self):
+        in_left = ["product_id","product_name"]
+        in_right = ["product_id","month","revenue",]
+        out_cols = ["month", "product_id","product_name","revenue",]
+        result_grouper = MockCopyMiddleware()
+
+        config = JoinTypeConfiguration(result_grouper, BareMockMessageBuilder,
+            left_type= "LEFT", #
+            in_fields_left=in_left,  # ..product names
+            in_fields_right=in_right,
+            join_id = "join_id",
+            join_conf=[INNER_ON_EQ, {"col_left":"product_id", "col_right":"product_id"}],
+            out_cols= out_cols
+        )
+
+        rows_left = [
+            {"product_name":"PRODUCT NAME 1", "product_id": "prod_1"},
+        ]
+
+        rows_right = [
+            {"product_id": "prod_1", "month": 2, "revenue": 20},
+        ]
+        rows_left = [map_dict_to_vect_cols(in_left, row) for row in rows_left]
+        rows_right = [map_dict_to_vect_cols(in_right, row) for row in rows_right]
+
+        expected_out = [
+            {"product_id": "prod_1", "product_name": "PRODUCT NAME 1", "month": 2, "revenue": 20},
+        ]
+        expected_out = [map_dict_to_vect_cols(out_cols, row) for row in expected_out]
+
+
+        out_right = []
+        for row_right in rows_right:
+            config.do_join_right_row(rows_left, row_right, out_right.append)
+
+        self.assertEqual(len(out_right), len(expected_out))
+        for i in range(len(expected_out)):
+            self.assertEqual(out_right[i], expected_out[i])
+
+
+
+
     def test_simple_join_type_config(self):
         result_grouper = MockCopyMiddleware()
         in_left, in_right, out_cols, config = self.build_simple_join_config(result_grouper)

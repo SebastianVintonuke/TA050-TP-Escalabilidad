@@ -1,4 +1,5 @@
 
+import logging
 DEFAULT_LIMIT= 10000
 class JoinAccumulator:
     def __init__(self, type_conf, msg, ind, limit = DEFAULT_LIMIT):
@@ -79,12 +80,19 @@ class JoinAccumulator:
             self.type_conf.send(self.msg_builder)
 
         eof_signal = self.msg_builder.clone()
+        logging.info(f"EOF SIGNAL TO {eof_signal.types} {eof_signal.ids}")
         eof_signal.set_as_eof()
         self.type_conf.send(eof_signal)
         eof_signal.set_finish_signal()
         self.type_conf.send(eof_signal)
 
+    def describe_send(self):
+        logging.info(f"SENDING TO {self.msg_builder.types} {self.msg_builder.ids}")
+        self.describe()
+        for itm in self.msg_builder.payload:
+            logging.info(f"ROW {itm}")
+
     def describe(self):
-        print(f"curr status join finished left:{self.left_finished} right: {self.right_finished}")
-        print(f"row len left:{len(self.left_rows)} right: {len(self.right_rows)}")
-        print(f"joined payload len:{self.msg_builder.len_payload()}")
+        logging.info(f"curr status join finished left:{self.left_finished} right: {self.right_finished}")
+        logging.info(f"row len left:{len(self.left_rows)} right: {len(self.right_rows)}")
+        logging.info(f"joined payload len:{self.msg_builder.len_payload()}")

@@ -22,7 +22,7 @@ def configure_types_topk(join_middleware):
     #[KEEP_TOP_K, {'comp_key': "revenue", 'limit': 3}] # top k for products?
     types_config[QUERY_2_REVENUE] = TopKTypeConfiguration(join_middleware, 
             csv_message.csv_hashed_from_msg, 
-            in_fields = ["product_id", "month", "revenue"], 
+            in_fields = ["product_id", "month", "revenue", "quantity_sold"],#["product_id", "month", "revenue"], 
             grouping_conf = [
                 ["month"], [KEEP_TOP, {'comp_key': "revenue"}]
             ],
@@ -31,7 +31,7 @@ def configure_types_topk(join_middleware):
 
     types_config[QUERY_2_QUANTITY] = TopKTypeConfiguration(join_middleware, 
             csv_message.csv_hashed_from_msg, 
-            in_fields = ["product_id", "month", "quantity_sold"], 
+            in_fields = ["product_id", "month", "revenue", "quantity_sold"],#["product_id", "month", "quantity_sold"], 
             grouping_conf = [
                 ["month"], [KEEP_TOP, {'comp_key': "quantity_sold"}]
             ],

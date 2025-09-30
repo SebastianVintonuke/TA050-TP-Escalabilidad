@@ -49,10 +49,11 @@ class DispatcherProtocol:
             header = batch.pop(0)
             model = Model.model_for(header)
 
-            if model != last_model and last_model is not None:
+            if last_model is None:
+                last_model = model # Initialize it
+            elif model != last_model:
                 self.__send_EOF_for(user_id, last_model, select_middleware, join_middleware)
-
-            last_model = model
+                last_model = model # Only change it If it is new.
 
             logging.info(f"action: receive_file | result: in_progress | data_type: {model.__name__}")
 
@@ -72,6 +73,9 @@ class DispatcherProtocol:
 
                 batch = self._batch_protocol.wait_batch() # End of batch
             batch = self._batch_protocol.wait_batch() # End of file
+
+        # Allegedly not sent eof for very last model. 
+        self.__send_EOF_for(user_id, last_model, select_middleware, join_middleware)
 
         self._byte_protocol.send_bytes(user_id.encode())
 

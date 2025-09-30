@@ -186,10 +186,10 @@ def main() -> None:
         if query_type == QUERY_1:
             handle_query_1_result(msg, user_id)
         elif query_type == QUERY_2_QUANTITY: # TODO QUANTITY TRAE DATOS DE REVENUE
-            msg.ack_self()
-            return
             logging.info(f"{QUERY_2_QUANTITY} IS EOF:{msg.is_eof()}")
             handle_query_2_best_selling_result(msg, user_id)
+            msg.ack_self()
+            return
         elif query_type == QUERY_2_REVENUE:
             logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
             handle_query_2_most_profit_result(msg, user_id)

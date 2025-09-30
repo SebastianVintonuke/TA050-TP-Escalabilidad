@@ -44,3 +44,22 @@ class JoinProjectMapper:
             res.append(str(row_right[col]))
         return res
 
+
+class JoinProjectMapperOrdered:
+    ## COls received are in format [index, col], to keep the order
+    def __init__(self, left_cols, right_cols):
+        self.left_cols = left_cols
+        self.right_cols = right_cols
+        self.full_len = len(self.left_cols)+len(self.right_cols)
+
+    def __call__(self, row_left, row_right):
+        res = [None] * self.full_len
+
+        for col in self.left_cols:
+            res[col[0]] = str(row_left[col[1]])
+        
+        for col in self.right_cols:
+            res[col[0]] = str(row_right[col[1]])
+
+        return res
+

@@ -28,11 +28,13 @@ def mapped_divide_out_cols(in_left, in_right, out_cols):
     out_left = []
     out_right = []
 
+    ind = 0
     for col in out_cols:
         try:
-            out_left.append(in_left.index(col))
+            out_left.append([ind, in_left.index(col)])
         except ValueError: # python bs... it means not in out left. better than a for since its cpython.
-            out_right.append(in_right.index(col))
+            out_right.append([ind, in_right.index(col)])
+        ind += 1
 
     return (out_left, out_right)
 
@@ -60,7 +62,7 @@ class JoinTypeConfiguration:
         else:
             out_left, out_right = mapped_divide_out_cols(in_fields_left, in_fields_right, out_cols)
 
-            self.out_mapper = JoinProjectMapper(out_left, out_right)
+            self.out_mapper = JoinProjectMapperOrdered(out_left, out_right)
 
         self.builder_creator = builder_creator
         self.middleware = out_middleware
