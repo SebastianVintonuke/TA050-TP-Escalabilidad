@@ -97,11 +97,12 @@ def main() -> None:
 
     try:
         #result_middleware = ResultNodeMiddleware()
-        topk_middleware = MemoryMiddleware()
+        topk_middleware = MemoryMiddleware(builder_to_memory_msg)
         join_middleware = JoinTasksMiddleware(join_node_count)
         middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind)
 
-        types_config_groupby = configure_types_groupby(join_middleware, topk_middleware)
+        #types_config_groupby = configure_types_groupby(join_middleware, topk_middleware)
+        types_config_groupby = configure_types_groupby_topk_memory(join_middleware, topk_middleware)
 
         # In memory it doesnt actually connect to network nor block for messeging
         types_config_topk = configure_types_topk(join_middleware)

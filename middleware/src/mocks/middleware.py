@@ -72,7 +72,8 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
 class MockMessage(Message):
     def __init__(self, tag, queries_id, queries_type, payload, map_to_vec):
-        super().from_data(tag, queries_type, queries_type, payload)
+        super().from_data(queries_type, queries_type, payload)
+        self.tag = tag
         self.map_to_vec = map_to_vec
 
     def _deserialize_payload(self, payload):  # Do nothing with it.

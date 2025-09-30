@@ -16,16 +16,14 @@ class Message:
 	def _deserialize_payload(self, payload):
 		return payload
 
-	def from_data(self, tag, queries_id, queries_type, payload, partition = 0):
-		self.tag = tag
+	def from_data(self, queries_id, queries_type, payload, partition = 0):
 		self.ids = queries_id
 		self.types = queries_type
 		self.partition = partition
 		self._verify_headers()
 		self.payload = payload
 
-	def __init__(self, tag, headers, payload):
-		self.tag = tag
+	def __init__(self, headers, payload):
 		self._from_headers(headers)
 		if len(payload) == 0:
 			self.payload = None
@@ -37,7 +35,7 @@ class Message:
 		return len(self.ids)
 
 	def clone_with(self, queries_id, queries_type):
-		return Message(self.tag, queries_id, queries_type, self.payload)
+		return Message(queries_id, queries_type, self.payload)
 
 	# For subclasses
 	def ack_self(self):
