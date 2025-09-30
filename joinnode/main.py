@@ -37,11 +37,11 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["node_id"] = os.getenv(
             "NODE_ID", config["DEFAULT"]["NODE_ID"]
         )
-        config_params["join_node_count"] = os.getenv(
-            "JOIN_NODE_COUNT", config["DEFAULT"]["JOIN_NODE_COUNT"]
+        config_params["node_count"] = os.getenv(
+            "NODE_COUNT", config["DEFAULT"]["NODE_COUNT"]
         )
-        config_params["join_node_ind"] = os.getenv(
-            "JOIN_NODE_IND", config["DEFAULT"]["JOIN_NODE_IND"]
+        config_params["node_ind"] = os.getenv(
+            "NODE_IND", config["DEFAULT"]["NODE_IND"]
         )
 
         config_params["logging_level"] = os.getenv(
@@ -76,8 +76,8 @@ def main() -> None:
     port = config_params["port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
-    join_node_count = config_params["join_node_count"]
-    join_node_ind = config_params["join_node_ind"]
+    join_node_count = config_params["node_count"]
+    join_node_ind = config_params["node_ind"]
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
