@@ -15,7 +15,10 @@ def add_joinnode_config(types_expander, result_middleware):
     """
     # Config for revenue on query2
     types_expander.add_configuration_to_many(
-        JoinTypeConfiguration(result_middleware,csv_message.csv_hashed_from_msg,
+        JoinTypeConfiguration(result_middleware,
+            lambda msg, ind: csv_message.hashed_msg_from_credentials(
+                msg.ids[ind], QUERY_2_REVENUE, msg.partition
+            ),
             left_type= QUERY_PRODUCT_NAMES, #
             join_id = QUERY_2_REVENUE, 
             in_fields_left=["product_id","product_name"],  # ..product names
@@ -31,7 +34,11 @@ def add_joinnode_config(types_expander, result_middleware):
 
     #Config for quantity on query2
     types_expander.add_configuration_to_many(
-        JoinTypeConfiguration(result_middleware,csv_message.csv_hashed_from_msg,
+        JoinTypeConfiguration(result_middleware,
+            lambda msg, ind: csv_message.hashed_msg_from_credentials(
+                msg.ids[ind], QUERY_2_QUANTITY, msg.partition
+            )
+            ,
             left_type= QUERY_PRODUCT_NAMES, 
             join_id=QUERY_2_QUANTITY,
             in_fields_left=["product_id","product_name"],  # ..product names
@@ -50,7 +57,10 @@ def add_joinnode_config(types_expander, result_middleware):
             transacciones realizadas entre las 06:00 AM y las 11:00 PM.  
     """    
     types_expander.add_configuration_to_many(
-        JoinTypeConfiguration(result_middleware,csv_message.csv_hashed_from_msg,
+        JoinTypeConfiguration(result_middleware,
+            lambda msg, ind: csv_message.hashed_msg_from_credentials(
+                msg.ids[ind], QUERY_3, msg.partition
+            ),
             left_type= QUERY_STORE_NAMES, 
             join_id=QUERY_3,
             in_fields_left=["store_id","store_name"],  # ..store names
@@ -69,7 +79,11 @@ def add_joinnode_config(types_expander, result_middleware):
             2025, para cada sucursal.
     """
     types_expander.add_configuration_to_many(
-        JoinTypeConfiguration(result_middleware,csv_message.csv_hashed_from_msg,
+        JoinTypeConfiguration(result_middleware,
+            lambda msg, ind: csv_message.hashed_msg_from_credentials(
+                msg.ids[ind], QUERY_4, msg.partition
+            )
+            ,
             left_type= QUERY_USERS, 
             join_id=QUERY_4,
             in_fields_left=["user_id","birthday"],  # .. users birthday
