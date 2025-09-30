@@ -12,4 +12,5 @@ QUERY_2_QUANTITY = "query_2_quantity"
 
 QUERY_STORE_NAMES = "query_store_names"
 QUERY_PRODUCT_NAMES = "query_product_names"
+QUERY_USERS = "query_users"
 

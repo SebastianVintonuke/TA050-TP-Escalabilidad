@@ -14,9 +14,10 @@ class JoinNode:
                     logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
                     ind=0
                     type = msg.types[ind]
+                    ide = msg.types[ind]
                     
                     for config in self.type_expander.get_configurations_for(type):
-                        joiner = self.joiners.get(config.join_id, None)
+                        joiner = self.joiners.get(ide+config.join_id, None)
                         if joiner:
                             if config.left_type == type:
                                 joiner.handle_eof_left()
@@ -36,13 +37,14 @@ class JoinNode:
         row_actions = []
         ind = 0
         type = msg.types[ind]
+        ide = msg.ids[ind]
 
         for config in self.type_expander.get_configurations_for(type):
-            joiner = self.joiners.get(config.join_id, None)
+            joiner = self.joiners.get(ide+config.join_id, None)
 
             if joiner == None:
                 joiner = JoinAccumulator(config, msg, ind)
-                self.joiners[config.join_id] = joiner
+                self.joiners[ide+config.join_id] = joiner
 
             row_actions.append(joiner.get_action_for_type(type))
 
