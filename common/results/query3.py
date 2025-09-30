@@ -29,4 +29,4 @@ class QueryResult3(QueryResult):
         return cls(year_created_at=year_created_at, half_created_at=half_created_at, tpv=tpv, store_name=store_name)
 
     def __str__(self) -> str:
-        return f"{self.year_created_at.strftime('%Y')}-{self.half_created_at},{self.tpv},{self.store_name}"
+        return f"{self.year_created_at.strftime('%Y')}-{self.half_created_at},{self.store_name},{self.tpv}"

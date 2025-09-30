@@ -85,7 +85,7 @@ def main() -> None:
 
 
     def handle_query_1_result(msg, user_id: str) -> None:
-        if msg.is_eof():
+        if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
             msg.ack_self()
@@ -100,13 +100,15 @@ def main() -> None:
         msg.ack_self()
 
     def handle_query_2_best_selling_result(msg, user_id: str) -> None:
-        if msg.is_eof():
+        if msg.is_partition_eof():
+            logging.info(f"query_2eof")
             result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
             msg.ack_self()
             return
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
+            logging.info(f"query_2bs: {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
             year = month_encoded // 12 + 2024
@@ -114,18 +116,19 @@ def main() -> None:
             year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
             sellings_qty: int = line[2]
             data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
-        result_task = ResultTask(user_id, QueryId.Query2BestSelling, msg.is_eof(), False, data).to_bytes()
+        result_task = ResultTask(user_id, QueryId.Query2BestSelling, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
         msg.ack_self()
 
     def handle_query_2_most_profit_result(msg, user_id) -> None:
-        if msg.is_eof():
+        if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
             msg.ack_self()
             return
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
+            logging.info(f"query_2mp: {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
             year = month_encoded // 12 + 2024
@@ -133,40 +136,39 @@ def main() -> None:
             year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
             profit_sum: float = line[2]
             data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
-        result_task = ResultTask(user_id, QueryId.Query2MostProfit, msg.is_eof(), False, data).to_bytes()
+        result_task = ResultTask(user_id, QueryId.Query2MostProfit, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
         msg.ack_self()
 
     def handle_query_3_result(msg, user_id: str) -> None:
-        if msg.is_eof():
+        if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
             msg.ack_self()
             return
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
-            year_created_at, half_created_at = __year_semester_decode(line[0])
-            store_name = line[1]
+            logging.info(f"query_3: {line}")
+            store_name = line[0]
+            year_created_at, half_created_at = __year_semester_decode(line[1])
             tpv = float(line[2])
             data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
-        result_task = ResultTask(user_id, QueryId.Query3, msg.is_eof(), False, data).to_bytes()
+        result_task = ResultTask(user_id, QueryId.Query3, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
         msg.ack_self()
 
     def handle_query_4_result(msg, user_id: str) -> None:
-        if msg.is_eof():
+        if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query4, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
             msg.ack_self()
             return
         data: List[QueryResult4] = []
         for line in msg.stream_rows():
-            # TODO check order line
-            store_name: str = "store name"
-            birthdate: date = datetime.strptime("2025-12-25", "%Y-%m-%d").date()
-            # TODO end
+            store_name: str = line[0]
+            birthdate: date = datetime.strptime(line[1], "%Y-%m-%d").date()
             data.append(QueryResult4(store_name=store_name, birthdate=birthdate))
-        result_task = ResultTask(user_id, QueryId.Query4, msg.is_eof(), False, data).to_bytes()
+        result_task = ResultTask(user_id, QueryId.Query4, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
         msg.ack_self()
 

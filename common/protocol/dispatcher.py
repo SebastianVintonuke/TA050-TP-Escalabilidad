@@ -64,7 +64,7 @@ class DispatcherProtocol:
                 elif model is MenuItem:
                     self.__send_task_to_join_menu_item(user_id, join_middleware, model, batch)
                 elif model is User:
-                    pass # TODO Mandar a join
+                    self.__send_task_to_join_user(user_id, join_middleware, model, batch)
                 elif model is Store:
                     self.__send_task_to_join_store(user_id, join_middleware, model, batch)
                 else:
@@ -116,6 +116,18 @@ class DispatcherProtocol:
         join_middleware.send(menu_item_task)
 
     @staticmethod
+    def __send_task_to_join_user(user_id: str, join_middleware: JoinTasksMiddleware, model: User,
+                                  batch: List[bytes]) -> None:
+        user_task = CSVHashedMessageBuilder([user_id], ["query_users"], user_id)
+        for line in batch:
+            user: User = model.from_bytes_and_project(line)
+            user_task.add_row([
+                user.user_id,
+                user.birthdate,
+            ])
+        join_middleware.send(user_task)
+
+    @staticmethod
     def __send_task_to_join_store(user_id: str, join_middleware: JoinTasksMiddleware, model: Store, batch: List[bytes]) -> None:
         store_task = CSVHashedMessageBuilder([user_id], ["query_store_names"], user_id)
         for line in batch:
@@ -151,7 +163,11 @@ class DispatcherProtocol:
             join_middleware.send(eof_product_task)
     
         elif model is User:
-            pass  # TODO Mandar a join
+            logging.info(f"EOF FOR USER")
+            eof_user_task = CSVHashedMessageBuilder([user_id], ["query_users"], user_id)
+            eof_user_task.set_as_eof()
+            eof_user_task.set_finish_signal()
+            join_middleware.send(eof_user_task)
 
         elif model is Store:
             logging.info(f"EOF FOR STORES")

@@ -66,7 +66,7 @@ def add_joinnode_config(types_expander, result_middleware):
             in_fields_left=["store_id","store_name"],  # ..store names
             in_fields_right=["store_id","mapped_semester", "tpv"],
             join_conf=[INNER_ON_EQ, {"col_left":"store_id", "col_right":"store_id"}],
-            out_cols= ["mapped_semester","store_name","tpv",]
+            out_cols= ["store_name", "mapped_semester","tpv",]
         ),
         # Add the config to all these types... but.. internal join will separate/group content as needed
         QUERY_3,
@@ -89,7 +89,7 @@ def add_joinnode_config(types_expander, result_middleware):
             in_fields_left=["user_id","birthday"],  # .. users birthday
             in_fields_right=["store_id","top_user_id", "purchase_count"],
             join_conf=[INNER_ON_EQ, {"col_left":"user_id", "col_right":"top_user_id"}],
-            out_cols= ["store_id","user_id","birthday","purchase_count",]
+            out_cols= ["store_id","birthday"]
         ),
         # Add the config to all these types... but.. internal join will separate/group content as needed
         QUERY_4,
