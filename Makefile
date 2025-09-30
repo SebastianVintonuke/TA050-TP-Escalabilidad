@@ -19,6 +19,7 @@ docker-image:
 	docker build -f ./results/Dockerfile -t "results:latest" .
 	docker build -f ./selectnode/Dockerfile -t "selectnode:latest" .
 	docker build -f ./groupbynode/Dockerfile -t "groupbynode:latest" .
+	docker build -f ./joinnode/Dockerfile -t "joinnode:latest" .
 	docker build -f ./server/Dockerfile -t "server:latest" .
 
 	# Execute this command from time to time to clean up intermediate stages generated 
