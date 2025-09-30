@@ -101,20 +101,19 @@ def main() -> None:
 
     def handle_query_2_best_selling_result(msg, user_id: str) -> None:
         if msg.is_partition_eof():
-            logging.info(f"query_2eof")
             result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
             msg.ack_self()
             return
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
-            logging.info(f"query_2bs: {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
             year = month_encoded // 12 + 2024
             month = month_encoded % 12 + 1
             year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
             sellings_qty: int = line[2]
+            #logging.info(f"type: {msg.types[0]}: {year_month_created_at}, {item_name}, {sellings_qty}")
             data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
         result_task = ResultTask(user_id, QueryId.Query2BestSelling, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
@@ -128,13 +127,13 @@ def main() -> None:
             return
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
-            logging.info(f"query_2mp: {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
             year = month_encoded // 12 + 2024
             month = month_encoded % 12 + 1
             year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
             profit_sum: float = line[2]
+            #logging.info(f"type: {msg.types[0]}: {year_month_created_at}, {item_name}, {profit_sum}")
             data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
         result_task = ResultTask(user_id, QueryId.Query2MostProfit, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
@@ -148,7 +147,6 @@ def main() -> None:
             return
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
-            logging.info(f"query_3: {line}")
             store_name = line[0]
             year_created_at, half_created_at = __year_semester_decode(line[1])
             tpv = float(line[2])
@@ -187,20 +185,22 @@ def main() -> None:
         query_type = msg.types[0]
         if query_type == QUERY_1:
             handle_query_1_result(msg, user_id)
-        elif query_type == QUERY_2_QUANTITY:
-            logging.info(f"{QUERY_2_QUANTITY}-{msg.is_eof()}")
+        elif query_type == QUERY_2_QUANTITY: # TODO QUANTITY TRAE DATOS DE REVENUE
+            msg.ack_self()
+            return
+            logging.info(f"{QUERY_2_QUANTITY} IS EOF:{msg.is_eof()}")
             handle_query_2_best_selling_result(msg, user_id)
         elif query_type == QUERY_2_REVENUE:
-            logging.info(f"{QUERY_2_REVENUE}-{msg.is_eof()}")
+            logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
             handle_query_2_most_profit_result(msg, user_id)
         elif query_type == QUERY_3:
-            logging.info(f"{QUERY_3}-{msg.is_eof()}")
+            logging.info(f"{QUERY_3} IS EOF:{msg.is_eof()}")
             handle_query_3_result(msg, user_id)
-        elif query_type == QUERY_4:
-            logging.info(f"{QUERY_4}-{msg.is_eof()}")
+        elif query_type == QUERY_4: # TODO DATOS DE QUERY 4
+            logging.info(f"{QUERY_4} IS EOF:{msg.is_eof()}")
             handle_query_4_result(msg, user_id)
         else:
-            logging.info(f"{msg.types}--------")
+            logging.info(f"NO EXISTE {msg.types}")
             #raise ValueError(f"Unknown query type: {query_type}")
 
     result_middleware.start_consuming(handle_result)

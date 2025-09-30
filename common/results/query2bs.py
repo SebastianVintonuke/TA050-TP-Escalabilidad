@@ -19,7 +19,7 @@ class QueryResult2BestSelling(QueryResult):
         item_name = fields[1].strip()
         sellings_qty = int(fields[2])
 
-        return cls(year_month_created_at=year_month_created_at, sellings_qty=sellings_qty, item_name=item_name)
+        return cls(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty)
 
     def __str__(self) -> str:
-        return f"{self.year_month_created_at.strftime('%Y-%m')},{self.sellings_qty},{self.item_name}"
+        return f"{self.year_month_created_at.strftime('%Y-%m')},{self.item_name},{self.sellings_qty}"

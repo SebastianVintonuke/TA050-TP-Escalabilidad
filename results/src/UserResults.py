@@ -50,6 +50,8 @@ class UserResult:
                 self._query_states[query_id]["ready"] = True
 
     def append(self, query_id: QueryId, results: Sequence[QueryResult]) -> None:
+        if not results:
+            return
         file_path = self._base_dir / file_name_for(query_id)
         with self._query_states[query_id]["lock"]:
             with file_path.open("ab") as f:
@@ -62,6 +64,8 @@ class UserResult:
         src = self._base_dir / file_name
         dst = self._base_dir / f"ready_{file_name}"
         with self._query_states[query_id]["lock"]:
+            if dst.exists():
+                return # 2 EOF
             src.rename(dst)
         with self._all_queries_are_ready:
             self._query_states[query_id]["ready"] = True
