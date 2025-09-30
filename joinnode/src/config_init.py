@@ -6,7 +6,7 @@ from middleware.routing.query_types import *
 from src.join_type_config import *
 from common.config.row_joining import *
 
-def add_joinnode_config(types_expander, result_middleware):
+def add_joinnode_config(types_expander, result_middleware, join_middleware):
     # Basic filter description
     """
         QUERY 2
@@ -79,9 +79,9 @@ def add_joinnode_config(types_expander, result_middleware):
             2025, para cada sucursal.
     """
     types_expander.add_configuration_to_many(
-        JoinTypeConfiguration(result_middleware,
+        JoinTypeConfiguration(join_middleware,
             lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_4, msg.partition
+                msg.ids[ind], QUERY_4_JOIN_STORE_NAMES, msg.partition
             )
             ,
             left_type= QUERY_USERS, 
@@ -94,4 +94,22 @@ def add_joinnode_config(types_expander, result_middleware):
         # Add the config to all these types... but.. internal join will separate/group content as needed
         QUERY_4,
         QUERY_USERS,
+    )
+
+    types_expander.add_configuration_to_many(
+        JoinTypeConfiguration(result_middleware,
+            lambda msg, ind: csv_message.hashed_msg_from_credentials(
+                msg.ids[ind], QUERY_4, msg.partition
+            )
+            ,
+            left_type= QUERY_STORE_NAMES, 
+            join_id=QUERY_4_JOIN_STORE_NAMES,
+            in_fields_left=["store_id","store_name"],  # ..store names
+            in_fields_right=["store_id","birthday"],
+            join_conf=[INNER_ON_EQ, {"col_left":"store_id", "col_right":"store_id"}],
+            out_cols= ["store_name", "birthday"]
+        ),
+        # Add the config to all these types... but.. internal join will separate/group content as needed
+        QUERY_4_JOIN_STORE_NAMES,
+        QUERY_STORE_NAMES,
     )

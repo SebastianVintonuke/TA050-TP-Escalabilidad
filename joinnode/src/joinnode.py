@@ -59,6 +59,9 @@ class JoinNode:
     def start(self):
         self.middleware.start_consuming(self.handle_task)
 
+    def start_on(self, middleware):
+        middleware.start_consuming(self.handle_task)
+
     def close(self):
         self.middleware.close()
         self.type_expander.close()

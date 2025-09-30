@@ -31,11 +31,17 @@ class MessageBuilder:
         return ("\n".join(self.payload)).encode()
 
     def get_headers(self):
-        return {
+        res = {
             FIELD_QUERY_ID: self.ids,
-            FIELD_QUERY_TYPE: self.types,
-            FIELD_PARTITION_IND: self.partition_ind,
         }
+
+        if len(self.types) >0 and self.types[0] != DEFAULT_QUERY_TYPE:
+            res[FIELD_QUERY_TYPE] = self.types
+
+        if self.partition_ind != DEFAULT_PARTITION_VALUE: # If it is the default one, then save it.
+            res[FIELD_PARTITION_IND]= self.partition_ind
+
+        return res
 
     def set_as_eof(self):
         self.should_be_eof = True

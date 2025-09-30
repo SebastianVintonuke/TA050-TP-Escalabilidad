@@ -31,7 +31,7 @@ def configure_types_groupby(join_middleware, topk_middleware):
     )
 
     types_config[QUERY_4] = GroupbyTypeConfiguration(topk_middleware, csv_message.csv_hashed_from_msg,
-            in_fields= ["transaction_id", "store_id", "user_id"],
+            in_fields= ["store_id", "user_id"],
             grouping_conf= [["store_id", "user_id"], {
                 "purchase_count": COUNT_ACTION
             }],

@@ -20,6 +20,8 @@ class JoinAccumulator:
 
     def handle_eof_left(self):
         self.left_finished = True
+        logging.info(f"HANDLING EOF LEFT {self.type_conf.left_type} out types: {self.msg_builder.types} right finished? {self.right_finished}")
+
         if self.right_finished:
             self.send_eof()
             return True
@@ -35,6 +37,7 @@ class JoinAccumulator:
 
     def handle_eof_right(self):
         self.right_finished = True
+        logging.info(f"HANDLING EOF RIGHT out types: {self.msg_builder.types} left finished? {self.left_finished}")
         if self.left_finished:
             self.send_eof()
             return True

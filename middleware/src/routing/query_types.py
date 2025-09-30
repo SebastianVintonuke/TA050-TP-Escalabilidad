@@ -14,3 +14,4 @@ QUERY_STORE_NAMES = "query_store_names"
 QUERY_PRODUCT_NAMES = "query_product_names"
 QUERY_USERS = "query_users"
 
+QUERY_4_JOIN_STORE_NAMES = "query_4_join_store_names"

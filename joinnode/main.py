@@ -14,6 +14,7 @@ from src.joinnode import JoinNode
 from common.config.type_expander import *
 from src.config_init import *
 
+from middleware.memory_middleware import * 
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -89,10 +90,17 @@ def main() -> None:
 
         types_expander = TypeExpander()
         result_middleware = ResultNodeMiddleware()
-        add_joinnode_config(types_expander, result_middleware)
+
+        # First add a memory middleware to redirect for many nested joins.
+        nested_joins_middleware = MemoryMiddleware()
+
+        add_joinnode_config(types_expander, result_middleware, nested_joins_middleware)
 
         node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), types_expander)
 
+        # 'Start' nested node. Means registering callbacks and so on
+        node.start_on(nested_joins_middleware)
+        
         restart = True
         while restart:
             try:

@@ -9,8 +9,8 @@ class Message:
 
 	def _from_headers(self, headers):
 		self.ids = headers.get(FIELD_QUERY_ID, [])
-		self.types = headers.get(FIELD_QUERY_TYPE, [])
-		self.partition = headers.get(FIELD_PARTITION_IND, 0)
+		self.types = headers.get(FIELD_QUERY_TYPE, [DEFAULT_QUERY_TYPE])
+		self.partition = headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE)
 		self._verify_headers()
 
 	def _deserialize_payload(self, payload):
