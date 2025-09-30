@@ -6,15 +6,12 @@ import os
 from configparser import ConfigParser
 
 from middleware.result_node_middleware import * 
-from middleware.memory_middleware import * 
-
-from middleware.groupby_middleware import * 
 from middleware.join_tasks_middleware import * 
 
 
 from src.groupbynode import GroupbyNode 
-from src.groupby_initialize import * 
 from src.topk_initialize import * 
+from middleware.topk_middleware import * 
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -97,18 +94,12 @@ def main() -> None:
 
     try:
         #result_middleware = ResultNodeMiddleware()
-        topk_middleware = MemoryMiddleware()
+        topk_middleware = TopKTasksMiddleware(node_count, ind = node_ind)
         join_middleware = JoinTasksMiddleware(join_node_count)
-        middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind)
 
-        types_config_groupby = configure_types_groupby(join_middleware, topk_middleware)
-
-        # In memory it doesnt actually connect to network nor block for messeging
         types_config_topk = configure_types_topk(join_middleware)
-        node_topk = GroupbyNode(topk_middleware, types_config_topk)
-        node_topk.start()
-
-        node = GroupbyNode(middleware_group, types_config_groupby)
+        
+        node = GroupbyNode(topk_middleware, types_config_topk)
 
         restart = True
         while restart:

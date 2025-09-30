@@ -91,6 +91,7 @@ services:
     environment:
       - SELECT_NODE_ID=1
       - GROUPBY_NODE_COUNT=1
+      - JOIN_NODE_COUNT=1
     networks:
       - testing_net
     depends_on:
@@ -107,6 +108,7 @@ services:
     environment:
       - NODE_IND=0
       - NODE_COUNT=1
+      - JOIN_NODE_COUNT=1
     networks:
       - testing_net
     depends_on:
@@ -115,6 +117,24 @@ services:
       - middleware
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
+  joinnode1:
+    container_name: joinnode1
+    image: joinnode:latest
+    entrypoint: python3 /joinnode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./joinnode/config.ini:/config.ini:ro
+
+
+
 
 networks:
   testing_net:

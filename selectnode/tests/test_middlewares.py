@@ -7,6 +7,7 @@ from middleware.groupby_middleware import (
 )
 from middleware.routing.csv_message import *
 from middleware.select_tasks_middleware import SelectTasksMiddleware
+from middleware.memory_middleware import *
 
 from common.config.row_filtering import *
 from middleware import routing
@@ -326,3 +327,40 @@ class TestMiddlewares(unittest.TestCase):
         self.assertEqual(1, len(rows))
 
         self.assertEqual({"year": 123, "hour": 23, "sum": 345}, rows[0])
+
+    def test_memory_middleware_delegates_builder_and_sends_msg(self):
+        middleware = MemoryMiddleware()
+
+        msgs = []
+
+        middleware.start_consuming(lambda x: msgs.append(x))
+
+        msg_build = CSVMessageBuilder(
+            ["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"]
+        )
+
+        rows_pass = [
+            {"year": 2024, "hour": 7, "sum": 88},
+            {"year": 2025, "hour": 23, "sum": 942},
+            {"year": 2024, "hour": 6, "sum": 942},
+            {"year": 2027, "hour": 7, "sum": 88},
+            {"year": 2025, "hour": 24, "sum": 942},
+            {"year": 2024, "hour": 6, "sum": 55},
+        ]
+
+        for itm in rows_pass:
+            msg_build.add_row(map_dict_to_vect(itm))
+
+        middleware.send(msg_build)
+        
+        self.assertEqual(1, len(msgs))
+        res_msg= msgs[0]
+        res_msg.describe()
+        res = [itm for itm in res_msg.map_stream_rows(map_vect_to_dict)]
+
+        self.assertTrue(len(rows_pass) == len(res))
+
+        for i in range(len(rows_pass)):
+            self.assertTrue(rows_pass[i] == res[i])        
+
+        res_msg.ack_self()
