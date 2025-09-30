@@ -33,7 +33,6 @@ class QueryAccumulator:
 		for group, acc in self.groups.items():
 			self.type_conf.add_output(self.msg_builder, group, acc)
 
-		#logging.info(f"payload: {self.msg_builder.payload}")
 		self.type_conf.send(self.msg_builder)
 		eof_signal = self.msg_builder.clone()
 		eof_signal.set_as_eof()
@@ -74,6 +73,7 @@ class GroupbyNode:
 						#logging.info(f"ACC: {acc}")
 						if acc:
 							acc.send_built()
+							self.accumulators.pop(query_id) #Remove it
 						else:
 							# propagate eof signal for this message 
 							conf = self.types_configurations[msg.types[ind]]

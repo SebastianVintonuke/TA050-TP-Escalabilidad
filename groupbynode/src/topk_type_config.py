@@ -3,6 +3,7 @@ from common.config.row_mapping import DictConvertWrapperMapper,NoActionRowMapper
 
 from .row_grouping import RowGrouper
 from .row_key_parsing import *
+import logging
 
 TOPK_KEY_FIELDS = 0
 TOPK_FIELDS_ACTIONS = 1
@@ -30,5 +31,12 @@ class TopKTypeConfiguration:
 	def new_builder_for(self, inp_msg, ind_query):
 		return self.builder_creator(inp_msg, ind_query)
 
+
+	def describe_send(self, builder):
+		logging.info(f"SENDING TO {builder.types} {builder.ids} len: {builder.len_payload()} eof? {builder.is_eof()}")
+		for itm in builder.payload:
+			logging.info(f"ROW {itm}")
+
 	def send(self, builder):
+		self.describe_send(builder)
 		return self.middleware.send(builder)

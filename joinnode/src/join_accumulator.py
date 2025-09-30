@@ -22,13 +22,14 @@ class JoinAccumulator:
         self.left_finished = True
         if self.right_finished:
             self.send_eof()
-            return
+            return True
         
         # Not finished, then try join all right rows.
         for right_row in self.right_rows:
             self.type_conf.do_join_right_row(self.left_rows, right_row, self.add_joined)
 
         self.right_rows = [] # Empty it since already used.            
+        return False
         #self.describe()
 
 
@@ -36,13 +37,14 @@ class JoinAccumulator:
         self.right_finished = True
         if self.left_finished:
             self.send_eof()
-            return
+            return True
         
         # Not finished, then try join all left rows.
         for left_row in self.left_rows:
             self.type_conf.do_join_left_row(self.right_rows, left_row, self.add_joined)
         
         self.left_rows = [] # Empty it since already used.
+        return False
         #self.describe()
 
     def do_join_right_row(self, right_row):
@@ -77,6 +79,7 @@ class JoinAccumulator:
 
     def send_eof(self): # What happens If the groupbynode fails here/shutdowns here?
         if self.msg_builder.has_payload(): # if it has payload send it
+            self.describe_send()
             self.type_conf.send(self.msg_builder)
 
         eof_signal = self.msg_builder.clone()

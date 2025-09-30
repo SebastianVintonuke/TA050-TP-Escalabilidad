@@ -125,6 +125,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
             in_fields=SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
+                ["user_id", NOT_EQUALS, ["", str(None)]],
             ],
             out_conf={ROW_CONFIG_OUT_COLS: ["transaction_id", "store_id", "user_id"]},
         ),

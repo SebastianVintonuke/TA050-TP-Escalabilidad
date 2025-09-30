@@ -20,9 +20,11 @@ class JoinNode:
                         joiner = self.joiners.get(ide+config.join_id, None)
                         if joiner:
                             if config.left_type == type:
-                                joiner.handle_eof_left()
-                            else:
-                                joiner.handle_eof_right()
+                                if joiner.handle_eof_left(): #Finished
+                                    self.joiners.pop(ide+config.join_id)
+                                    
+                            elif joiner.handle_eof_right(): #Finished
+                                    self.joiners.pop(ide+config.join_id)
                         else:
                             # propagate eof signal for this message 
                             config.send(config.new_builder_for(msg, ind))

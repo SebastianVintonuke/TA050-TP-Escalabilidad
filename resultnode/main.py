@@ -163,6 +163,7 @@ def main() -> None:
             return
         data: List[QueryResult4] = []
         for line in msg.stream_rows():
+            logging.info(f"RECV ROW USER QUERY 4 {line}")
             store_name: str = line[0]
             birthdate: date = datetime.strptime(line[1], "%Y-%m-%d").date()
             data.append(QueryResult4(store_name=store_name, birthdate=birthdate))
