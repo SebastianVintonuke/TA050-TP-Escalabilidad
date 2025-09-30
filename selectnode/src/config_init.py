@@ -120,13 +120,13 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
         ALL_FOR_TRANSACTIONS,
         SelectTypeConfiguration(
             groupby_middleware,
-            lambda msg, ind: csv_message.msg_from_credentials(
+            lambda msg, ind: csv_message.hashed_msg_from_credentials(
                 msg.ids[ind], QUERY_4, msg.partition
             ),
             in_fields=SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
             ],
-            out_conf={ROW_CONFIG_OUT_COLS: ["store_id", "user_id"]},
+            out_conf={ROW_CONFIG_OUT_COLS: ["transaction_id", "store_id", "user_id"]},
         ),
     )

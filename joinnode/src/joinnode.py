@@ -14,7 +14,7 @@ class JoinNode:
                     logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
                     ind=0
                     type = msg.types[ind]
-                    ide = msg.types[ind]
+                    ide = "" #msg.types[ind]
                     
                     for config in self.type_expander.get_configurations_for(type):
                         joiner = self.joiners.get(ide+config.join_id, None)
@@ -37,7 +37,7 @@ class JoinNode:
         row_actions = []
         ind = 0
         type = msg.types[ind]
-        ide = msg.ids[ind]
+        ide = ""#msg.ids[ind]
 
         for config in self.type_expander.get_configurations_for(type):
             joiner = self.joiners.get(ide+config.join_id, None)

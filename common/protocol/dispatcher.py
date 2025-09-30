@@ -50,7 +50,7 @@ class DispatcherProtocol:
             while batch: # While batch of file
                 if model is Transaction:
                     self.__send_task_to_select_transaction(user_id, select_middleware, model, batch)
-                if model is TransactionItem:
+                elif model is TransactionItem:
                     self.__send_task_to_select_transaction_item(user_id, select_middleware, model, batch)
                 elif model is MenuItem:
                     pass # TODO Mandar a join
@@ -90,13 +90,10 @@ class DispatcherProtocol:
         for line in batch:
             transaction_item: TransactionItem = model.from_bytes_and_project(line)
             transaction_item_task.add_row([
-                transaction_item.transaction_id,
                 transaction_item.item_id,
-                transaction_item.quantity,
-                transaction_item.unit_price,
                 transaction_item.created_at.year,
                 transaction_item.created_at.month,
-                transaction_item.created_at.hour,
+                transaction_item.subtotal,
             ])
         select_middleware.send(transaction_item_task)
 
