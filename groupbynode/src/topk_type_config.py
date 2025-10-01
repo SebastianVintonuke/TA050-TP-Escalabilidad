@@ -32,11 +32,9 @@ class TopKTypeConfiguration:
 		return self.builder_creator(inp_msg, ind_query)
 
 
-	def describe_send(self, builder):
-		logging.info(f"SENDING TO {builder.types} {builder.ids} len: {builder.len_payload()} eof? {builder.is_eof()}")
+	def send(self, builder):
+		logging.info(f"TOPK SENDING TO {builder.types} {builder.ids} len: {builder.len_payload()} eof? {builder.is_eof()}")
 		for itm in builder.payload:
 			logging.info(f"ROW {itm}")
-
-	def send(self, builder):
-		self.describe_send(builder)
+			
 		return self.middleware.send(builder)

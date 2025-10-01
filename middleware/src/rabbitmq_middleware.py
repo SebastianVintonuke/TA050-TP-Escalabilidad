@@ -5,16 +5,22 @@ import logging
 from .routing.csv_message import CSVMessageBuilder, CSVMessage
 
 DEFAULT_EXCHANGE = ''
+CONNECTIONS_ATTMPS = 10
 class RabbitExchangeMiddleware(MessageMiddleware):
 	def __init__(self, queue_name, exchange_type = DEFAULT_EXCHANGE, host = routing.RABBITMQ_HOST):
 		self.queue_name = queue_name
 		self.exch_name = exchange_type
+		self.host = host
 		try:
-			self._conn = routing.try_open_connection(host, 10) # Can fail but should we wrap the error on a MessageMiddlewareDisconnectedError?
-			self.channel = self._conn.channel()
-			self._declares()
+			routing.wait_middleware_init()			
+			self._start_connection()
 		except Exception as e:
 			raise MessageMiddlewareConnectError(f"RabbitMQ connect failed: {e}") from e
+
+	def _start_connection(self):
+		self._conn = routing.try_open_connection(self.host, CONNECTIONS_ATTMPS) # Can fail but should we wrap the error on a MessageMiddlewareDisconnectedError?
+		self.channel = self._conn.channel()
+		self._declares()
 
 	def _get_routing_key(self):
 		return self.queue_name
@@ -63,6 +69,15 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 			self.channel.basic_consume(
 				queue=self.queue_name, on_message_callback=self._callback_wrapper(on_message_callback), auto_ack=False)
 			self.channel.start_consuming()
+		except routing.RoutingRestartError as e:
+			logging.error(f"Routing connection error happened at consume, restart connection {e}")
+			try:
+				self._start_connection()
+			except Exception as e:
+				raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at restart connection : {e}") from e
+
+			raise MessageMiddlewareMessageError(f"RabbitMQ connection restart: {e}") from e
+		
 		except routing.RoutingConnectionErrors as e:
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at consume: {e}") from e
 		except Exception as e:
@@ -74,6 +89,12 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	def send(self, message_builder: CSVMessageBuilder):
 		try:
 			self._send(self.queue_name, message_builder.get_headers(),message_builder.serialize_payload())
+		except routing.RoutingRestartError as e:
+			logging.error(f"Routing connection error happened at send, restart connection {e}")
+			try:
+				self._start_connection()
+			except Exception as e:
+				raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at restart connection : {e}") from e
 		except routing.RoutingConnectionErrors as e:
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send: {e}") from e
 		except Exception as e:

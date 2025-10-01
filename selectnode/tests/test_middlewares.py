@@ -20,6 +20,8 @@ def map_dict_to_vect(row):
 def map_vect_to_dict(row):
     return {"year": int(row[0]), "hour": int(row[1]), "sum": int(row[2])}
 
+def wait_middleware_init_nothing():
+    pass
 
 class MethodClass:
     def __init__(self, tag):
@@ -118,7 +120,7 @@ class TestMiddlewares(unittest.TestCase):
     def setUp(self):
         routing.try_open_connection = self.mock_open_connection
         routing.build_headers = PropHeaders
-
+        routing.wait_middleware_init = wait_middleware_init_nothing
     def test_simple_queue_declare(self):
         # routing.try_open_connection("SOME", 23)
         HOST = "test_register"

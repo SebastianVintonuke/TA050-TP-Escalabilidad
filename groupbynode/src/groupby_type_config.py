@@ -4,7 +4,7 @@ from common.config.row_mapping import DictConvertWrapperMapper,NoActionRowMapper
 #from .row_grouping import load_grouper
 from .row_aggregate import RowAggregator
 from .row_key_parsing import *
-
+import logging
 
 GROUPED_KEY_FIELDS = 0
 GROUPED_FIELDS_ACTIONS = 1
@@ -35,5 +35,7 @@ class GroupbyTypeConfiguration:
 	def new_builder_for(self, inp_msg, ind_query):
 		return self.builder_creator(inp_msg, ind_query)
 
+
 	def send(self, builder):
+		logging.info(f"GROUPBY SENDING TO {builder.types} {builder.ids} len: {builder.len_payload()} eof? {builder.is_eof()}")
 		return self.middleware.send(builder)
