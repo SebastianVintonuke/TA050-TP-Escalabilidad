@@ -1,6 +1,6 @@
 import unittest
 from groupbynode.src.row_grouping import *
-
+import time
 class TestKeepAllRowsAction(unittest.TestCase):
     def test_all_rows_kept(self):
         action = KeepAllRowsAction()
@@ -63,6 +63,118 @@ class TestKeepTopKAction(unittest.TestCase):
         action.add_to(acc, {'score': 5})
         self.assertEqual(len(acc), 2)
         self.assertTrue(all(r['score'] == 10 for r in acc))
+
+    def test_topk_ascdesc(self):
+        action = KeepAscOrDescK(comp_key = "score",comp_key2="age", limit= 3)
+        rows = [
+            {'score': 10, "age": 5},
+            {'score': 10, "age": 10},
+            {'score': 10, "age": 20},
+            {'score': 10, "age": 10},
+            {'score': 10, "age": 9},
+            {'score': 10, "age": 10},
+            {'score': 10, "age": 10},
+            {'score': 11, "age":40}
+        ]
+        for ind,row in enumerate(rows):
+            row["ind"] = ind
+
+        acc = []
+        for r in rows:
+            action.add_to(acc, r)
+
+        expected = [
+            rows[-1],
+            rows[0],
+            rows[4],
+        ]
+        self.assertEqual(len(acc), 3)
+        for ind, exp in enumerate(expected):
+            self.assertEqual(acc[ind], exp)
+
+"""
+    def test_bench_topk_ascdesc(self):
+        action = KeepAscOrDescK(comp_key = "score",comp_key2="age", limit= 3)
+        rows = [
+            {'score': 10, "age": 5},
+            {'score': 10, "age": 11},
+            {'score': 10, "age": 20},
+            {'score': 10, "age": 12},
+            {'score': 10, "age": 9},
+            {'score': 10, "age": 13},
+            {'score': 10, "age": 14},
+            {'score': 11, "age":40}
+        ] * 10000
+        ITERS = 5
+
+        init_time = round(time.time()*1000)
+
+        for i in range(ITERS):
+            acc = []
+            for r in rows:
+                action.add_to(acc, r)
+
+
+            expected = [
+                rows[-1],
+                rows[-1],
+                rows[-1],
+            ]
+        
+            self.assertEqual(len(acc), 3)
+            for ind, exp in enumerate(expected):
+                self.assertEqual(acc[ind], exp)
+
+        end_time = round(time.time()*1000)
+        print(f"KeepASCKORDESC TOOK, {end_time-init_time}ms")
+
+        action = KeepTopKAction(comp_key='score', limit=3)
+        init_time = round(time.time()*1000)
+
+        for i in range(ITERS):
+            acc = []
+            for r in rows:
+                action.add_to(acc, r)
+
+            expected = [
+                rows[-1],
+                rows[-1],
+                rows[-1],
+            ]
+            self.assertEqual(len(acc), 3)
+            for ind, exp in enumerate(expected):
+                self.assertEqual(acc[ind], exp)
+        
+        end_time = round(time.time()*1000)
+
+        print(f"KeepTopK TOOK, {end_time-init_time}ms")
+
+        #action = KeepKHeap(comp_key = "score",comp_key2="age", limit= 3)
+        action = KeepAscOrDescK(comp_key = "score",comp_key2="age", limit= 3)
+        
+        init_time = round(time.time()*1000)
+
+        for i in range(ITERS):
+            acc = []
+            action.add_all(acc, rows)
+            #for r in rows:
+            #    action.add_to(acc, r)
+            #acc = action.finished(acc)
+            #acc = maintain_top_k(rows, 3, "score", "age")
+
+
+            expected = [
+                rows[-1],
+                rows[-1],
+                rows[-1],
+            ]
+            self.assertEqual(len(acc), 3)
+            for ind, exp in enumerate(expected):
+                self.assertEqual(acc[ind], exp)
+        
+        end_time = round(time.time()*1000)
+        print(f"KeepTopK HEAP TOOK, {end_time-init_time}ms")
+"""
 
 class TestKeepLeastKAction(unittest.TestCase):
     def test_least_k_basic(self):

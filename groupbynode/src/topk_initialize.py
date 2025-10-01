@@ -41,7 +41,7 @@ def configure_types_topk(join_middleware):
     types_config[QUERY_4] = TopKTypeConfiguration(join_middleware, csv_message.csv_hashed_from_msg,
             in_fields= ["store_id","user_id", "purchase_count"],
             grouping_conf = [
-                ["store_id"], [KEEP_TOP_K, {'comp_key': "purchase_count", 'limit': 3}]
+                ["store_id"], [KEEP_ASCDESC, {'comp_key': "purchase_count",'comp_key2': "user_id", 'limit': 3}] # Get higher in purchases and least user_id
             ],
             out_conf={ROW_CONFIG_OUT_COLS: ["store_id","user_id", "purchase_count"]},                
     )
