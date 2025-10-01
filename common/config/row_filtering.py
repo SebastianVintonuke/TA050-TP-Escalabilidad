@@ -133,28 +133,26 @@ def should_keep(filters, row):
     return all(filt.should_keep(row) for filt in filters)
 
 
-def get_filter_source(creator_name, filters):
+def get_filter_source(filter_name, filters):
     expression= parse_filters_str(filters)
     source = f"""
-def {creator_name}():
-\tclass CompiledFilter:
-\t\tdef __init__(self):
-\t\t\t{expression[0] if expression[0] != "" else "pass"}
+class {filter_name}:
+\tdef __init__(self):
+\t\t{expression[0] if expression[0] != "" else "pass"}
 
-\t\tdef should_keep(self, row):
-\t\t\treturn {expression[1]}
-\t\tdef should_keep_any(self, rows):
-\t\t\treturn filter(self.should_keep, rows)
-\treturn CompiledFilter()
+\tdef should_keep(self, row):
+\t\treturn {expression[1]}
+\tdef should_keep_any(self, rows):
+\t\treturn filter(self.should_keep, rows)
 """
     return source
 
 def build_filter(filters_to_compile):
-    source = get_filter_source("filter_creator",filters_to_compile)
-    print("Creating filter\n",source)
+    source = get_filter_source("CompiledFilter",filters_to_compile)
+    #print("Creating filter\n",source)
     local_ns = {}
     exec(compile(source, '<string>', 'exec'), local_ns)
-    return local_ns["filter_creator"]()
+    return local_ns["CompiledFilter"]()
 
 
 

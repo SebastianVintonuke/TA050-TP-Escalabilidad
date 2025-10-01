@@ -100,6 +100,7 @@ def main() -> None:
 
         node.close()
     except Exception as e:
+        traceback.print_exc()
         logging.error(f"action: select_node_main | result: error | err:{e}")
 
 

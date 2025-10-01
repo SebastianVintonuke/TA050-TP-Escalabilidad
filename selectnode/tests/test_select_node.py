@@ -7,6 +7,7 @@ from common.config.row_mapping import *
 from common.config.type_expander import *
 from selectnode.src.select_type_config import *
 from selectnode.src.selectnode import *
+from selectnode.src.config_init import *
 
 
 def map_dict_to_vect_cols(cols, row):
@@ -24,6 +25,12 @@ def map_vect_to_dict_cols(cols, row):
 
 
 class TestSelectNode(unittest.TestCase):
+    def test_compiled_config(self):
+        types_expander = TypeExpander()
+        result_grouper = MockMiddleware()
+        groupby_middleware = MockMiddleware()
+        add_selectnode_config(types_expander, result_grouper, groupby_middleware)
+        self.assertFalse(False) # Just be able to compile it basically.
 
     def test_query_1_selectnode(self):
 

@@ -2,7 +2,7 @@
 from middleware.errors import *
 from middleware.routing import csv_message
 from middleware.routing.query_types import *
-from src.select_type_config import *
+from .select_type_config import *
 from common.config.row_filtering import *
 from common.config.row_mapping import *
 
