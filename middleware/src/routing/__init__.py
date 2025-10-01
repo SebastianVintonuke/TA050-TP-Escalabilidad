@@ -5,7 +5,7 @@ import pika
 import time
 import logging
 from pika.exceptions import AMQPConnectionError, ConnectionClosed, ChannelClosed
-from pika.exceptions import AMQPError, StreamLostError, ChannelClosedByBroker
+from pika.exceptions import AMQPError, StreamLostError, ChannelClosedByBroker, ChannelWrongStateError, ConnectionWrongStateError
 
 # Serial/message imports
 from .message import *
@@ -19,6 +19,10 @@ RABBITMQ_HOST = "middleware"
 RoutingRestartError = (
 	StreamLostError,
 	ChannelClosedByBroker,
+	ConnectionResetError,
+	ConnectionWrongStateError,
+	OSError,
+	ChannelWrongStateError,
 	AMQPError
 )
 RoutingConnectionErrors = (

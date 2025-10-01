@@ -6,6 +6,8 @@ from .routing.csv_message import CSVMessageBuilder, CSVMessage
 
 DEFAULT_EXCHANGE = ''
 CONNECTIONS_ATTMPS = 10
+SEND_RETRIES = 3
+
 class RabbitExchangeMiddleware(MessageMiddleware):
 	def __init__(self, queue_name, exchange_type = DEFAULT_EXCHANGE, host = routing.RABBITMQ_HOST):
 		self.queue_name = queue_name
@@ -43,8 +45,22 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 
 	# Serial basic _send
 	def _send(self, routing_key, headers, serial_msg):
-		self.channel.basic_publish(exchange=self.exch_name, routing_key=routing_key, body=serial_msg,  
-			properties=routing.build_headers(headers))
+		try:
+			self.channel.basic_publish(exchange=self.exch_name, routing_key=routing_key, body=serial_msg,  
+				properties=routing.build_headers(headers))
+		except routing.RoutingRestartError as e:
+			logging.error(f"Routing connection error happened at send, restart connection {e}")
+			try:
+				self._start_connection()
+			except Exception as e:
+				raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at restart connection : {e}") from e
+			return True
+		except routing.RoutingConnectionErrors as e:
+			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send: {e}") from e
+		except Exception as e:
+			raise MessageMiddlewareMessageError(f"Message handling error at send: {e}") from e		
+		
+		return False
 
 	# Wrapper for rbmq messages, subclasses might override this in case they want to have specific types of messages
 	def _callback_wrapper(self, callback):
@@ -66,7 +82,7 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	def start_consuming(self, on_message_callback):
 		try:
 			self._init_bind()
-			
+
 			self.channel.basic_qos(prefetch_count=4)
 
 			self.channel.basic_consume(
@@ -90,18 +106,16 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Si se pierde la conexión con el middleware eleva MessageMiddlewareDisconnectedError.
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
 	def send(self, message_builder: CSVMessageBuilder):
-		try:
-			self._send(self.queue_name, message_builder.get_headers(),message_builder.serialize_payload())
-		except routing.RoutingRestartError as e:
-			logging.error(f"Routing connection error happened at send, restart connection {e}")
-			try:
-				self._start_connection()
-			except Exception as e:
-				raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at restart connection : {e}") from e
-		except routing.RoutingConnectionErrors as e:
-			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send: {e}") from e
-		except Exception as e:
-			raise MessageMiddlewareMessageError(f"Message handling error at send: {e}") from e
+		headers = message_builder.get_headers()
+		payload = message_builder.serialize_payload()
+		ind=0
+		while self._send(self.queue_name, headers,payload) and ind < SEND_RETRIES:
+			ind+=1
+			loggin.info(f"Retrying send {ind} of {headers}")
+
+		if ind >= SEND_RETRIES:
+			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send, failed to many times")
+
 	
 	# Si se estaba consumiendo desde la cola/exchange, se detiene la escucha. Si
 	# no se estaba consumiendo de la cola/exchange, no tiene efecto, ni levanta

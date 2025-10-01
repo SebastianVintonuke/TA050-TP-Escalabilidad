@@ -16,11 +16,13 @@ class JoinTasksMiddleware(RabbitExchangeMiddleware):
 		return 'direct'
 
 	def send(self, hashed_message_builder: CSVHashedMessageBuilder):
-		try:
-			target = JOIN_TASKS_QUEUE_BASE.format(IND= hashed_message_builder.hash_in(self.node_count))
-			self._send(target, hashed_message_builder.get_headers(),hashed_message_builder.serialize_payload())
-		except routing.RoutingConnectionErrors as e:
-			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send: {e}") from e
-		except Exception as e:
-			raise MessageMiddlewareMessageError(f"Message handling error at send: {e}") from e
-	
+		target = JOIN_TASKS_QUEUE_BASE.format(IND= hashed_message_builder.hash_in(self.node_count))
+		headers = hashed_message_builder.get_headers()
+		payload = hashed_message_builder.serialize_payload()
+		ind=0
+		while self._send(target, headers,payload) and ind < SEND_RETRIES:
+			ind+=1
+			loggin.info(f"Retrying send {ind} of {headers}")
+
+		if ind >= SEND_RETRIES:
+			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send, failed to many times")
