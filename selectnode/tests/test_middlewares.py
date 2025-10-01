@@ -48,6 +48,9 @@ class MockChannel:
         self.queues = {}
         self.host = host
 
+    def basic_qos(self, prefetch_count):
+        pass
+
     def exchange_declare(self, exchange, exchange_type, durable=False):
         pass
 

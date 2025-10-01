@@ -66,6 +66,9 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	def start_consuming(self, on_message_callback):
 		try:
 			self._init_bind()
+			
+			self.channel.basic_qos(prefetch_count=4)
+
 			self.channel.basic_consume(
 				queue=self.queue_name, on_message_callback=self._callback_wrapper(on_message_callback), auto_ack=False)
 			self.channel.start_consuming()
