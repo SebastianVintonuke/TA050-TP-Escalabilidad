@@ -4,7 +4,7 @@ from common.config.base_type_config import (
     BaseDictTypeConfiguration,
     BaseTypeConfiguration,
 )
-from common.config.row_filtering import load_all_filters, should_keep
+from common.config.row_filtering import build_filter_from_config,load_all_filters, should_keep
 
 
 class SelectTypeConfiguration(BaseDictTypeConfiguration):
@@ -15,17 +15,18 @@ class SelectTypeConfiguration(BaseDictTypeConfiguration):
         self, out_middleware, builder_creator, in_fields, filters_conf, out_conf=None
     ):
         super().__init__(out_middleware, builder_creator, in_fields, out_conf)
-        self.filters = load_all_filters(filters_conf)
+        self.row_filter = build_filter_from_config(filters_conf) 
+        #self.filters = load_all_filters(filters_conf)
 
     def should_keep(self, row):
-        return should_keep(self.filters, row)
+        return self.row_filter.should_keep(row)#should_keep(self.filters, row)
 
     def filter_map(self, row):
         try:
             # No pad needed ? self.pad_copy_row(row), mapping to dict and if not enough rows... fail
             row = self.mapper.map_input(row)
             # logging.info(f"MAPPED ROW {row}")
-            if self.should_keep(row):
+            if self.row_filter.should_keep(row):
                 return self.mapper(row)
             return None
         except Exception as e:
