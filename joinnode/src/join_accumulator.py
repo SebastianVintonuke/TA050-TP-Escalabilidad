@@ -12,6 +12,15 @@ class JoinAccumulator:
         self.right_finished = False
         self.limit = limit
 
+    def len_left(self):
+        return len(self.left_rows)
+
+    def len_right(self):
+        return len(self.right_rows)
+
+    def len_joined(self):
+        return self.msg_builder.len_payload()
+
     def add_joined(self , row):
         self.msg_builder.add_row(row)
         if self.msg_builder.len_payload() >= self.limit:

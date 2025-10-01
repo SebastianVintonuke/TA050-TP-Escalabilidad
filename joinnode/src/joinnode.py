@@ -7,6 +7,30 @@ class JoinNode:
         self.type_expander = type_expander
         self.joiners = {}
 
+
+    def len_in_progress(self):
+        return len(self.joiners)
+
+    def len_input_rows(self):
+        total =0 
+        for _, joiner in self.joiners.items():
+            total+= joiner.len_left() + joiner.len_right()
+        return total
+
+    def len_out_rows(self):
+        total =0 
+        for _, joiner in self.joiners.items():
+            total+= joiner.len_joined()
+        return total
+
+    def len_left_rows(self):
+        total =0 
+        for _, joiner in self.joiners.items():
+            total+= joiner.len_left()
+        return total
+
+
+
     def handle_task(self, msg):
         if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
             if msg.is_last_message():
@@ -21,10 +45,9 @@ class JoinNode:
                         if joiner:
                             if config.left_type == type:
                                 if joiner.handle_eof_left(): #Finished
-                                    self.joiners.pop(ide+config.join_id)
-                                    
+                                    del self.joiners[ide+config.join_id]
                             elif joiner.handle_eof_right(): #Finished
-                                    self.joiners.pop(ide+config.join_id)
+                                    del self.joiners[ide+config.join_id]
                         else:
                             # propagate eof signal for this message 
                             config.send(config.new_builder_for(msg, ind))

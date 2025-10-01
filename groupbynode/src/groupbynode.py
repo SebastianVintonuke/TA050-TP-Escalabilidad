@@ -40,9 +40,12 @@ class QueryAccumulator:
 		eof_signal.set_finish_signal()
 		self.type_conf.send(eof_signal)
 
+	def len_grouped(self):
+		return len(self.groups)
+
 	def describe(self):
 		if len(self.groups) < 100:
-			logging.info(f"curr status accumulator topk:")
+			logging.info(f"curr status accumulator topk len {self.groups}:")
 			for group, acc in self.groups.items():
 				logging.info(f"key {group} acc : {acc}")
 
@@ -60,6 +63,15 @@ class GroupbyNode:
 				conf.new_builder_for(msg, ind) #Empty message that has same headers splitting to each destination.
 			)
 
+	def len_in_progress(self):
+		return len(self.accumulators)
+
+	def len_total_groups(self):
+		total = 0
+		for _, vl in self.accumulators.items():
+			total+= vl.len_grouped()
+
+		return total
 
 	def handle_task(self, msg):
 		if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
@@ -73,7 +85,7 @@ class GroupbyNode:
 						#logging.info(f"ACC: {acc}")
 						if acc:
 							acc.send_built()
-							self.accumulators.pop(query_id) #Remove it
+							del self.accumulators[query_id] #Remove it
 						else:
 							# propagate eof signal for this message 
 							conf = self.types_configurations[msg.types[ind]]
