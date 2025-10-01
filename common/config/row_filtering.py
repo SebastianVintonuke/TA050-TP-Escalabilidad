@@ -1,3 +1,6 @@
+import itertools
+
+
 GREATER_THAN_OP = ">"
 GREATER_EQ_THAN_OP = ">="
 LESSER_EQ_THAN_OP = "<="
@@ -6,23 +9,63 @@ BETWEEN_THAN_OP = "between"
 EQUALS_ANY = "equals_any"
 NOT_EQUALS = "not_equals"
 
+class GreaterThanOP:
+    def __call__(self, vl, constraints):
+        return float(vl) > constraints[0]
+    def filter_expression(self,field_key, vl, constraints):
+        return (f"float({vl}) > {constraints[0]}",)
+class GreaterEQThanOP:
+    def __call__(self, vl, constraints):
+        return float(vl) >= constraints[0]
+    def filter_expression(self,field_key, vl, constraints):
+        return (f"float({vl}) >= {constraints[0]}",)
+
+class LesserThanOP:
+    def __call__(self, vl, constraints):
+        return float(vl) < constraints[0]
+    def filter_expression(self,field_key, vl, constraints):
+        return (f"float({vl}) < {constraints[0]}",)
+class LesserEQThanOP:
+    def __call__(self, vl, constraints):
+        return float(vl) <= constraints[0]
+    def filter_expression(self,field_key, vl, constraints):
+        return (f"float({vl}) <= {constraints[0]}",)
+
+class BetweenThanOP:
+    def __call__(self, vl, constraints):
+        return constraints[0]<= float(vl) <= constraints[1]
+    def filter_expression(self,field_key, vl, constraints):
+        return (f"{constraints[0]}<= float({vl}) <={constraints[1]}",)
+
+class EqualsAnyOP:
+    def __call__(self, vl, constraints):
+        return any(vl == constraint for constraint in constraints)
+    def filter_expression(self,field_key, vl, constraints):
+        return (f"{vl} in self.equals_any_constraints_{field_key}",#f"any({vl} == constraint for constraint in self.equals_any_constraints)",
+            (f"equals_any_constraints_{field_key}", f"set({constraints})"),
+            )
+
+class NotEqualsOP:
+    def __call__(self, vl, constraints):
+        return all(vl != constraint for constraint in constraints)
+
+    def filter_expression(self,field_key, vl, constraints):
+        return (f"all({vl} != constraint for constraint in self.not_equals_constraints_{field_key})",
+            (f"not_equals_constraints_{field_key}", f"{constraints}")
+            )
+
+
 NUMBER_OPS = {
-    GREATER_THAN_OP: lambda vl, constraints: float(vl) > constraints[0],
-    GREATER_EQ_THAN_OP: lambda vl, constraints: float(vl) >= constraints[0],
-    LESSER_THAN_OP: lambda vl, constraints: float(vl) < constraints[0],
-    LESSER_EQ_THAN_OP: lambda vl, constraints: float(vl) <= constraints[0],
-    BETWEEN_THAN_OP: lambda vl, constraints: constraints[0]
-    <= float(vl)
-    <= constraints[1],
+    GREATER_THAN_OP: GreaterThanOP,
+    GREATER_EQ_THAN_OP: GreaterEQThanOP,
+    LESSER_THAN_OP: LesserThanOP,
+    LESSER_EQ_THAN_OP: LesserEQThanOP,
+    BETWEEN_THAN_OP:BetweenThanOP,
 }
 
 GENERAL_OPS = {
-    EQUALS_ANY: lambda vl, constraints: any(
-        vl == constraint for constraint in constraints
-    ),
-    NOT_EQUALS: lambda vl, constraints: all(
-        vl != constraint for constraint in constraints
-    ),
+    EQUALS_ANY: EqualsAnyOP,
+    NOT_EQUALS: NotEqualsOP,
 }
 
 
@@ -36,10 +79,16 @@ class RowFilter:
 
         # Assert not None OP!
         assert self.op
+        self.op = self.op()
 
     def should_keep(self, row):
         vl = row[self.field_key]
         return self.op(vl, self.constraints)
+
+    def parse_expression(self):
+        return self.op.filter_expression(str(self.field_key), f"row[{self.field_key}]", self.constraints)
+    def parse_expression_str_field(self):
+        return self.op.filter_expression(str(self.field_key), f"row['{self.field_key}']", self.constraints)
 
 
 FILTER_FIELD_NAME = 0
@@ -59,6 +108,55 @@ def load_all_filters(filters_serial):
         )
     return all_filters
 
+def parse_filters(filters):
+    if len(filters) == 0:
+        return ("", "True")
+
+    res = [filt.parse_expression() for filt in filters]
+    all_conditions = " and ".join([itm[1] for itm in res])
+    all_states = "\n".join([f"self.{itm[0]} = {itm[1]}" for itm in res])
+
+    return (all_states, all_conditions)
+def parse_filters_str(filters):
+    if len(filters) == 0:
+        return ("", "True")
+
+    res = [filt.parse_expression_str_field() for filt in filters]
+    all_conditions = " and ".join([itm[0] for itm in res])
+    all_states = "\n\t\t".join([f"self.{itm[0]} = {itm[1]}" for itm in itertools.chain.from_iterable(
+        map(lambda x: x[1:],filter(lambda x: len(x) > 1, res))
+    )])
+
+    return (all_states, all_conditions)
 
 def should_keep(filters, row):
     return all(filt.should_keep(row) for filt in filters)
+
+
+def get_filter_source(creator_name, filters):
+    expression= parse_filters_str(filters)
+    source = f"""
+def {creator_name}():
+\tclass CompiledFilter:
+\t\tdef __init__(self):
+\t\t\t{expression[0] if expression[0] != "" else "pass"}
+
+\t\tdef should_keep(self, row):
+\t\t\treturn {expression[1]}
+\t\tdef should_keep_any(self, rows):
+\t\t\treturn filter(self.should_keep, rows)
+\treturn CompiledFilter()
+"""
+    return source
+
+def build_filter(filters_to_compile):
+    source = get_filter_source("filter_creator",filters_to_compile)
+    print("Creating filter\n",source)
+    local_ns = {}
+    exec(compile(source, '<string>', 'exec'), local_ns)
+    return local_ns["filter_creator"]()
+
+
+
+def build_filter_from_config(filters_config):
+    return build_filter(load_all_filters(filters_config))

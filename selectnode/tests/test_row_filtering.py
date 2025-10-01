@@ -101,6 +101,34 @@ class TestRowFilter(unittest.TestCase):
         for row in rows_fail:
             self.assertFalse(should_keep(filters, row))
 
+    def test_query_1_usecase_compiled(self):
+        filters_serial = [
+            ["year", EQUALS_ANY, [2024, 2025]],
+            ["hour", BETWEEN_THAN_OP, [6, 23]],
+            ["sum", GREATER_THAN_OP, [75]],
+        ]
+
+        filter_compiled = build_filter_from_config(filters_serial)
+
+        rows_pass = [
+            {"year": 2024, "hour": 7, "sum": 88},
+            {"year": 2025, "hour": 23, "sum": 942},
+            {"year": 2024, "hour": 6, "sum": 942},
+        ]
+        rows_fail = [
+            {"year": 2027, "hour": 7, "sum": 88},
+            {"year": 2025, "hour": 24, "sum": 942},
+            {"year": 2024, "hour": 6, "sum": 55},
+        ]
+
+        for row in rows_pass:
+            self.assertTrue(filter_compiled.should_keep(row))
+
+        for row in rows_fail:
+            self.assertFalse(filter_compiled.should_keep(row))
+
+
+
 
 """
         types_config = {
