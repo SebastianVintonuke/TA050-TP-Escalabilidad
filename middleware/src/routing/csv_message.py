@@ -1,6 +1,6 @@
 
 from .csv_payload_deserializer import *
-from .channel_message import *
+from .message import *
 from .message_building import *
 import logging
 
@@ -15,9 +15,9 @@ def map_all_ints(row):
         logging.error(f"Failed deserial of row {row} invalid {e}")
         return None
 
-class CSVMessage(ChannelMessage):
-    def __init__(self, ch, method, headers, payload):
-        super().__init__(ch, method, headers, payload)
+class CSVMessage(Message):
+    def __init__(self, headers, payload):
+        super().__init__(headers, payload)
 
     def _from_headers(self, headers):
         super()._from_headers(headers)
@@ -25,9 +25,6 @@ class CSVMessage(ChannelMessage):
 
     def _deserialize_payload(self, payload): # Do nothing with it.
         return CSVPayloadDeserializer(payload)
-
-    def clone_with(self, queries_id, queries_type):
-        return CSVMessage(self.tag, queries_id, queries_type, self.payload)
 
     def stream_rows(self):
         return self.payload

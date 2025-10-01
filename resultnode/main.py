@@ -88,7 +88,6 @@ def main() -> None:
         if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
-            msg.ack_self()
             return
         data: List[QueryResult1] = []
         for line in msg.stream_rows():
@@ -97,13 +96,11 @@ def main() -> None:
             data.append(QueryResult1(transaction_id=transaction_id, final_amount=final_amount))
         result_task = ResultTask(user_id, QueryId.Query1, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
-        msg.ack_self()
 
     def handle_query_2_best_selling_result(msg, user_id: str) -> None:
         if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
-            msg.ack_self()
             return
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
@@ -117,13 +114,11 @@ def main() -> None:
             data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
         result_task = ResultTask(user_id, QueryId.Query2BestSelling, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
-        msg.ack_self()
 
     def handle_query_2_most_profit_result(msg, user_id) -> None:
         if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
-            msg.ack_self()
             return
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
@@ -137,13 +132,11 @@ def main() -> None:
             data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
         result_task = ResultTask(user_id, QueryId.Query2MostProfit, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
-        msg.ack_self()
 
     def handle_query_3_result(msg, user_id: str) -> None:
         if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
-            msg.ack_self()
             return
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
@@ -153,13 +146,11 @@ def main() -> None:
             data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
         result_task = ResultTask(user_id, QueryId.Query3, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
-        msg.ack_self()
 
     def handle_query_4_result(msg, user_id: str) -> None:
         if msg.is_partition_eof():
             result_task = ResultTask(user_id, QueryId.Query4, True, False, []).to_bytes()
             results_storage_middleware.send(result_task)
-            msg.ack_self()
             return
         data: List[QueryResult4] = []
         for line in msg.stream_rows():
@@ -169,7 +160,6 @@ def main() -> None:
             data.append(QueryResult4(store_name=store_name, birthdate=birthdate))
         result_task = ResultTask(user_id, QueryId.Query4, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
-        msg.ack_self()
 
     def __year_semester_decode(year_semester_str: str) -> Tuple[date, HalfCreatedAt]:
         year_semester = int(year_semester_str)
@@ -189,8 +179,6 @@ def main() -> None:
         elif query_type == QUERY_2_QUANTITY: # TODO QUANTITY TRAE DATOS DE REVENUE
             logging.info(f"{QUERY_2_QUANTITY} IS EOF:{msg.is_eof()}")
             handle_query_2_best_selling_result(msg, user_id)
-            msg.ack_self()
-            return
         elif query_type == QUERY_2_REVENUE:
             logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
             handle_query_2_most_profit_result(msg, user_id)

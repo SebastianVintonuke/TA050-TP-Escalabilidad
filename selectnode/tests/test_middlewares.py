@@ -81,6 +81,9 @@ class MockChannel:
             {"exchange": exchange, "body": body, "props": properties}
         )
 
+    def basic_ack(self, delivery_tag):
+        pass
+
 
 class MockConnection:
     def __init__(self, host):
@@ -363,8 +366,6 @@ class TestMiddlewares(unittest.TestCase):
         for i in range(len(rows_pass)):
             self.assertTrue(rows_pass[i] == res[i])        
 
-        res_msg.ack_self()
-
 
 
     def test_memory_middleware_delegates_builder_and_sends_msg_no_serialization(self):
@@ -399,5 +400,3 @@ class TestMiddlewares(unittest.TestCase):
 
         for i in range(len(rows_pass)):
             self.assertTrue(rows_pass[i] == res[i])        
-
-        res_msg.ack_self()

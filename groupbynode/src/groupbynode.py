@@ -105,7 +105,6 @@ class GroupbyNode:
 					if acc:
 						acc.ongoing_partitions.discard(msg.partition)
 					ind +=1
-			msg.ack_self()
 			return
 
 		outputs = []
@@ -129,7 +128,6 @@ class GroupbyNode:
 		#for output in outputs:
 		#	output.describe()
 
-		msg.ack_self()
 
 	def start(self):
 		self.middleware.start_consuming(self.handle_task)		

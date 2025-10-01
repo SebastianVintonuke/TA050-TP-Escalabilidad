@@ -45,9 +45,12 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 		def real_callback(ch, method, properties, body):
 			#logging.info(f"action: msg_recv | result: success | queue: {self.queue_name} | method: {method} | props: {properties} | body:{body}")
 			
-			wrapped_msg = CSVMessage(ch, method, properties.headers, body)
+			callback(CSVMessage(properties.headers, body)) # Handle msg
+			
+			# If reached here .. all ok, then ack msg
+			ch.basic_ack(delivery_tag = method.delivery_tag)
 
-			return callback(wrapped_msg)
+
 		return real_callback
 
 	# Comienza a escuchar a la cola/exchange e invoca a on_message_callback tras

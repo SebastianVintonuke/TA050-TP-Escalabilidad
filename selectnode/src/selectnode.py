@@ -36,7 +36,6 @@ class SelectNode:
             msg.is_partition_eof()
         ):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
             self.type_expander.propagate_signal_in(msg)
-            msg.ack_self()
             return
             # logging.info(f"Should handle EOF, or error in send, code {msg.partition}")
 
@@ -54,8 +53,6 @@ class SelectNode:
 
         for output in outputs:
             output.send_built()
-
-        msg.ack_self()
 
     def start(self):
         self.middleware.start_consuming(self.handle_task)

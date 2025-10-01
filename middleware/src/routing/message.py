@@ -34,13 +34,6 @@ class Message:
 	def len_queries(self):
 		return len(self.ids)
 
-	def clone_with(self, queries_id, queries_type):
-		return Message(queries_id, queries_type, self.payload)
-
-	# For subclasses
-	def ack_self(self):
-		pass
-
 	def describe(self):
 		pass
 		#logging.info(f"action: msg_describe | result: success | tag: {self.tag} | queries_id:{self.ids} | queries_type: {self.types}")

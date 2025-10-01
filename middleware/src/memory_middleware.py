@@ -15,9 +15,6 @@ def not_none(itm):
 class MemoryMessageChannel:
     def basic_ack(self, delivery_tag):
         pass
-class MethodClass:
-    def __init__(self, tag):
-        self.delivery_tag = tag
 
 class HashedMemoryMessageBuilder(HashedMessageBuilder):
     def __init__(self,queries_id, queries_type, key_hash, partition = 0):
@@ -54,15 +51,13 @@ def memory_builder_from_msg(msg, ind):
 
 
 
-DEF_CHANNEL = MemoryMessageChannel()
-DEF_METHOD = MethodClass("")
 def builder_to_memory_msg(builder):
     logging.info(f"SENDING over memory middleware {builder.get_headers()} {len(builder.payload)} Not serializing?")
     return MemoryMessage(builder.get_headers(), builder.payload)
 
 def csv_builder_to_msg(builder):
     logging.info(f"SENDING over memory middleware {builder.get_headers()} {len(builder.payload)}")
-    return CSVMessage(DEF_CHANNEL, DEF_METHOD, builder.get_headers(), builder.serialize_payload())
+    return CSVMessage(builder.get_headers(), builder.serialize_payload())
 
 
 

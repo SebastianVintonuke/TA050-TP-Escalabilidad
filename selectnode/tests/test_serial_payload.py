@@ -13,11 +13,6 @@ def map_vect_to_dict(row):
     return {"year": int(row[0]), "hour": int(row[1]), "sum": int(row[2])}
 
 
-class MethodClass:
-    def __init__(self, tag):
-        self.delivery_tag = tag
-
-
 class TestSerialPayload(unittest.TestCase):
 
     def test_serial_deserial_csv_message(self):
@@ -38,9 +33,7 @@ class TestSerialPayload(unittest.TestCase):
             msg_build.add_row(map_dict_to_vect(itm))
 
         payload = msg_build.serialize_payload()
-        res_msg = CSVMessage(
-            None, MethodClass("Something"), msg_build.get_headers(), payload
-        )
+        res_msg = CSVMessage(msg_build.get_headers(), payload)
         res_msg.describe()
         res = [itm for itm in res_msg.map_stream_rows(map_vect_to_dict)]
 
@@ -67,9 +60,7 @@ class TestSerialPayload(unittest.TestCase):
             msg_build.add_row(map_dict_to_vect(itm))
 
         payload = msg_build.serialize_payload()
-        res_msg = CSVMessage(
-            None, MethodClass("Something"), msg_build.get_headers(), payload
-        )
+        res_msg = CSVMessage(msg_build.get_headers(), payload)
         res_msg.describe()
         res = [itm for itm in res_msg.map_stream_rows(map_vect_to_dict)]
 

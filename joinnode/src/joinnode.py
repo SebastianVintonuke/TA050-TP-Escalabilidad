@@ -56,7 +56,6 @@ class JoinNode:
                     self.type_expander.propagate_signal_in(msg)
             else: # Not last message, mark partition as ended
                 pass
-            msg.ack_self()
             return
 
         row_actions = []
@@ -77,7 +76,6 @@ class JoinNode:
             for action in row_actions:
                 action(row)
 
-        msg.ack_self()
 
     def start(self):
         self.middleware.start_consuming(self.handle_task)
