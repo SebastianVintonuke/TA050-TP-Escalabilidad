@@ -5,8 +5,8 @@ from typing import Callable, List, Iterable
 from .byte import ByteProtocol
 
 class BatchProtocol:
-    _MAX_BATCH_SIZE = 8 * 1024  # 8 kB
-    _MAX_BATCH_COUNT = 255
+    _MAX_BATCH_SIZE = 256 * 1024  # 8 kB
+    _MAX_BATCH_COUNT = 8196
 
     def __init__(self, a_socket: socket.socket):
         self._byte_protocol = ByteProtocol(a_socket)
@@ -32,7 +32,7 @@ class BatchProtocol:
                 f"Batch total size {total_size} bytes exceeds maximum {self._MAX_BATCH_SIZE}kB"
             )
 
-        self._byte_protocol.send_uint8(len(batch))
+        self._byte_protocol.send_uint16(len(batch))
         for item in batch:
             self._byte_protocol.send_bytes(item)
 
@@ -59,7 +59,7 @@ class BatchProtocol:
         Reads batch `size` and returns them as a list.
         """
         batch = []
-        size = self._byte_protocol.wait_uint8()
+        size = self._byte_protocol.wait_uint16()
         for item in range(0, size):
             batch.append(self._byte_protocol.wait_bytes())
         return batch

@@ -106,6 +106,8 @@ class DispatcherProtocol:
                 transaction_item.created_at.month,
                 transaction_item.subtotal,
             ])
+
+        #logging.info(f"-->Sending len transaction item {transaction_item_task.len_payload()}")
         select_middleware.send(transaction_item_task)
 
     @staticmethod
