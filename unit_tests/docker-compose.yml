@@ -1,0 +1,33 @@
+services:
+  rabbit:
+    image: rabbitmq:3.9.16-management
+    ports:
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      testing_net:
+        aliases:
+          - middleware
+
+  tests:
+    build:
+      context: ..
+      dockerfile: unit_tests/Dockerfile
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../:/app:delegated
+    working_dir: /app
+    command: pytest -v ${TEST_PATH:-middleware/tests/} ${PYTEST_ARGS:-}
+    networks:
+      - testing_net
+
+networks:
+  testing_net:
+    driver: bridge

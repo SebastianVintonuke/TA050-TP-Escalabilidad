@@ -14,6 +14,12 @@ docker-compose-down
 docker-compose-logs
 `
 
+Correr tests unitarios del MessageMiddleware
+
+`
+unit_tests/run_tests.sh 
+`
+
 Instalar linter y formatter
 
 `
