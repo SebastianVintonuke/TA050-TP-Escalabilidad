@@ -111,7 +111,7 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 		ind=0
 		while self._send(self.queue_name, headers,payload) and ind < SEND_RETRIES:
 			ind+=1
-			loggin.info(f"Retrying send {ind} of {headers}")
+			logging.info(f"Retrying send {ind} of {headers}")
 
 		if ind >= SEND_RETRIES:
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at send, failed to many times")
