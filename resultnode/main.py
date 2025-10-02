@@ -118,8 +118,8 @@ def main() -> None:
 
     def handle_query_1_result(msg,counter, user_id: str) -> None:
         if msg.is_eof():
-            logging.info(f"----------------> RECEIVED EOF QUERY 1 EXPECT {counter.expected_count_query_1} got: {counter.count_query_1}")
             counter.expected_count_query_1 = msg.partition
+            logging.info(f"----------------> RECEIVED EOF QUERY 1 EXPECT {counter.expected_count_query_1} got: {counter.count_query_1}")
             return
         counter.count_query_1 += 1
 

@@ -184,7 +184,7 @@ class DispatcherProtocol:
     @staticmethod
     def __send_EOF_for(user_id: str, model: Model, select_middleware: SelectTasksMiddleware, join_middleware: JoinTasksMiddleware, counter_transactions: int, counter_transaction_items: int, counter_menu_items: int, counter_user: int, counter_store: int):
         if model is Transaction:
-            logging.info(f"EOF FOR TRANSACTIONS")
+            logging.info(f"EOF FOR TRANSACTIONS-----------------: {counter_transactions}")
             eof_task = CSVMessageBuilder([user_id, user_id, user_id],
                                          ["query_1", "query_3", "query_4"])
             eof_task.set_as_eof(count = counter_transactions) # If set as 0 assumes all messages were sent. Since it checks if msg received < expected. If it is > then fine

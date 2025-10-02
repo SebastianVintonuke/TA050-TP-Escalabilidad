@@ -4,7 +4,7 @@ from hashlib import sha256 as hash_function
 
 # Message builder
 class MessageBuilder:
-    def __init__(self,queries_id, queries_type, partition = 0):
+    def __init__(self,queries_id, queries_type, partition = DEFAULT_PARTITION_VALUE):
         self.ids = queries_id
         self.types = queries_type
         self.payload = []

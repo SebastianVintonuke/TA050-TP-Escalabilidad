@@ -32,7 +32,7 @@ class CSVMessage(Message):
         return filter(not_none, map(map_func, self.payload)) # payload is already a stream, assumed only will be iterated once.
 
 class CSVMessageBuilder(MessageBuilder):
-    def __init__(self,queries_id, queries_type, partition = 0):
+    def __init__(self,queries_id, queries_type, partition = DEFAULT_PARTITION_VALUE):
         super().__init__(queries_id, queries_type, partition)
     
     def add_row(self,row):
@@ -43,7 +43,7 @@ class CSVMessageBuilder(MessageBuilder):
         return CSVMessageBuilder(self.ids, self.types, self.partition_ind)
 
 class CSVHashedMessageBuilder(HashedMessageBuilder):
-    def __init__(self,queries_id, queries_type, key_hash, partition = 0):
+    def __init__(self,queries_id, queries_type, key_hash, partition = DEFAULT_PARTITION_VALUE):
         super().__init__(queries_id, queries_type, key_hash, partition)
 
     def add_row(self,row):
