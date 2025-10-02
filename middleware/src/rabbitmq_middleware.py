@@ -123,7 +123,10 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 
 	def stop_consuming(self):
 		try:
-			self.channel.stop_consuming()
+			if self.channel.is_open:
+				self.channel.stop_consuming()
+				# Allow time to process CancelOk or remaining events
+				self._conn.process_data_events(time_limit=0.5)
 		except routing.RoutingConnectionErrors as e:
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at stop consume: {e}") from e
 
@@ -131,8 +134,12 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareCloseError.
 	def close(self):
 		try:
-			self.channel.stop_consuming()
-			self._conn.close()
+			self.stop_consuming()
+			if self.channel and self.channel.is_open:
+				self.channel.close()
+			if self._conn and self._conn.is_open:
+				self._conn.close()
+			
 			#self.channel = None # We could... and throw errors when you try to do something when closed... but is it needed?
 		except Exception as e:
 			raise MessageMiddlewareCloseError(f"error: {e}") from e
@@ -141,7 +148,8 @@ class RabbitExchangeMiddleware(MessageMiddleware):
 	# Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareDeleteError.
 	def delete(self):
 		try:
-			self.channel.queue_delete(self.queue_name)
+			if self.channel and self.channel.is_open:
+				self.channel.queue_delete(self.queue_name)
 		except routing.RoutingConnectionErrors as e:
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ connection error at delete queue: {e}") from e
 		except Exception as e:
