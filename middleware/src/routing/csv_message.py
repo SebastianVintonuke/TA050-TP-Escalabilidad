@@ -27,7 +27,7 @@ class CSVMessage(Message):
         return CSVPayloadDeserializer(payload)
 
     def stream_rows(self):
-        return self.payload
+        return [] if self.payload == None else self.payload
     def map_stream_rows(self, map_func):
         return filter(not_none, map(map_func, self.payload)) # payload is already a stream, assumed only will be iterated once.
 

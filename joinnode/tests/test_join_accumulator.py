@@ -270,7 +270,7 @@ class TestJoinAccumulator(unittest.TestCase):
         acc.handle_eof_left()
         acc.handle_eof_right()
 
-        self.assertEqual(len(result_grouper.msgs), 3) # payload msg and 2 for eof.
+        self.assertEqual(len(result_grouper.msgs), 2) # payload msg and 1 for eof.
         output_payload = result_grouper.msgs[0].payload
         self.assertEqual(output_payload, expected_output)
 
@@ -301,9 +301,8 @@ class TestJoinAccumulator(unittest.TestCase):
         acc.handle_eof_right()
 
         # Nothing should have been sent
-        self.assertEqual(len(result_grouper.msgs), 2)  # Only EOF
-        self.assertEqual(result_grouper.msgs[-1].is_finish(), True)
-        self.assertEqual(result_grouper.msgs[-2].is_eof(), True)
+        self.assertEqual(len(result_grouper.msgs), 1)  # Only EOF
+        self.assertEqual(result_grouper.msgs[-1].is_eof(), True)
 
     def test_join_flushes_when_limit_hit(self):
         result_grouper = MockCopyMiddleware()
@@ -351,10 +350,9 @@ class TestJoinAccumulator(unittest.TestCase):
         acc.handle_eof_left()
         acc.handle_eof_right()
 
-        # Should emit the payload and two EOF messages
-        self.assertEqual(len(result_grouper.msgs), 3)
-        self.assertTrue(result_grouper.msgs[-2].is_eof())
-        self.assertTrue(result_grouper.msgs[-1].is_finish())
+        # Should emit the payload and one EOF message
+        self.assertEqual(len(result_grouper.msgs), 2)
+        self.assertTrue(result_grouper.msgs[-1].is_eof())
 
     def test_right_finishes_before_left(self):
         result_grouper = MockCopyMiddleware()
@@ -372,7 +370,7 @@ class TestJoinAccumulator(unittest.TestCase):
         acc.get_action_for_type("LEFT")(rows_left[0])
         acc.handle_eof_left()
 
-        self.assertEqual(len(result_grouper.msgs), 3)  # One data msg + EOF
+        self.assertEqual(len(result_grouper.msgs), 2)  # One data msg + EOF
         payloads = [msg.payload for msg in result_grouper.msgs if not msg.is_eof()]
         self.assertEqual(len(payloads), 1)  # One message 
         self.assertEqual(len(payloads[0]), 1)  # One joined row

@@ -32,30 +32,29 @@ class JoinNode:
 
 
     def handle_task(self, msg):
-        if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
-            if msg.is_last_message():
-                if msg.is_eof():
-                    logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
-                    ind=0
-                    type = msg.types[ind]
-                    ide = "" #msg.types[ind]
-                    
-                    for config in self.type_expander.get_configurations_for(type):
-                        joiner = self.joiners.get(ide+config.join_id, None)
-                        if joiner:
-                            if config.left_type == type:
-                                if joiner.handle_eof_left(): #Finished
-                                    del self.joiners[ide+config.join_id]
-                            elif joiner.handle_eof_right(): #Finished
-                                    del self.joiners[ide+config.join_id]
-                        else:
-                            # propagate eof signal for this message 
-                            config.send(config.new_builder_for(msg, ind))
+        if msg.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+            if msg.is_error():
+                logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
+                self.type_expander.propagate_signal_in(msg)
+                return
+
+            logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
+            ind=0
+            type = msg.types[ind]
+            ide = "" #msg.types[ind]
+            
+            for config in self.type_expander.get_configurations_for(type):
+                joiner = self.joiners.get(ide+config.join_id, None)
+                if joiner:
+                    if config.left_type == type:
+                        if joiner.handle_eof_left(): #Finished
+                            del self.joiners[ide+config.join_id]
+                    elif joiner.handle_eof_right(): #Finished
+                            del self.joiners[ide+config.join_id]
                 else:
-                    logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
-                    self.type_expander.propagate_signal_in(msg)
-            else: # Not last message, mark partition as ended
-                pass
+                    # propagate eof signal for this message 
+                    config.send(config.new_builder_for(msg, ind))
+            
             return
 
         row_actions = []

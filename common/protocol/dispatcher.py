@@ -180,34 +180,29 @@ class DispatcherProtocol:
             logging.info(f"EOF FOR TRANSACTIONS")
             eof_task = CSVMessageBuilder([user_id, user_id, user_id],
                                          ["query_1", "query_3", "query_4"])
-            eof_task.set_as_eof()
-            eof_task.set_finish_signal()
+            eof_task.set_as_eof(count = 0) # If set as 0 assumes all messages were sent. Since it checks if msg received < expected. If it is > then fine
             select_middleware.send(eof_task)
         elif model is TransactionItem:
             logging.info(f"EOF FOR TRANSACTIONS_ITEMS")
             eof_task = CSVMessageBuilder([user_id],
                                          ["query_2"])
             eof_task.set_as_eof()
-            eof_task.set_finish_signal()
             select_middleware.send(eof_task)
 
         elif model is MenuItem:
             logging.info(f"EOF FOR MENU_ITEMS")
             eof_product_task = CSVHashedMessageBuilder([user_id], ["query_product_names"], user_id)
             eof_product_task.set_as_eof()
-            eof_product_task.set_finish_signal()
             join_middleware.send(eof_product_task)
     
         elif model is User:
             logging.info(f"EOF FOR USER")
             eof_user_task = CSVHashedMessageBuilder([user_id], ["query_users"], user_id)
             eof_user_task.set_as_eof()
-            eof_user_task.set_finish_signal()
             join_middleware.send(eof_user_task)
 
         elif model is Store:
             logging.info(f"EOF FOR STORES")
             eof_store_task = CSVHashedMessageBuilder([user_id], ["query_store_names"], user_id)
             eof_store_task.set_as_eof()
-            eof_store_task.set_finish_signal()
             join_middleware.send(eof_store_task)

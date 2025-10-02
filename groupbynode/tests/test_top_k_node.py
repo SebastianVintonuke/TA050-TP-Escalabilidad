@@ -79,16 +79,10 @@ class TestTopKNode(unittest.TestCase):
 
         #Partition eof
         eof_message = MockMessage("tag1",["query_3323"],["t1"],[], map_f) 
-        eof_message.set_partition_eof()
-        in_middle.push_msg(eof_message)
-        self.assertEqual(len(result_grouper.msgs), 0)
-
-        #FINAL EOF
-        eof_message = MockMessage("tag1",["query_3323"],["t1"],[], map_f) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)
 
-        self.assertEqual(len(result_grouper.msgs), 3)
+        self.assertEqual(len(result_grouper.msgs), 2)
         self.assertEqual(result_grouper.msgs[0].ind, 0)
         #self.assertEqual(result_grouper.msgs[0].msg_from, message)
         got_result = [x for x in result_grouper.msgs[0].payload]
@@ -154,16 +148,10 @@ class TestTopKNode(unittest.TestCase):
 
         #Partition eof
         eof_message = MockMessage("tag1",["query_3323"],["t1"],[], map_f) 
-        eof_message.set_partition_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)
-        self.assertEqual(len(result_grouper.msgs), 0)
+        self.assertEqual(len(result_grouper.msgs), 2)
 
-        #FINAL EOF
-        eof_message = MockMessage("tag1",["query_3323"],["t1"],[], map_f) 
-        eof_message.set_eof()
-        in_middle.push_msg(eof_message)
-
-        self.assertEqual(len(result_grouper.msgs), 3)
         self.assertEqual(result_grouper.msgs[0].ind, 0)
         #self.assertEqual(result_grouper.msgs[0].msg_from, message)
         got_result = [x for x in result_grouper.msgs[0].payload]

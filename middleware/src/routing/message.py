@@ -25,6 +25,7 @@ class Message:
 
 	def __init__(self, headers, payload):
 		self._from_headers(headers)
+		
 		if len(payload) == 0:
 			self.payload = None
 		else:
@@ -46,12 +47,10 @@ class Message:
 		logging.info(f"action: stream_rows_mapped | result: success | data: {self.payload}")
 		return []
 
-
-	def is_partition_eof(self):
-		return self.payload == None
-
-	def is_last_message(self):
-		return self.partition < 0 # Negative partition es eof, be it an error or actual eof.
-
+	def has_payload(self):
+		return self.payload != None
 	def is_eof(self):
-		return self.partition == EOF_SIGNAL
+		return self.payload == None and self.partition != DEFAULT_PARTITION_VALUE
+
+	def is_error(self):
+		return self.partition < 0 # Negative partition means error

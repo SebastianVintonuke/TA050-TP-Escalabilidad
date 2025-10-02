@@ -17,10 +17,10 @@ class TypeHandler:
             self.msg_builder.add_row(row)
 
     def send_built(self):
-        if self.msg_builder.has_payload():
-            self.type_conf.send(self.msg_builder)
-        else:
-            pass
+        self.type_conf.send(self.msg_builder)
+        #if self.msg_builder.has_payload():
+        #    self.type_conf.send(self.msg_builder)
+        #else:
             # logging.info(f"action: filtered_full_msg | result: success | complete message for {self.msg_builder.types} was filtered")
 
 
@@ -32,12 +32,9 @@ class SelectNode:
     def handle_task(self, msg):
         # msg.describe()
 
-        if (
-            msg.is_partition_eof()
-        ):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+        if (msg.is_eof()):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
             self.type_expander.propagate_signal_in(msg)
             return
-            # logging.info(f"Should handle EOF, or error in send, code {msg.partition}")
 
         outputs = []
         ind = 0

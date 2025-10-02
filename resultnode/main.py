@@ -82,13 +82,46 @@ def main() -> None:
     result_middleware = ResultNodeMiddleware()
 
     results_storage_middleware = MessageMiddlewareQueue("middleware", "results")
+    class Counter:
+        def __init__(self):
+            self.count_query_1 = 0
+            self.count_query_2_profit = 0
+            self.count_query_2_quantity = 0
+            self.count_query_3 = 0
+            self.count_query_4 = 0
+            self.expected_count_query_1 = -1
+            self.expected_count_query_2_profit = -1
+            self.expected_count_query_2_quantity = -1
+            self.expected_count_query_3 = -1
+            self.expected_count_query_4 = -1
 
+        def is_eof_q1(self):
+            return self.expected_count_query_1 >=0 and self.count_query_1 >= self.expected_count_query_1
+        def is_eof_q2_profit(self):
+            return self.expected_count_query_2_profit >=0 and self.count_query_2_profit >= self.expected_count_query_2_profit
+        def is_eof_q2_quantity(self):
+            return self.expected_count_query_2_quantity >=0 and self.count_query_2_quantity >= self.expected_count_query_2_quantity
+        
+        def is_eof_q3(self):
+            return self.expected_count_query_3 >=0 and self.count_query_3 >= self.expected_count_query_3
+        def is_eof_q4(self):
+            return self.expected_count_query_4 >=0 and self.count_query_4 >= self.expected_count_query_4
 
-    def handle_query_1_result(msg, user_id: str) -> None:
-        if msg.is_partition_eof():
-            result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
-            results_storage_middleware.send(result_task)
+    results_message_counter= {}
+    def get_counter(user_id: str):
+        counter = results_message_counter.get(user_id, None)
+        if counter == None:
+            counter = Counter()
+            results_message_counter[user_id] = counter
+
+        return counter            
+
+    def handle_query_1_result(msg,counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_1 = msg.partition
             return
+        counter.count_query_1 += 1
+
         data: List[QueryResult1] = []
         for line in msg.stream_rows():
             transaction_id = line[0]
@@ -97,11 +130,12 @@ def main() -> None:
         result_task = ResultTask(user_id, QueryId.Query1, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
 
-    def handle_query_2_best_selling_result(msg, user_id: str) -> None:
-        if msg.is_partition_eof():
-            result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
-            results_storage_middleware.send(result_task)
+    def handle_query_2_best_selling_result(msg, counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_2_quantity = msg.partition
             return
+        counter.count_query_2_quantity += 1
+
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
             item_name: str = line[0]
@@ -115,11 +149,12 @@ def main() -> None:
         result_task = ResultTask(user_id, QueryId.Query2BestSelling, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
 
-    def handle_query_2_most_profit_result(msg, user_id) -> None:
-        if msg.is_partition_eof():
-            result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
-            results_storage_middleware.send(result_task)
+    def handle_query_2_most_profit_result(msg, counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_2_profit = msg.partition
             return
+        counter.count_query_2_profit += 1
+
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
             item_name: str = line[0]
@@ -133,11 +168,12 @@ def main() -> None:
         result_task = ResultTask(user_id, QueryId.Query2MostProfit, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
 
-    def handle_query_3_result(msg, user_id: str) -> None:
-        if msg.is_partition_eof():
-            result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
-            results_storage_middleware.send(result_task)
+    def handle_query_3_result(msg, counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_3 = msg.partition
             return
+        counter.count_query_3 += 1
+
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
             store_name = line[0]
@@ -147,11 +183,12 @@ def main() -> None:
         result_task = ResultTask(user_id, QueryId.Query3, False, False, data).to_bytes()
         results_storage_middleware.send(result_task)
 
-    def handle_query_4_result(msg, user_id: str) -> None:
-        if msg.is_partition_eof():
-            result_task = ResultTask(user_id, QueryId.Query4, True, False, []).to_bytes()
-            results_storage_middleware.send(result_task)
+    def handle_query_4_result(msg,counter,  user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_4 = msg.partition
             return
+        counter.count_query_4 += 1
+
         data: List[QueryResult4] = []
         for line in msg.stream_rows():
             logging.info(f"RECV ROW USER QUERY 4 {line}")
@@ -174,20 +211,47 @@ def main() -> None:
     def handle_result(msg):
         user_id = msg.ids[0]
         query_type = msg.types[0]
+        counter = get_counter(user_id)
+
         if query_type == QUERY_1:
-            handle_query_1_result(msg, user_id)
+            handle_query_1_result(msg, counter,  user_id)
+            if counter.is_eof_q1():
+                result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
+
         elif query_type == QUERY_2_QUANTITY: # TODO QUANTITY TRAE DATOS DE REVENUE
-            logging.info(f"{QUERY_2_QUANTITY} IS EOF:{msg.is_eof()}")
-            handle_query_2_best_selling_result(msg, user_id)
+            #logging.info(f"{QUERY_2_QUANTITY} IS EOF:{msg.is_eof()}")
+            handle_query_2_best_selling_result(msg,counter,  user_id)
+            if counter.is_eof_q2_quantity():
+                result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
+
         elif query_type == QUERY_2_REVENUE:
-            logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
-            handle_query_2_most_profit_result(msg, user_id)
+            #logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
+            handle_query_2_most_profit_result(msg,counter,  user_id)
+            
+            if counter.is_eof_q2_quantity():
+                result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
         elif query_type == QUERY_3:
-            logging.info(f"{QUERY_3} IS EOF:{msg.is_eof()}")
-            handle_query_3_result(msg, user_id)
+            #logging.info(f"{QUERY_3} IS EOF:{msg.is_eof()}")
+            handle_query_3_result(msg,counter,  user_id)
+
+            if counter.is_eof_q3():
+                result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
         elif query_type == QUERY_4: # TODO DATOS DE QUERY 4
-            logging.info(f"{QUERY_4} IS EOF:{msg.is_eof()}")
-            handle_query_4_result(msg, user_id)
+            #logging.info(f"{QUERY_4} IS EOF:{msg.is_eof()}")
+            handle_query_4_result(msg,counter,  user_id)
+
+            if counter.is_eof_q4():
+                result_task = ResultTask(user_id, QueryId.Query4, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
         else:
             logging.info(f"NO EXISTE {msg.types}")
             #raise ValueError(f"Unknown query type: {query_type}")

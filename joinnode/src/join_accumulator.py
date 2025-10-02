@@ -11,6 +11,7 @@ class JoinAccumulator:
         self.left_finished = False
         self.right_finished = False
         self.limit = limit
+        self.msg_sent = 0
 
     def len_left(self):
         return len(self.left_rows)
@@ -26,6 +27,7 @@ class JoinAccumulator:
         if self.msg_builder.len_payload() >= self.limit:
             self.type_conf.send(self.msg_builder)
             self.msg_builder.clear_payload()
+            self.msg_sent+=1
 
     def handle_eof_left(self):
         self.left_finished = True
@@ -93,12 +95,10 @@ class JoinAccumulator:
         if self.msg_builder.has_payload(): # if it has payload send it
             self.describe_send()
             self.type_conf.send(self.msg_builder)
-
+            self.msg_sent+=1
         eof_signal = self.msg_builder.clone()
         logging.info(f"EOF SIGNAL TO {eof_signal.types} {eof_signal.ids}")
-        eof_signal.set_as_eof()
-        self.type_conf.send(eof_signal)
-        eof_signal.set_finish_signal()
+        eof_signal.set_as_eof(self.msg_sent)
         self.type_conf.send(eof_signal)
 
     def describe_send(self):

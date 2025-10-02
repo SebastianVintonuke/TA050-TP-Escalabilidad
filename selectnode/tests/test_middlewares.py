@@ -183,7 +183,7 @@ class TestMiddlewares(unittest.TestCase):
         msg = out_msgs[0]
         self.assertEqual(["q1"], msg.ids)
         self.assertEqual(["t_1"], msg.types)
-        self.assertEqual(0, msg.partition)
+        self.assertEqual(-1, msg.partition) # DEF partition
 
         rows = [itm for itm in msg.map_stream_rows(map_vect_to_dict)]
         self.assertEqual(1, len(rows))
@@ -329,7 +329,7 @@ class TestMiddlewares(unittest.TestCase):
         msg = out_msgs[0]
         self.assertEqual(["q1"], msg.ids)
         self.assertEqual(["t_1"], msg.types)
-        self.assertEqual(0, msg.partition)
+        self.assertEqual(-1, msg.partition)
 
         rows = [itm for itm in msg.map_stream_rows(map_vect_to_dict)]
         self.assertEqual(1, len(rows))

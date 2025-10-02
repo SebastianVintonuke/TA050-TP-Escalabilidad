@@ -86,13 +86,13 @@ class MockMessage(Message):
         return map(self.map_to_vec, iter(self.payload))
         
 
-    def set_partition_eof(self):
+    def _set_eof(self):
         self.payload = None
 
     def set_error(self, code):
-        self.set_partition_eof()
+        self._set_eof()
         self.partition =code # Negative partition es eof, be it an error or actual eof.
 
-    def set_eof(self):
-        self.set_partition_eof()
-        self.partition = EOF_SIGNAL
+    def set_as_eof(self, count= 1):
+        self._set_eof()
+        self.partition = count

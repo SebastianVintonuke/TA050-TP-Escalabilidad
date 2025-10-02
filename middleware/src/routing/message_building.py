@@ -25,7 +25,7 @@ class MessageBuilder:
         self.payload = []
 
     def serialize_payload(self):
-        if self.should_be_eof:
+        if self.should_be_eof or len(self.payload) == 0:
             return b""
 
         return ("\n".join(self.payload)).encode()
@@ -43,24 +43,16 @@ class MessageBuilder:
 
         return res
 
-    def set_as_eof(self):
+    def set_as_eof(self, count: int = 0):
         self.should_be_eof = True
+        self.partition_ind = count
+
     def is_eof(self):
         return self.should_be_eof
 
-    def set_finish_signal(self):
-        self.set_as_eof()
-        self.partition_ind = EOF_SIGNAL
-
     def set_error(self, code = DEFAULT_ERROR_SIGNAL):
-        self.set_as_eof()
-        if code >=EOF_SIGNAL:
-            self.partition_ind = DEFAULT_ERROR_SIGNAL
-        else:
-            self.partition_ind = code
+        self.set_as_eof(DEFAULT_ERROR_SIGNAL if code >=EOF_SIGNAL else code)
 
-    def is_finish(self):
-        return self.partition_ind < 0
     def clone(self):
         return MessageBuilder(self.ids, self.types, self.partition_ind)
 

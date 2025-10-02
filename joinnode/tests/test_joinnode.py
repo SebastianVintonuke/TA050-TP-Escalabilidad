@@ -153,7 +153,7 @@ class TestJoinAccumulator(unittest.TestCase):
         # EOFS LEFT
 
         eof_message = MockMessage("tag1",["user_id"],["LEFT"],[], lambda r: r) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
         # LIMITED BY LIMIT 
@@ -162,12 +162,11 @@ class TestJoinAccumulator(unittest.TestCase):
         # EOFS RIGHT
         #FINAL EOF
         eof_message = MockMessage("tag1",["user_id"],["RIGHT"],[], lambda r: r) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
-        self.assertEqual(len(result_grouper.msgs), 3)
-        self.assertEqual(result_grouper.msgs[-1].is_finish(), True)
-        self.assertEqual(result_grouper.msgs[-2].is_eof(), True)
+        self.assertEqual(len(result_grouper.msgs), 2)
+        self.assertEqual(result_grouper.msgs[-1].is_eof(), True)
         
         rows_out = result_grouper.msgs[0].payload
 
@@ -253,7 +252,7 @@ class TestJoinAccumulator(unittest.TestCase):
 
         #FINAL EOF
         eof_message = MockMessage("tag1",["user_id"],["LEFT"],[], lambda r: r) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
         self.assertEqual(node.len_in_progress(), 1)
@@ -267,12 +266,11 @@ class TestJoinAccumulator(unittest.TestCase):
 
         # EOFS RIGHT
         eof_message = MockMessage("tag1",["user_id"],["RIGHT"],[], lambda r: r) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
-        self.assertEqual(len(result_grouper.msgs), 3)
-        self.assertEqual(result_grouper.msgs[-1].is_finish(), True)
-        self.assertEqual(result_grouper.msgs[-2].is_eof(), True)
+        self.assertEqual(len(result_grouper.msgs), 2)
+        self.assertEqual(result_grouper.msgs[-1].is_eof(), True)
         
         rows_out = result_grouper.msgs[0].payload
 
@@ -377,26 +375,19 @@ class TestJoinAccumulator(unittest.TestCase):
 
         # EOFS LEFT
         eof_message = MockMessage("tag1",["user_id"],["LEFT"],[], lambda r: r) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
         # LIMITED BY LIMIT 
         self.assertEqual(len(result_grouper.msgs), 0)
 
-        # EOFS RIGHT
-        eof_message = MockMessage("tag1",["user_id"],["RIGHT"],[], lambda r: r) 
-        eof_message.set_partition_eof()
-        in_middle.push_msg(eof_message)
-        self.assertEqual(len(result_grouper.msgs), 0)
-
         #FINAL EOF
         eof_message = MockMessage("tag1",["user_id"],["RIGHT"],[], lambda r: r) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
-        self.assertEqual(len(result_grouper.msgs), 3)
-        self.assertEqual(result_grouper.msgs[-1].is_finish(), True)
-        self.assertEqual(result_grouper.msgs[-2].is_eof(), True)
+        self.assertEqual(len(result_grouper.msgs),2)
+        self.assertEqual(result_grouper.msgs[-1].is_eof(), True)
         
         rows_out = result_grouper.msgs[0].payload
 
@@ -419,12 +410,11 @@ class TestJoinAccumulator(unittest.TestCase):
 
         #FINAL EOF
         eof_message = MockMessage("tag1",["user_id"],["RIGHT2"],[], lambda r: r) 
-        eof_message.set_eof()
+        eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
-        self.assertEqual(len(result_grouper2.msgs), 3)
-        self.assertEqual(result_grouper2.msgs[-1].is_finish(), True)
-        self.assertEqual(result_grouper2.msgs[-2].is_eof(), True)
+        self.assertEqual(len(result_grouper2.msgs), 2)
+        self.assertEqual(result_grouper2.msgs[-1].is_eof(), True)
         
         rows_out = result_grouper2.msgs[0].payload
 

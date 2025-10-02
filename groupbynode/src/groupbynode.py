@@ -9,6 +9,8 @@ class QueryAccumulator:
 		self.msg_builder = msg_builder
 		self.ongoing_partitions = set()
 		self.groups = {}
+		self.messages_received=0
+		self.known_message_len= -1
 
 	def __init__(self, type_conf, msg, ind):
 		self.type_conf = type_conf
@@ -16,6 +18,8 @@ class QueryAccumulator:
 		
 		self.ongoing_partitions = set()
 		self.groups = {}
+		self.messages_received=0
+		self.known_message_len= -1
 
 	def check(self, row):
 		row = self.type_conf.map_input_row(row)
@@ -35,9 +39,7 @@ class QueryAccumulator:
 
 		self.type_conf.send(self.msg_builder)
 		eof_signal = self.msg_builder.clone()
-		eof_signal.set_as_eof()
-		self.type_conf.send(eof_signal)
-		eof_signal.set_finish_signal()
+		eof_signal.set_as_eof(1)
 		self.type_conf.send(eof_signal)
 
 	def len_grouped(self):
@@ -48,6 +50,14 @@ class QueryAccumulator:
 			logging.info(f"curr status accumulator topk len {self.groups}:")
 			for group, acc in self.groups.items():
 				logging.info(f"key {group} acc : {acc}")
+
+	def add_msg_count(self):
+		self.messages_received+=1
+		return self.known_message_len>=0 and self.messages_received >= self.known_message_len
+
+	def check_eof(self, count_messages):
+		self.known_message_len = True
+		return count_messages <= self.messages_received
 
 class GroupbyNode:
 	def __init__(self, group_middleware, types_confs):
@@ -74,37 +84,30 @@ class GroupbyNode:
 		return total
 
 	def handle_task(self, msg):
-		if msg.is_partition_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
-			if msg.is_last_message():
-				if msg.is_eof():
-					logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
-					ind=0
-					for query_id in msg.ids:
-						query_id = query_id+str(msg.types[ind])
-						acc = self.accumulators.get(query_id, None)
-						#logging.info(f"ACC: {acc}")
-						if acc:
-							acc.send_built()
-							del self.accumulators[query_id] #Remove it
-						else:
-							# propagate eof signal for this message 
-							conf = self.types_configurations[msg.types[ind]]
-							self.type_conf.send(
-								conf.new_builder_for(msg, ind) #Empty message that has same headers splitting to each destination.
-							)
+		if msg.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+			if msg.is_error():
+				logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
+				self.propagate_signal(msg)
+				return
 
-						ind+=1
+			logging.info(f"Received final eof OF {msg.ids} types: {msg.types}, should have been {msg.partition} messages")
+			ind=0
+			for query_id in msg.ids:
+				query_id = query_id+str(msg.types[ind])
+				acc = self.accumulators.get(query_id, None)
+				if acc:
+					if acc.check_eof(msg.partition):
+						acc.send_built()
+						del self.accumulators[query_id] # Remove it
 				else:
-					logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
-					self.propagate_signal(msg)
-			else: # Not last message, mark partition as ended
-				ind = 0
-				for query_id in msg.ids:
-					query_id = query_id+str(msg.types[ind])
-					acc = self.accumulators.get(query_id, None)
-					if acc:
-						acc.ongoing_partitions.discard(msg.partition)
-					ind +=1
+					# propagate eof signal for this message 
+					conf = self.types_configurations[msg.types[ind]]
+					self.type_conf.send(
+						conf.new_builder_for(msg, ind) #Empty message that has same headers splitting to each destination.
+					)
+
+				ind+=1
+			
 			return
 
 		outputs = []
@@ -116,7 +119,6 @@ class GroupbyNode:
 			if acc == None:
 				acc = QueryAccumulator(self.types_configurations[msg.types[ind]], msg, ind)
 				self.accumulators[query_id] = acc
-			
 			outputs.append(acc)
 
 			ind+=1
@@ -124,6 +126,11 @@ class GroupbyNode:
 		for row in msg.stream_rows():
 			for output in outputs:
 				output.check(row)
+
+		for ind, acc in enumerate(outputs):
+			if acc.add_msg_count():
+				acc.send_built()
+				del self.accumulators[msg.ids[ind]+msg.types[ind]]
 
 		#for output in outputs:
 		#	output.describe()
