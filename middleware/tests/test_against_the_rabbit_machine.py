@@ -86,6 +86,8 @@ class MessageMiddlewareUnitTests(unittest.TestCase):
 
         # Assert
         self.assertIsNotNone(received_hit.get(timeout=WAIT_TIMEOUT))
+        with self.assertRaises(queue.Empty):
+            received_miss.get(block=False)
 
     # ---------- Comunicación por Exchange 1 a N ----------
     def test_exchange_1_to_n(self) -> None:
