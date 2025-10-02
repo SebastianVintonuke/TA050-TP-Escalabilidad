@@ -23,11 +23,7 @@ class MessageMiddlewareUnitTests(unittest.TestCase):
 
         received = queue.Queue()
 
-        def on_message(msg: Any) -> bool:
-            received.put(msg)
-            return True
-
-        start_consumer_in_thread(consumer, wrap_callback_with_ack_handling(on_message))
+        start_consumer_in_thread(consumer, wrap_callback_with_ack_handling(collecting_callback(received)))
         message = build_message([["k", "v"]])
 
         # Act
