@@ -118,6 +118,7 @@ def main() -> None:
 
     def handle_query_1_result(msg,counter, user_id: str) -> None:
         if msg.is_eof():
+            logging.info(f"----------------> RECEIVED EOF QUERY 1 EXPECT {counter.expected_count_query_1} got: {counter.count_query_1}")
             counter.expected_count_query_1 = msg.partition
             return
         counter.count_query_1 += 1
@@ -216,6 +217,7 @@ def main() -> None:
         if query_type == QUERY_1:
             handle_query_1_result(msg, counter,  user_id)
             if counter.is_eof_q1():
+                logging.info(f"GOT EOF FOR q1? count: {counter.count_query_1} exp: {counter.expected_count_query_1}")
                 result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
                 results_storage_middleware.send(result_task)
 
@@ -232,7 +234,7 @@ def main() -> None:
             #logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
             handle_query_2_most_profit_result(msg,counter,  user_id)
             
-            if counter.is_eof_q2_quantity():
+            if counter.is_eof_q2_profit():
                 result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
                 results_storage_middleware.send(result_task)
 
