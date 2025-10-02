@@ -100,38 +100,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
-  selectnode2:
-    container_name: selectnode2
-    image: selectnode:latest
-    entrypoint: python3 /selectnode/main.py
-    environment:
-      - SELECT_NODE_ID=2
-      - GROUPBY_NODE_COUNT=1
-      - JOIN_NODE_COUNT=1
-    networks:
-      - testing_net
-    depends_on:
-      - middleware
-    links:
-      - middleware
-    volumes:
-      - ./selectnode/config.ini:/config.ini:ro
-  selectnode3:
-    container_name: selectnode3
-    image: selectnode:latest
-    entrypoint: python3 /selectnode/main.py
-    environment:
-      - SELECT_NODE_ID=3
-      - GROUPBY_NODE_COUNT=1
-      - JOIN_NODE_COUNT=1
-    networks:
-      - testing_net
-    depends_on:
-      - middleware
-    links:
-      - middleware
-    volumes:
-      - ./selectnode/config.ini:/config.ini:ro
+
   groupbynode1:
     container_name: groupbynode1
     image: groupbynode:latest
@@ -165,9 +134,6 @@ services:
       - middleware
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
-
-
-
 
 networks:
   testing_net:
