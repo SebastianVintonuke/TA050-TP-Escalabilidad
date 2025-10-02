@@ -51,9 +51,11 @@ class DispatcherProtocol:
     def handle_requests(self) -> None:
         user_id = new_uuid()
 
-        # Touch para crear el archivo resultado en el storage para cuando el usuario pregunte
-        #results_middleware = MessageMiddlewareQueue("middleware", "results")
-        #results_middleware.send(ResultTask(user_id, QueryId.Query1, False, False, []).to_bytes())
+        counter_transactions = 0
+        counter_transaction_items = 0
+        counter_menu_items = 0
+        counter_user = 0
+        counter_store = 0
 
         select_middleware = SelectTasksMiddleware()
         join_middleware = JoinTasksMiddleware(1)
@@ -69,7 +71,7 @@ class DispatcherProtocol:
                 last_model = model # Initialize it
             elif model != last_model:
                 self._join_pending_threads(last_model)
-                self.__send_EOF_for(user_id, last_model, select_middleware, join_middleware)
+                self.__send_EOF_for(user_id, last_model, select_middleware, join_middleware, counter_transactions, counter_transaction_items, counter_menu_items, counter_user, counter_store)
                 last_model = model # Only change it If it is new.
 
             logging.info(f"action: receive_file | result: in_progress | data_type: {model.__name__}")
@@ -80,6 +82,7 @@ class DispatcherProtocol:
                     def _run_transaction(b=batch):
                         with self._select_lock:
                             self.__send_task_to_select_transaction(user_id, select_middleware, model, b)
+                    counter_transactions += 1
                     thread = threading.Thread(target=_run_transaction, daemon=True)
                     thread.start()
                     self._pending_threads[Transaction].append(thread)
@@ -88,15 +91,19 @@ class DispatcherProtocol:
                     def _run_transaction_items(b=batch):
                         with self._select_lock:
                             self.__send_task_to_select_transaction_item(user_id, select_middleware, model, b)
+                    counter_transaction_items += 1
                     thread = threading.Thread(target=_run_transaction_items, daemon=True)
                     thread.start()
                     self._pending_threads[TransactionItem].append(thread)
                 elif model is MenuItem:
                     self.__send_task_to_join_menu_item(user_id, join_middleware, model, batch)
+                    counter_menu_items += 1
                 elif model is User:
                     self.__send_task_to_join_user(user_id, join_middleware, model, batch)
+                    counter_user += 1
                 elif model is Store:
                     self.__send_task_to_join_store(user_id, join_middleware, model, batch)
+                    counter_store += 1
                 else:
                     raise Exception(f"Unknown model: {model}")
 
@@ -175,7 +182,7 @@ class DispatcherProtocol:
         join_middleware.send(store_task)
 
     @staticmethod
-    def __send_EOF_for(user_id: str, model: Model, select_middleware: SelectTasksMiddleware, join_middleware: JoinTasksMiddleware):
+    def __send_EOF_for(user_id: str, model: Model, select_middleware: SelectTasksMiddleware, join_middleware: JoinTasksMiddleware, counter_transactions: int, counter_transaction_items: int, counter_menu_items: int, counter_user: int, counter_store: int):
         if model is Transaction:
             logging.info(f"EOF FOR TRANSACTIONS")
             eof_task = CSVMessageBuilder([user_id, user_id, user_id],
