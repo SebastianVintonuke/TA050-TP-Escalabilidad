@@ -1,5 +1,6 @@
 import logging
 import socket
+import threading
 from typing import Callable, List, Union, Optional
 
 from common.middleware.middleware import MessageMiddlewareQueue
@@ -26,11 +27,25 @@ class DispatcherProtocol:
         self._signal_protocol = SignalProtocol(a_socket)
         self._batch_protocol = BatchProtocol(a_socket)
 
+        self._pending_threads = {
+            Transaction: [],
+            TransactionItem: [],
+        }
+
+        self._select_lock = threading.Lock()
+
     def close_with(self, closure_to_close: Callable[[socket.socket], None]) -> None:
         """
         Check ByteProtocol.close_with method
         """
         self._byte_protocol.close_with(closure_to_close)
+
+    def _join_pending_threads(self, model: Optional[Model]) -> None:
+        if model in (Transaction, TransactionItem):
+            threads = self._pending_threads.get(model, [])
+            for t in threads:
+                t.join()
+            threads.clear()
 
 
     def handle_requests(self) -> None:
@@ -45,6 +60,7 @@ class DispatcherProtocol:
 
         batch = self._batch_protocol.wait_batch()
         last_model: Optional[Model] = None
+        
         while batch: # While files
             header = batch.pop(0)
             model = Model.model_for(header)
@@ -52,6 +68,7 @@ class DispatcherProtocol:
             if last_model is None:
                 last_model = model # Initialize it
             elif model != last_model:
+                self._join_pending_threads(last_model)
                 self.__send_EOF_for(user_id, last_model, select_middleware, join_middleware)
                 last_model = model # Only change it If it is new.
 
@@ -59,9 +76,21 @@ class DispatcherProtocol:
 
             while batch: # While batch of file
                 if model is Transaction:
-                    self.__send_task_to_select_transaction(user_id, select_middleware, model, batch)
+                    #self.__send_task_to_select_transaction(user_id, select_middleware, model, batch)
+                    def _run_transaction(b=batch):
+                        with self._select_lock:
+                            self.__send_task_to_select_transaction(user_id, select_middleware, model, b)
+                    thread = threading.Thread(target=_run_transaction, daemon=True)
+                    thread.start()
+                    self._pending_threads[Transaction].append(thread)
                 elif model is TransactionItem:
-                    self.__send_task_to_select_transaction_item(user_id, select_middleware, model, batch)
+                    #self.__send_task_to_select_transaction_item(user_id, select_middleware, model, batch)
+                    def _run_transaction_items(b=batch):
+                        with self._select_lock:
+                            self.__send_task_to_select_transaction_item(user_id, select_middleware, model, b)
+                    thread = threading.Thread(target=_run_transaction_items, daemon=True)
+                    thread.start()
+                    self._pending_threads[TransactionItem].append(thread)
                 elif model is MenuItem:
                     self.__send_task_to_join_menu_item(user_id, join_middleware, model, batch)
                 elif model is User:
@@ -74,6 +103,7 @@ class DispatcherProtocol:
                 batch = self._batch_protocol.wait_batch() # End of batch
             batch = self._batch_protocol.wait_batch() # End of file
 
+        self._join_pending_threads(last_model)
         # Allegedly not sent eof for very last model. 
         self.__send_EOF_for(user_id, last_model, select_middleware, join_middleware)
 
