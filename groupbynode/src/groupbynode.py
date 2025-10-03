@@ -11,6 +11,7 @@ class QueryAccumulator:
 		self.groups = {}
 		self.messages_received=0
 		self.known_message_len= -1
+		self.rows_recv = 0
 
 	def __init__(self, type_conf, msg, ind):
 		self.type_conf = type_conf
@@ -20,8 +21,10 @@ class QueryAccumulator:
 		self.groups = {}
 		self.messages_received=0
 		self.known_message_len= -1
+		self.rows_recv = 0
 
 	def check(self, row):
+		self.rows_recv+=1
 		row = self.type_conf.map_input_row(row)
 		key = self.type_conf.key_parser.get_group_key(row)
 
@@ -37,6 +40,7 @@ class QueryAccumulator:
 		for group, acc in self.groups.items():
 			self.type_conf.add_output(self.msg_builder, group, acc)
 
+		logging.info(f"Grouper node sending EOF rows processed {self.rows_recv} msg sent 1")
 		self.type_conf.send(self.msg_builder)
 		eof_signal = self.msg_builder.clone()
 		eof_signal.set_as_eof(1)

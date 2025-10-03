@@ -34,7 +34,7 @@ class TopKTypeConfiguration:
 
 	def send(self, builder):
 		logging.info(f"TOPK SENDING TO {builder.types} {builder.ids} len: {builder.len_payload()} eof? {builder.is_eof()}")
-		for itm in builder.payload:
-			logging.info(f"ROW {itm}")
+		#for itm in builder.payload:
+		#	logging.info(f"ROW {itm}")
 			
 		return self.middleware.send(builder)
