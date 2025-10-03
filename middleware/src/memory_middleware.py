@@ -36,9 +36,9 @@ class MemoryMessage(Message):
         return payload
 
     def stream_rows(self):
-        return self.payload
+        return [] if self.payload == None else self.payload
     def map_stream_rows(self, map_func):
-        return filter(not_none, map(map_func, self.payload)) # payload is already a stream, assumed only will be iterated once.
+        return filter(not_none, map(map_func, [] if self.payload == None else self.payload)) # payload is already a stream, assumed only will be iterated once.
 
 def build_memory_message_builder(uuid, type,partition = 0):
     return HashedMemoryMessageBuilder([uuid], [type], str(uuid)+str(type), partition)

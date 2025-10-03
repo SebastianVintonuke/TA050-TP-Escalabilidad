@@ -11,6 +11,12 @@ class User(Model):
     birthdate: date
     registered_at: datetime
 
+    def parse_row(data: bytes):
+        fields = data.strip().split(b",")
+        return [
+            fields[0], # user id
+            fields[2], # birthdate
+        ]
     @classmethod
     def from_bytes_and_project(cls, data: bytes) -> "User":
         """

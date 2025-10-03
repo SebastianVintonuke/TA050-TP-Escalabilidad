@@ -11,6 +11,12 @@ class MenuItem(Model):
     category: str
     price: float
 
+    def parse_row(data: bytes):
+        fields = data.strip().split(b",")
+        return [
+            fields[0], #item id
+            fields[1], #item name
+        ]
     @classmethod
     def from_bytes_and_project(cls, data: bytes) -> "MenuItem":
         """

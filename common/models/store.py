@@ -11,6 +11,15 @@ class Store(Model):
     state: str
     city: str
 
+
+    def parse_row(data: bytes):
+        fields = data.strip().split(b",")
+        return [
+            fields[0], #Store id
+            fields[1], #Store name
+        ]
+
+
     @classmethod
     def from_bytes_and_project(cls, data: bytes) -> "Store":
         """

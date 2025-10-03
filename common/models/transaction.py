@@ -14,6 +14,23 @@ class Transaction(Model):
     final_amount: float
     created_at: datetime
 
+
+
+    def parse_row(data: bytes):
+        fields = data.strip().split(b",")
+        created_at = datetime.strptime(fields[8].decode(), "%Y-%m-%d %H:%M:%S")
+
+        return [
+            fields[0].strip(), #transaction id
+            str(created_at.year).encode(), #
+            fields[1], # store id
+            str(int(float(fields[4]))).encode() if fields[4] else b"",#fields[4], # user id
+            str(created_at.month).encode(), #
+            str(created_at.hour).encode(), #
+            fields[7], #
+        ]
+
+
     @classmethod
     def from_bytes_and_project(cls, data: bytes) -> "Transaction":
         """

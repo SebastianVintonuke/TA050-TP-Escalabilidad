@@ -37,6 +37,9 @@ class CSVMessageBuilder(MessageBuilder):
     
     def add_row(self,row):
         self.payload.append(",".join(map(str, row)))
+    def add_row_bytes(self,row):
+        self.payload.append((b",".join(row)).decode())
+
     def add_row_dict(self,row):
         self.add_row_vec(row.values())
     def clone(self):
@@ -48,6 +51,9 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
 
     def add_row(self,row):
         self.payload.append(",".join(map(str, row)))
+    def add_row_bytes(self,row):
+        self.payload.append((b",".join(row)).decode())
+
     def add_row_dict(self,row):
         self.add_row_vec(row.values())
     def clone(self):

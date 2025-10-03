@@ -13,6 +13,16 @@ class TransactionItem(Model):
     unit_price: float
     subtotal: float
     created_at: datetime
+    def parse_row(data: bytes):
+        fields = data.strip().split(b",")
+        created_at = datetime.strptime(fields[5].decode(), "%Y-%m-%d %H:%M:%S")
+
+        return [
+            fields[1], #item id
+            str(created_at.year).encode(), #
+            str(created_at.month).encode(), #
+            fields[4], # sub total
+        ]
 
     @classmethod
     def from_bytes_and_project(cls, data: bytes) -> "TransactionItem":

@@ -32,34 +32,51 @@ class BatchProtocol:
                 f"Batch total size {total_size} bytes exceeds maximum {self._MAX_BATCH_SIZE}kB"
             )
 
-        self._byte_protocol.send_uint16(len(batch))
+        self._byte_protocol.send_uint32(len(batch))
         for item in batch:
-            self._byte_protocol.send_bytes(item)
+            self._byte_protocol.send_all(item)
 
-    def send_all(self, lines: Iterable[bytes]) -> None:
-        batch: List[bytes] = []
-        current_size = 0
+    def send_all(self, reader) -> None:
+        buffer = bytearray(self._MAX_BATCH_SIZE)
+        cached_start = 0  # How much of the buffer is already filled
 
-        for line in lines:
-            line_size = len(line)
-            if batch and (current_size + line_size > self._MAX_BATCH_SIZE or len(batch) >= self._MAX_BATCH_COUNT):
-                self.send_batch(batch)
-                batch = []
-                current_size = 0
+        while True:
+            # Read into the remaining space in buffer
+            view = memoryview(buffer)[cached_start:]
+            read_len = reader.readinto(view)
+            if read_len == 0:
+                break  # EOF
 
-            batch.append(line)
-            current_size += line_size
+            total_len = cached_start + read_len
+            tmp = buffer[:total_len]
 
-        if batch:
-            self.send_batch(batch)
+            # Look for last newline within the buffer
+            split_index = tmp.rfind(b'\n')
+            if split_index == -1:
+                self._byte_protocol.send_uint32(total_len)
+                self._byte_protocol.send_all(tmp)
+                cached_start = 0
+                continue
+
+            # Send everything up to and including the last full line
+            self._byte_protocol.send_uint32(split_index+1)
+            self._byte_protocol.send_all(tmp[:split_index+1])
+
+            # Move the remainder (after the split) to the front of the buffer
+            remaining = total_len - (split_index + 1)
+            buffer[:remaining] = buffer[split_index + 1:total_len]
+            cached_start = remaining
+
 
     def wait_batch(self) -> List[bytes]:
         """
         Wait for a batch of bytes arrays
         Reads batch `size` and returns them as a list.
         """
-        batch = []
-        size = self._byte_protocol.wait_uint16()
-        for item in range(0, size):
-            batch.append(self._byte_protocol.wait_bytes())
-        return batch
+        size = self._byte_protocol.wait_uint32()
+        if size == 0:
+            return []
+
+        batch = self._byte_protocol.recv_all(size)
+
+        return [line for line in batch.split(b"\n") if line !=b""]
