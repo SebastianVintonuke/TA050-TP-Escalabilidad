@@ -119,7 +119,7 @@ def main() -> None:
     def handle_query_1_result(msg,counter, user_id: str) -> None:
         if msg.is_eof():
             counter.expected_count_query_1 = msg.partition
-            logging.info(f"----------------> RECEIVED EOF QUERY 1 EXPECT {counter.expected_count_query_1} got: {counter.count_query_1}")
+            logging.info(f"Received expected message count for query 1, expect {counter.expected_count_query_1} got: {counter.count_query_1}")
             return
         counter.count_query_1 += 1
 
@@ -133,7 +133,9 @@ def main() -> None:
 
     def handle_query_2_best_selling_result(msg, counter, user_id: str) -> None:
         if msg.is_eof():
+
             counter.expected_count_query_2_quantity = msg.partition
+            logging.info(f"Received expected message count for query 2 quantity, expect {counter.expected_count_query_2_quantity} got: {counter.count_query_2_quantity}")
             return
         counter.count_query_2_quantity += 1
 
@@ -153,6 +155,7 @@ def main() -> None:
     def handle_query_2_most_profit_result(msg, counter, user_id: str) -> None:
         if msg.is_eof():
             counter.expected_count_query_2_profit = msg.partition
+            logging.info(f"Received expected message count for query 2 profit, expect {counter.expected_count_query_2_profit} got: {counter.count_query_2_profit}")            
             return
         counter.count_query_2_profit += 1
 
@@ -172,6 +175,8 @@ def main() -> None:
     def handle_query_3_result(msg, counter, user_id: str) -> None:
         if msg.is_eof():
             counter.expected_count_query_3 = msg.partition
+            logging.info(f"Received expected message count for query 3, expect {counter.expected_count_query_3} got: {counter.count_query_3}")
+
             return
         counter.count_query_3 += 1
 
@@ -187,12 +192,12 @@ def main() -> None:
     def handle_query_4_result(msg,counter,  user_id: str) -> None:
         if msg.is_eof():
             counter.expected_count_query_4 = msg.partition
+            logging.info(f"Received expected message count for query 4, expect {counter.expected_count_query_4} got: {counter.count_query_4}")            
             return
         counter.count_query_4 += 1
 
         data: List[QueryResult4] = []
         for line in msg.stream_rows():
-            logging.info(f"RECV ROW USER QUERY 4 {line}")
             store_name: str = line[0]
             birthdate: date = datetime.strptime(line[1], "%Y-%m-%d").date()
             data.append(QueryResult4(store_name=store_name, birthdate=birthdate))
@@ -217,40 +222,40 @@ def main() -> None:
         if query_type == QUERY_1:
             handle_query_1_result(msg, counter,  user_id)
             if counter.is_eof_q1():
-                logging.info(f"GOT EOF FOR q1? count: {counter.count_query_1} exp: {counter.expected_count_query_1}")
+                logging.info(f"Received last message for query 1 count: {counter.count_query_1} expected_count: {counter.expected_count_query_1}")
                 result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
                 results_storage_middleware.send(result_task)
 
 
         elif query_type == QUERY_2_QUANTITY: # TODO QUANTITY TRAE DATOS DE REVENUE
-            #logging.info(f"{QUERY_2_QUANTITY} IS EOF:{msg.is_eof()}")
             handle_query_2_best_selling_result(msg,counter,  user_id)
             if counter.is_eof_q2_quantity():
+                logging.info(f"Received last message for query 2 best selling count: {counter.count_query_2_quantity} expected_count: {counter.expected_count_query_2_quantity}")
                 result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
                 results_storage_middleware.send(result_task)
 
 
         elif query_type == QUERY_2_REVENUE:
-            #logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
             handle_query_2_most_profit_result(msg,counter,  user_id)
             
             if counter.is_eof_q2_profit():
+                logging.info(f"Received last message for query 2 profit count: {counter.count_query_2_profit} expected_count: {counter.expected_count_query_2_profit}")
                 result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
                 results_storage_middleware.send(result_task)
 
         elif query_type == QUERY_3:
-            #logging.info(f"{QUERY_3} IS EOF:{msg.is_eof()}")
             handle_query_3_result(msg,counter,  user_id)
 
             if counter.is_eof_q3():
+                logging.info(f"Received last message for query 3 count: {counter.count_query_3} expected_count: {counter.expected_count_query_3}")
                 result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
                 results_storage_middleware.send(result_task)
 
         elif query_type == QUERY_4: # TODO DATOS DE QUERY 4
-            #logging.info(f"{QUERY_4} IS EOF:{msg.is_eof()}")
             handle_query_4_result(msg,counter,  user_id)
 
             if counter.is_eof_q4():
+                logging.info(f"Received last message for query 4 count: {counter.count_query_4} expected_count: {counter.expected_count_query_4}")
                 result_task = ResultTask(user_id, QueryId.Query4, True, False, []).to_bytes()
                 results_storage_middleware.send(result_task)
 

@@ -115,11 +115,22 @@ class Client:
             self._client_socket_to_results_storage
         )
         logging.info("action: data_download | result: in-progress")
-        client_protocol_to_results_storage.download_results(
-            self._output_dir, client_id, self.__open_output_file, self.__close_file
-        )
+
+        attempts = 3
+        while attempts > 0:
+            try:
+                client_protocol_to_results_storage.download_results(
+                    self._output_dir, client_id, self.__open_output_file, self.__close_file
+                )
+            except Exception as e:
+                attempts-=1
+                logging.error(f"action: data_download | result: in_progress | error happened {e} | attempts left {attempts}")
+                time.sleep(1) # Query result might not exist on result server..
         self._client_socket_to_results_storage.close()
-        logging.info("action: data_download | result: success")
+        if attempts >0:
+            logging.info("action: data_download | result: success")
+        else:
+            logging.info("action: data_download | result: fail")
 
     def graceful_shutdown(
         self, _signal_number: int, _current_stack_frame: Optional[FrameType]
