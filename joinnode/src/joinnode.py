@@ -41,7 +41,7 @@ class JoinNode:
             logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
             ind=0
             type = msg.types[ind]
-            ide = "" #msg.types[ind]
+            ide = msg.ids[ind]
             
             for config in self.type_expander.get_configurations_for(type):
                 joiner = self.joiners.get(ide+config.join_id, None)
@@ -53,8 +53,10 @@ class JoinNode:
                 
                 if config.left_type == type:
                     if joiner.handle_eof_left(msg.partition): #Finished? msg.partition == count of messages that should have been here
+                        logging.info(f"Freeing {ide+config.join_id}, handling done.")
                         del self.joiners[ide+config.join_id]
                 elif joiner.handle_eof_right(msg.partition): #Finished
+                        logging.info(f"Freeing {ide+config.join_id}, handling done.")
                         del self.joiners[ide+config.join_id]
             
             return
@@ -63,7 +65,7 @@ class JoinNode:
         checkers = []
         ind = 0
         type = msg.types[ind]
-        ide = ""#msg.ids[ind]
+        ide = msg.ids[ind]
 
         for config in self.type_expander.get_configurations_for(type):
             joiner = self.joiners.get(ide+config.join_id, None)
@@ -83,6 +85,7 @@ class JoinNode:
 
         for joiner in checkers:
             if joiner.add_check_msg_for_type(type):
+                logging.info(f"Freeing {ide+config.join_id}, handling done.")
                 del self.joiners[ide+joiner.type_conf.join_id]
 
 
