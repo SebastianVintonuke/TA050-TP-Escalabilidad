@@ -1,6 +1,7 @@
 import unittest
 
 from common.config.row_mapping import *
+from datetime import datetime
 
 
 class TestRowMappers(unittest.TestCase):
@@ -89,7 +90,11 @@ class TestRowMappers(unittest.TestCase):
 
         row = {"year": "2022", "month": "6"}
         output = mapper(row)
-        self.assertEqual(output, ["5"])  # (2 * 12 + 6) // 3 = 30 // 3 = 10
+        self.assertEqual(output, ["4"])    # (2 * 2) = 4 half years cause 2020/2021 and then month 6 is first half.. so ret 4
+
+        row = {"year": "2022", "month": "7"}
+        output = mapper(row)
+        self.assertEqual(output, ["5"])    # (2 * 2) = 4 half years cause 2020/2021 and then month 7 is second half.. so ret 4
 
     def test_vector_input_with_dict_convert_wrapper(self):
         in_cols = ["year", "month"]
@@ -291,3 +296,27 @@ class TestRowMappers(unittest.TestCase):
         ]  # mapped_month is missing, need to fill in with None or something If using index 2
         with self.assertRaises(IndexError):
             mapper(row)
+
+
+    def test_map_semester_second_year_from_date(self):
+        data_str_h1 = "2025-06-01 12:24:10"
+        data_str_h2 = "2025-07-01 12:24:10"
+        date_h1 = datetime.strptime(data_str_h1, "%Y-%m-%d %H:%M:%S")
+        date_h2 = datetime.strptime(data_str_h2, "%Y-%m-%d %H:%M:%S")
+
+        config = {
+            ROW_CONFIG_ACTIONS: [
+                [
+                    MAP_SEMESTER,
+                    {"init_year": 2024, "col_year": 0, "col_month": 1, "col_out": 2},
+                ]
+            ],
+            ROW_CONFIG_OUT_COLS: [0, 1, 2],
+        }
+        mapper = RowMapper(config)
+
+        res_h1 = mapper([str(date_h1.year),str(date_h1.month), ""])
+        res_h2 = mapper([str(date_h2.year),str(date_h2.month), ""])
+
+        self.assertEqual(res_h1, ["2025","6","2"])
+        self.assertEqual(res_h2, ["2025","7","3"])

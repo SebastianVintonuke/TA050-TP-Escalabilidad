@@ -95,10 +95,8 @@ class MapSemesterAction:
         self.col_out = col_out
 
     def map_in(self, row):
-        months = (int(row[self.col_year]) - self.init_year) * 12 + int(
-            row[self.col_month]
-        )
-        row[self.col_out] = months // 6
+        # Each year since start adds 2 halfs. Then check If month <=6 then first half.. month goes from [1, 12], so (month-1)//6 
+        row[self.col_out] = (int(row[self.col_year]) - self.init_year)*2  + (int(row[self.col_month]) - 1)//6
 
 
 # Somebody external... might add actions here? somethinglike row_mapping.GENERAL_MAP_ACTIONS["action"]: ClassName
