@@ -36,10 +36,10 @@ class TestGroupbyNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         type_conf = GroupbyTypeConfiguration(result_grouper, MockMessageBuilder, 
                 in_fields = in_cols, #EQUALS to out cols from select node main 
-                grouping_conf = [["product_id", "month"], {
-                    "revenue": SUM_ACTION,
-                    "quantity_sold": COUNT_ACTION
-                }],
+                grouping_conf = [["product_id", "month"], [
+                    [SUM_ACTION,"revenue"],
+                    [COUNT_ACTION, "quantity_sold"],
+                ]],
                 out_conf={ROW_CONFIG_OUT_COLS: out_cols},
         )
 
@@ -91,10 +91,10 @@ class TestGroupbyNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         type_conf = GroupbyTypeConfiguration(result_grouper, MockMessageBuilder, 
                 in_fields = in_cols, #EQUALS to out cols from select node main 
-                grouping_conf = [["product_id", "month"], {
-                    "revenue": SUM_ACTION,
-                    "quantity_sold": COUNT_ACTION
-                }],
+                grouping_conf = [["product_id", "month"], [
+                    [SUM_ACTION,"revenue"],
+                    [COUNT_ACTION, "quantity_sold"],
+                ]],
                 out_conf={ROW_CONFIG_OUT_COLS: out_cols},
         )
 
@@ -160,10 +160,10 @@ class TestGroupbyNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         type_conf = GroupbyTypeConfiguration(result_grouper, MockMessageBuilder, 
                 in_fields = in_cols, #EQUALS to out cols from select node main 
-                grouping_conf = [["product_id", "month"], {
-                    "revenue": SUM_ACTION,
-                    "quantity_sold": COUNT_ACTION
-                }],
+                grouping_conf = [["product_id", "month"], [
+                    [SUM_ACTION,"revenue"],
+                    [COUNT_ACTION, "quantity_sold"],
+                ]],
                 out_conf={ROW_CONFIG_OUT_COLS: out_cols},
         )
 

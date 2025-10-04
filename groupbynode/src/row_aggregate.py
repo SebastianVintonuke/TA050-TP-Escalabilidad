@@ -57,33 +57,37 @@ NUMBER_ACTIONS = {
 
 #[fields, group_acc_actions]
 
-
-
 def resolve_basic_aggregate_action(op_name):
 	creator = NUMBER_ACTIONS.get(op_name, None)
 	assert creator != None
 	return creator() # Create creator.
 
+ACTION_COL_IN = 1
+ACTION_COL_OUT = 2
+ACTION_OP = 0
 class RowAggregator:
 	def __init__(self, group_actions):
-		self.group_actions = {}
+		self.group_actions = []
 		self.count_out_fields = []
 
-		for col, action in group_actions.items():
+		for action in group_actions:
 			# Not the most efficient I guess..
-			if action == COUNT_ACTION:
-				self.count_out_fields.append(col)
+			if action[ACTION_OP] == COUNT_ACTION:
+				self.count_out_fields.append(action[ACTION_COL_IN]) # For count action col in is the out col. Since no col out needed
 				continue
 
-			self.group_actions[col] = resolve_basic_aggregate_action(action)
+			self.group_actions.append(( action[ACTION_COL_IN], 
+										resolve_basic_aggregate_action(action[ACTION_OP]),
+										action[ACTION_COL_OUT] if len(action)>2 else action[ACTION_COL_IN]
+										))
 
 	def new_group_acc(self, row):
 		acc ={} 
 		for field in self.count_out_fields:
 			acc[field] = 1
 
-		for key,action in self.group_actions.items():
-			acc[key] = action.new(row[key])
+		for col_in,action, col_out in self.group_actions:
+			acc[col_out] = action.new(row[col_in])
 
 		return acc
 
@@ -91,16 +95,16 @@ class RowAggregator:
 		for field in self.count_out_fields:
 			acc[field] += 1
 
-		for key,action in self.group_actions.items():
-			acc[key] = action.add_value(acc[key], row[key])
+		for col_in,action,col_out in self.group_actions:
+			acc[col_out] = action.add_value(acc[col_out], row[col_in])
 
 
 	# Expands to a list of rows in dict mode {}
 	def add_aggregated_to(self, base, acc):
 		for field in self.count_out_fields:
 			base[field] = acc[field]
-		for key,action in self.group_actions.items():
-			base[key] = action.get_result(acc[key])
+		for col_in,action, col_out in self.group_actions:
+			base[col_out] = action.get_result(acc[col_out])
 
 	# Expands to a list of rows, this only throws one row, the aggregate result, but its better if it has the same contract as row grouping
 	def iterate_rows(self, acc):

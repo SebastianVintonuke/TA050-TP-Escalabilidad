@@ -22,27 +22,29 @@ def configure_types_groupby(join_middleware, topk_middleware):
     types_config[QUERY_2] = GroupbyTypeConfiguration(topk_middleware, 
             create_diverged_message, 
             in_fields = ["product_id", "month", "revenue"], #EQUALS to out cols from select node main 
-            grouping_conf = [["product_id", "month"], {
-                "revenue": SUM_ACTION,
-                "quantity_sold": COUNT_ACTION
-            }],
+            grouping_conf = [["product_id", "month"], [
+                [SUM_ACTION,"revenue"],
+                [COUNT_ACTION, "quantity_sold"],
+            ]],
             out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity_sold"]},
     )
 
     types_config[QUERY_3] = GroupbyTypeConfiguration(join_middleware, csv_message.csv_hashed_from_msg, 
-            in_fields = ["store_id","mapped_semester","revenue"],  
-            grouping_conf= [["store_id", "mapped_semester"], {
-                "revenue": SUM_ACTION,
-            }],
-            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","mapped_semester", "revenue"]},
+            in_fields = ["store_id","mapped_semester","final_ammount"],  
+            grouping_conf= [["store_id", "mapped_semester"], [
+                [SUM_ACTION, "final_ammount", "tpv"],
+                #[AVG_ACTION, "final_ammount", "avg"],
+                #[COUNT_ACTION, "transaction_count"],
+            ]],
+            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","mapped_semester", "tpv"]},
     )
 
     types_config[QUERY_4] = GroupbyTypeConfiguration(topk_middleware, csv_message.csv_hashed_from_msg,
             in_fields= ["store_id", "user_id"],
-            grouping_conf= [["store_id", "user_id"], {
-                "purchase_count": COUNT_ACTION
-            }],
-            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","user_id", "purchase_count"]},                
+            grouping_conf= [["store_id", "user_id"], [
+                [COUNT_ACTION,"purchase_count"] 
+            ]],
+            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","user_id", "purchase_count"]},
     )
     return types_config
 
@@ -52,26 +54,28 @@ def configure_types_groupby_topk_memory(join_middleware, topk_middleware):
     types_config[QUERY_2] = GroupbyTypeConfiguration(topk_middleware, 
             create_diverged_message_memory, 
             in_fields = ["product_id", "month", "revenue"], #EQUALS to out cols from select node main 
-            grouping_conf = [["product_id", "month"], {
-                "revenue": SUM_ACTION,
-                "quantity_sold": COUNT_ACTION
-            }],
+            grouping_conf = [["product_id", "month"], [
+                [SUM_ACTION,"revenue"],
+                [COUNT_ACTION, "quantity_sold"],
+            ]],
             out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity_sold"]},
     )
 
     types_config[QUERY_3] = GroupbyTypeConfiguration(join_middleware, csv_message.csv_hashed_from_msg, 
-            in_fields = ["store_id","mapped_semester","revenue"],  
-            grouping_conf= [["store_id", "mapped_semester"], {
-                "revenue": SUM_ACTION,
-            }],
-            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","mapped_semester", "revenue"]},
+            in_fields = ["store_id","mapped_semester","final_ammount"],  
+            grouping_conf= [["store_id", "mapped_semester"], [
+                [SUM_ACTION, "final_ammount", "tpv"],
+                #[AVG_ACTION, "final_ammount", "avg"],
+                #[COUNT_ACTION, "transaction_count"],
+            ]],
+            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","mapped_semester", "tpv"]},
     )
 
     types_config[QUERY_4] = GroupbyTypeConfiguration(topk_middleware, memory_middleware.memory_builder_from_msg,
             in_fields= ["store_id", "user_id"],
-            grouping_conf= [["store_id", "user_id"], {
-                "purchase_count": COUNT_ACTION
-            }],
-            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","user_id", "purchase_count"]},                
+            grouping_conf= [["store_id", "user_id"], [
+                [COUNT_ACTION,"purchase_count"] 
+            ]],
+            out_conf={ROW_CONFIG_OUT_COLS: ["store_id","user_id", "purchase_count"]},
     )
     return types_config
