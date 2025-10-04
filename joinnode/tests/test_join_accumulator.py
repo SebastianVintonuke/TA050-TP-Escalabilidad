@@ -267,8 +267,8 @@ class TestJoinAccumulator(unittest.TestCase):
         for right_row in rows_right:
             right_action(right_row)
 
-        acc.handle_eof_left()
-        acc.handle_eof_right()
+        acc.handle_eof_left(0)
+        acc.handle_eof_right(0)
 
         self.assertEqual(len(result_grouper.msgs), 2) # payload msg and 1 for eof.
         output_payload = result_grouper.msgs[0].payload
@@ -297,8 +297,8 @@ class TestJoinAccumulator(unittest.TestCase):
         for right_row in rows_right:
             right_action(right_row)
 
-        acc.handle_eof_left()
-        acc.handle_eof_right()
+        acc.handle_eof_left(0)
+        acc.handle_eof_right(0)
 
         # Nothing should have been sent
         self.assertEqual(len(result_grouper.msgs), 1)  # Only EOF
@@ -324,8 +324,8 @@ class TestJoinAccumulator(unittest.TestCase):
         for right_row in rows_right:
             right_action(right_row)
 
-        acc.handle_eof_left()
-        acc.handle_eof_right()
+        acc.handle_eof_left(0)
+        acc.handle_eof_right(0)
 
         # Each join should flush immediately due to limit
         num_expected_rows = 5
@@ -347,8 +347,8 @@ class TestJoinAccumulator(unittest.TestCase):
         acc.get_action_for_type("LEFT")(rows_left[0])
         acc.get_action_for_type("RIGHT")(rows_right[0])
 
-        acc.handle_eof_left()
-        acc.handle_eof_right()
+        acc.handle_eof_left(0)
+        acc.handle_eof_right(0)
 
         # Should emit the payload and one EOF message
         self.assertEqual(len(result_grouper.msgs), 2)
@@ -366,9 +366,9 @@ class TestJoinAccumulator(unittest.TestCase):
 
         acc = JoinAccumulator(config, None, 0)
         acc.get_action_for_type("RIGHT")(rows_right[0])
-        acc.handle_eof_right()
+        acc.handle_eof_right(0)
         acc.get_action_for_type("LEFT")(rows_left[0])
-        acc.handle_eof_left()
+        acc.handle_eof_left(0)
 
         self.assertEqual(len(result_grouper.msgs), 2)  # One data msg + EOF
         payloads = [msg.payload for msg in result_grouper.msgs if not msg.is_eof()]

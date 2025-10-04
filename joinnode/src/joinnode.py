@@ -52,14 +52,15 @@ class JoinNode:
                     self.joiners[ide+config.join_id] = joiner
                 
                 if config.left_type == type:
-                    if joiner.handle_eof_left(): #Finished
+                    if joiner.handle_eof_left(msg.partition): #Finished? msg.partition == count of messages that should have been here
                         del self.joiners[ide+config.join_id]
-                elif joiner.handle_eof_right(): #Finished
+                elif joiner.handle_eof_right(msg.partition): #Finished
                         del self.joiners[ide+config.join_id]
             
             return
 
         row_actions = []
+        checkers = []
         ind = 0
         type = msg.types[ind]
         ide = ""#msg.ids[ind]
@@ -71,11 +72,18 @@ class JoinNode:
                 joiner = JoinAccumulator(config, msg, ind)
                 self.joiners[ide+config.join_id] = joiner
 
+            #count_checker, row_action = joiner.get_action_for_type(type)
             row_actions.append(joiner.get_action_for_type(type))
+            checkers.append(joiner)
 
         for row in msg.stream_rows():
             for action in row_actions:
                 action(row)
+
+
+        for joiner in checkers:
+            if joiner.add_check_msg_for_type(type):
+                del self.joiners[ide+joiner.type_conf.join_id]
 
 
     def start(self):

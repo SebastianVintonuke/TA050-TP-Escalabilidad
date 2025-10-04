@@ -60,7 +60,7 @@ class QueryAccumulator:
 		return self.known_message_len>=0 and self.messages_received >= self.known_message_len
 
 	def check_eof(self, count_messages):
-		self.known_message_len = True
+		self.known_message_len = count_messages
 		return count_messages <= self.messages_received
 
 class GroupbyNode:
@@ -131,6 +131,7 @@ class GroupbyNode:
 
 		for ind, acc in enumerate(outputs):
 			if acc.add_msg_count():
+				logging.info(f"query: {msg.ids[ind]} type: {msg.types[ind]}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Start sending.")
 				acc.send_built()
 				del self.accumulators[msg.ids[ind]+msg.types[ind]]
 

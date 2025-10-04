@@ -13,6 +13,12 @@ class JoinAccumulator:
         self.limit = limit
         self.msg_sent = 0
 
+        self.msg_expected_left = -1
+        self.msg_expected_right = -1
+
+        self.msg_count_left = 0
+        self.msg_count_right = 0
+
     def len_left(self):
         return len(self.left_rows)
 
@@ -29,7 +35,22 @@ class JoinAccumulator:
             self.msg_builder.clear_payload()
             self.msg_sent+=1
 
-    def handle_eof_left(self):
+    def _trigger_eof_right(self):
+        self.right_finished = True
+        logging.info(f"HANDLING EOF RIGHT out types: {self.msg_builder.types} left finished? {self.left_finished}")
+        if self.left_finished:
+            self.send_eof()
+            return True
+        
+        # Not finished, then try join all left rows.
+        for left_row in self.left_rows:
+            self.type_conf.do_join_left_row(self.right_rows, left_row, self.add_joined)
+        
+        self.left_rows = [] # Empty it since already used.
+        return False
+
+
+    def _trigger_eof_left(self):
         self.left_finished = True
         logging.info(f"HANDLING EOF LEFT {self.type_conf.left_type} out types: {self.msg_builder.types} right finished? {self.right_finished}")
 
@@ -43,22 +64,71 @@ class JoinAccumulator:
 
         self.right_rows = [] # Empty it since already used.            
         return False
+
+
+
+    def get_action_for_type(self,type):
+        if type == self.type_conf.left_type:
+            # Left message actions
+            if self.right_finished:
+                return (self.do_join_left_row)
+            return (self.add_row_left)
+        # Right message actions
+        if self.left_finished:
+            return (self.do_join_right_row)
+        return (self.add_row_right)
+
+    def get_actions_for_type(self,type):
+        if type == self.type_conf.left_type:
+            # Left message actions
+            if self.right_finished:
+                return (self.add_check_msg_left, self.do_join_left_row)
+            return (self.add_check_msg_left, self.add_row_left)
+        # Right message actions
+        if self.left_finished:
+            return (self.add_check_msg_right, self.do_join_right_row)
+        return (self.add_check_msg_right, self.add_row_right)
+
+
+    def add_check_msg_for_type(self, type):
+        if type == self.type_conf.left_type:
+            return self.add_check_msg_left()
+        return self.add_check_msg_right()
+
+    def add_check_msg_left(self):
+        self.msg_count_left+=1
+        if self.msg_expected_left >=0 and self.msg_count_left >= self.msg_expected_left:
+            logging.info(f"Join {self.type_conf.join_id} received final left msg after eof {self.msg_count_left} >= {self.msg_expected_left}(expected)")
+            return self._trigger_eof_left()
+        return False
+
+    def add_check_msg_right(self):
+        self.msg_count_right+=1
+        if self.msg_expected_right >=0 and self.msg_count_right >= self.msg_expected_right:
+            logging.info(f"Join {self.type_conf.join_id} received final right msg after eof {self.msg_count_right} >= {self.msg_expected_right}(expected)")
+            return self._trigger_eof_right()
+        return False
+
+
+
+
+
+    def handle_eof_left(self, msg_count_expected):
+        self.msg_expected_left = msg_count_expected
+        if self.msg_expected_left > self.msg_count_left:
+            logging.info(f"Join {self.type_conf.join_id} received eof left without receiving all messages {self.msg_count_left} < {self.msg_expected_left}(expected)")
+            return False
+        return self._trigger_eof_left()
         #self.describe()
 
 
-    def handle_eof_right(self):
-        self.right_finished = True
-        logging.info(f"HANDLING EOF RIGHT out types: {self.msg_builder.types} left finished? {self.left_finished}")
-        if self.left_finished:
-            self.send_eof()
-            return True
-        
-        # Not finished, then try join all left rows.
-        for left_row in self.left_rows:
-            self.type_conf.do_join_left_row(self.right_rows, left_row, self.add_joined)
-        
-        self.left_rows = [] # Empty it since already used.
-        return False
+    def handle_eof_right(self, msg_count_expected):
+        self.msg_expected_right = msg_count_expected
+        if self.msg_expected_right > self.msg_count_right:
+            logging.info(f"Join {self.type_conf.join_id} received eof right without receiving all messages {self.msg_count_right} < {self.msg_expected_right}(expected)")
+            return False
+
+        return self._trigger_eof_right()
         #self.describe()
 
     def do_join_right_row(self, right_row):
@@ -77,17 +147,6 @@ class JoinAccumulator:
         self.right_rows.append(right_row)
         #self.describe()
 
-    def get_action_for_type(self,type):
-        if type == self.type_conf.left_type:
-            # Left message actions
-            if self.right_finished:
-                return self.do_join_left_row
-            return self.add_row_left
-        # Right message actions
-        if self.left_finished:
-            return self.do_join_right_row
-        return self.add_row_right
-
 
 
 
@@ -104,8 +163,8 @@ class JoinAccumulator:
     def describe_send(self):
         logging.info(f"SENDING TO {self.msg_builder.types} {self.msg_builder.ids}")
         self.describe()
-        for itm in self.msg_builder.payload:
-            logging.info(f"ROW {itm}")
+        #for itm in self.msg_builder.payload:
+        #    logging.info(f"ROW {itm}")
 
     def describe(self):
         logging.info(f"curr status join finished left:{self.left_finished} right: {self.right_finished}")
