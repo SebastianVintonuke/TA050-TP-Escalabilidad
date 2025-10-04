@@ -99,17 +99,15 @@ class GroupbyNode:
 			for query_id in msg.ids:
 				query_id = query_id+str(msg.types[ind])
 				acc = self.accumulators.get(query_id, None)
-				if acc:
-					if acc.check_eof(msg.partition):
-						acc.send_built()
-						del self.accumulators[query_id] # Remove it
-				else:
-					# propagate eof signal for this message 
-					conf = self.types_configurations[msg.types[ind]]
-					self.type_conf.send(
-						conf.new_builder_for(msg, ind) #Empty message that has same headers splitting to each destination.
-					)
+				if acc == None:
+					logging.info(f"For type {msg.types[ind]}, eof was the first message to be received")
 
+					acc = QueryAccumulator(self.types_configurations[msg.types[ind]], msg, ind)
+					self.accumulators[query_id] = acc
+
+				if acc.check_eof(msg.partition):
+					acc.send_built()
+					del self.accumulators[query_id] # Remove it
 				ind+=1
 			
 			return

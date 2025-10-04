@@ -45,15 +45,17 @@ class JoinNode:
             
             for config in self.type_expander.get_configurations_for(type):
                 joiner = self.joiners.get(ide+config.join_id, None)
-                if joiner:
-                    if config.left_type == type:
-                        if joiner.handle_eof_left(): #Finished
-                            del self.joiners[ide+config.join_id]
-                    elif joiner.handle_eof_right(): #Finished
-                            del self.joiners[ide+config.join_id]
-                else:
-                    # propagate eof signal for this message 
-                    config.send(config.new_builder_for(msg, ind))
+                if joiner == None:
+                    logging.info(f"For type {type}, eof was the first message to be received")
+
+                    joiner = JoinAccumulator(config, msg, ind)
+                    self.joiners[ide+config.join_id] = joiner
+                
+                if config.left_type == type:
+                    if joiner.handle_eof_left(): #Finished
+                        del self.joiners[ide+config.join_id]
+                elif joiner.handle_eof_right(): #Finished
+                        del self.joiners[ide+config.join_id]
             
             return
 
