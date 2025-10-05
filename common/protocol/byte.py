@@ -56,6 +56,14 @@ class ByteProtocol:
         """
         return int(self.__recv_all(1)[0])
 
+
+    def send_uint16(self, uint16: int) -> None:
+        u16_bytes = uint16.to_bytes(2, byteorder='big', signed=False)
+        self.__send_all(u16_bytes)
+
+    def wait_uint16(self) -> int:
+        return int.from_bytes(self.__recv_all(2), byteorder='big', signed=False)
+
     def __send_all(self, buf: bytes) -> None:
         """
         Send the entire contents of buf through the socket

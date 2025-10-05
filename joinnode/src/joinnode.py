@@ -1,0 +1,87 @@
+# from .type_config import TypeConfiguration
+import logging
+from .join_accumulator import JoinAccumulator
+class JoinNode:
+    def __init__(self, join_middleware, type_expander):
+        self.middleware = join_middleware
+        self.type_expander = type_expander
+        self.joiners = {}
+
+
+    def len_in_progress(self):
+        return len(self.joiners)
+
+    def len_input_rows(self):
+        total =0 
+        for _, joiner in self.joiners.items():
+            total+= joiner.len_left() + joiner.len_right()
+        return total
+
+    def len_out_rows(self):
+        total =0 
+        for _, joiner in self.joiners.items():
+            total+= joiner.len_joined()
+        return total
+
+    def len_left_rows(self):
+        total =0 
+        for _, joiner in self.joiners.items():
+            total+= joiner.len_left()
+        return total
+
+
+
+    def handle_task(self, msg):
+        if msg.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+            if msg.is_error():
+                logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
+                self.type_expander.propagate_signal_in(msg)
+                return
+
+            logging.info(f"Received final eof OF {msg.ids} types: {msg.types}")
+            ind=0
+            type = msg.types[ind]
+            ide = "" #msg.types[ind]
+            
+            for config in self.type_expander.get_configurations_for(type):
+                joiner = self.joiners.get(ide+config.join_id, None)
+                if joiner:
+                    if config.left_type == type:
+                        if joiner.handle_eof_left(): #Finished
+                            del self.joiners[ide+config.join_id]
+                    elif joiner.handle_eof_right(): #Finished
+                            del self.joiners[ide+config.join_id]
+                else:
+                    # propagate eof signal for this message 
+                    config.send(config.new_builder_for(msg, ind))
+            
+            return
+
+        row_actions = []
+        ind = 0
+        type = msg.types[ind]
+        ide = ""#msg.ids[ind]
+
+        for config in self.type_expander.get_configurations_for(type):
+            joiner = self.joiners.get(ide+config.join_id, None)
+
+            if joiner == None:
+                joiner = JoinAccumulator(config, msg, ind)
+                self.joiners[ide+config.join_id] = joiner
+
+            row_actions.append(joiner.get_action_for_type(type))
+
+        for row in msg.stream_rows():
+            for action in row_actions:
+                action(row)
+
+
+    def start(self):
+        self.middleware.start_consuming(self.handle_task)
+
+    def start_on(self, middleware):
+        middleware.start_consuming(self.handle_task)
+
+    def close(self):
+        self.middleware.close()
+        self.type_expander.close()

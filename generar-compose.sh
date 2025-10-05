@@ -51,8 +51,6 @@ echo "  server:
       - PYTHONUNBUFFERED=1
     networks:
       - testing_net
-    depends_on:
-      - dispatcher
     volumes:
       - ./server/config.ini:/config.ini:ro
 " >> "$output_file_name"
@@ -63,14 +61,16 @@ echo "  client:
     entrypoint: python3 /client/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - DATA_DIR=/archive
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
     networks:
       - testing_net
     depends_on:
       - server
     volumes:
       - ./client/config.ini:/config.ini:ro
-      - ./.data/archive:/archive:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results:/output:rw
 " >> "$output_file_name"
 
 echo "  dispatcher:
@@ -98,7 +98,6 @@ for ((i=1; i<=result_node_number; i++)); do
       - testing_net
     depends_on:
       - middleware
-      - results
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
 " >> "$output_file_name"

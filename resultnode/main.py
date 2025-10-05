@@ -2,10 +2,20 @@
 
 import logging
 import os
-import socket
 from configparser import ConfigParser
+from datetime import datetime, date
+from typing import List, Tuple
 
-from common import QueryId, QueryResult1, ResultsProtocol, new_uuid
+from common import QueryId
+from common.middleware.middleware import MessageMiddlewareQueue
+from common.middleware.tasks.result import ResultTask
+from common.results.query1 import QueryResult1
+from common.results.query2bs import QueryResult2BestSelling
+from common.results.query2mp import QueryResult2MostProfit
+from common.results.query3 import QueryResult3, HalfCreatedAt
+from common.results.query4 import QueryResult4
+from middleware.src.result_node_middleware import ResultNodeMiddleware
+from middleware.src.routing.query_types import QUERY_1, QUERY_3, QUERY_2, QUERY_4, QUERY_2_QUANTITY, QUERY_2_REVENUE
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -28,12 +38,6 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["port"] = int(os.getenv("PORT", config["DEFAULT"]["PORT"]))
         config_params["node_id"] = os.getenv(
             "RESULT_NODE_ID", config["DEFAULT"]["RESULT_NODE_ID"]
-        )
-        config_params["results_ip"] = os.getenv(
-            "RESULTS_IP", config["DEFAULT"]["RESULTS_IP"]
-        )
-        config_params["results_port"] = int(
-            os.getenv("RESULTS_PORT", config["DEFAULT"]["RESULTS_PORT"])
         )
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
@@ -65,8 +69,6 @@ def initialize_log(logging_level: int) -> None:
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
-    results_ip = config_params["results_ip"]
-    results_port = config_params["results_port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
 
@@ -77,38 +79,186 @@ def main() -> None:
         f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
     )
 
-    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    a_socket.connect((results_ip, results_port))
+    result_middleware = ResultNodeMiddleware()
 
-    results_protocol = ResultsProtocol(a_socket)
-    fake_user_id = new_uuid()
-    partial_results_1 = [
-        QueryResult1.from_bytes(
-            "9af9901b-60a8-4f95-a586-980a725d1049,87.0".encode("utf-8")
-        ),
-        QueryResult1.from_bytes(
-            "6a58d026-823f-4bda-a15c-2c3f090b7a27,78.0".encode("utf-8")
-        ),
-    ]
-    partial_results_2 = [
-        QueryResult1.from_bytes(
-            "8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5".encode("utf-8")
-        ),
-        QueryResult1.from_bytes(
-            "1b42e037-691b-40e1-9082-04743ef92f7b,75.0".encode("utf-8")
-        ),
-    ]
+    results_storage_middleware = MessageMiddlewareQueue("middleware", "results")
+    class Counter:
+        def __init__(self):
+            self.count_query_1 = 0
+            self.count_query_2_profit = 0
+            self.count_query_2_quantity = 0
+            self.count_query_3 = 0
+            self.count_query_4 = 0
+            self.expected_count_query_1 = -1
+            self.expected_count_query_2_profit = -1
+            self.expected_count_query_2_quantity = -1
+            self.expected_count_query_3 = -1
+            self.expected_count_query_4 = -1
 
-    results_protocol.notify_results_for(fake_user_id, QueryId.Query1)
-    for result in partial_results_1:
-        print(f"send {result}")
-    results_protocol.append_results(partial_results_1)
-    for result in partial_results_2:
-        print(f"send {result}")
-    results_protocol.append_results(partial_results_2)
-    print("notify results are ready")
-    results_protocol.notify_eof_results()  # Indica que se guardó el último resultado, el server cierra su socket
-    results_protocol.close_with(lambda socket_to_close: socket_to_close.close())
+        def is_eof_q1(self):
+            return self.expected_count_query_1 >=0 and self.count_query_1 >= self.expected_count_query_1
+        def is_eof_q2_profit(self):
+            return self.expected_count_query_2_profit >=0 and self.count_query_2_profit >= self.expected_count_query_2_profit
+        def is_eof_q2_quantity(self):
+            return self.expected_count_query_2_quantity >=0 and self.count_query_2_quantity >= self.expected_count_query_2_quantity
+        
+        def is_eof_q3(self):
+            return self.expected_count_query_3 >=0 and self.count_query_3 >= self.expected_count_query_3
+        def is_eof_q4(self):
+            return self.expected_count_query_4 >=0 and self.count_query_4 >= self.expected_count_query_4
+
+    results_message_counter= {}
+    def get_counter(user_id: str):
+        counter = results_message_counter.get(user_id, None)
+        if counter == None:
+            counter = Counter()
+            results_message_counter[user_id] = counter
+
+        return counter            
+
+    def handle_query_1_result(msg,counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_1 = msg.partition
+            logging.info(f"----------------> RECEIVED EOF QUERY 1 EXPECT {counter.expected_count_query_1} got: {counter.count_query_1}")
+            return
+        counter.count_query_1 += 1
+
+        data: List[QueryResult1] = []
+        for line in msg.stream_rows():
+            transaction_id = line[0]
+            final_amount = float(line[1])
+            data.append(QueryResult1(transaction_id=transaction_id, final_amount=final_amount))
+        result_task = ResultTask(user_id, QueryId.Query1, False, False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+
+    def handle_query_2_best_selling_result(msg, counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_2_quantity = msg.partition
+            return
+        counter.count_query_2_quantity += 1
+
+        data: List[QueryResult2BestSelling] = []
+        for line in msg.stream_rows():
+            item_name: str = line[0]
+            month_encoded = int(line[1])
+            year = month_encoded // 12 + 2024
+            month = (month_encoded-1) % 12 + 1
+            year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
+            sellings_qty: int = line[2]
+            #logging.info(f"type: {msg.types[0]}: {year_month_created_at}, {item_name}, {sellings_qty}")
+            data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
+        result_task = ResultTask(user_id, QueryId.Query2BestSelling, False, False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+
+    def handle_query_2_most_profit_result(msg, counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_2_profit = msg.partition
+            return
+        counter.count_query_2_profit += 1
+
+        data: List[QueryResult2MostProfit] = []
+        for line in msg.stream_rows():
+            item_name: str = line[0]
+            month_encoded = int(line[1])
+            year = month_encoded // 12 + 2024
+            month = (month_encoded-1) % 12 + 1
+            year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
+            profit_sum: float = line[2]
+            #logging.info(f"type: {msg.types[0]}: {year_month_created_at}, {item_name}, {profit_sum}")
+            data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
+        result_task = ResultTask(user_id, QueryId.Query2MostProfit, False, False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+
+    def handle_query_3_result(msg, counter, user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_3 = msg.partition
+            return
+        counter.count_query_3 += 1
+
+        data: List[QueryResult3] = []
+        for line in msg.stream_rows():
+            store_name = line[0]
+            year_created_at, half_created_at = __year_semester_decode(line[1])
+            tpv = float(line[2])
+            data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
+        result_task = ResultTask(user_id, QueryId.Query3, False, False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+
+    def handle_query_4_result(msg,counter,  user_id: str) -> None:
+        if msg.is_eof():
+            counter.expected_count_query_4 = msg.partition
+            return
+        counter.count_query_4 += 1
+
+        data: List[QueryResult4] = []
+        for line in msg.stream_rows():
+            logging.info(f"RECV ROW USER QUERY 4 {line}")
+            store_name: str = line[0]
+            birthdate: date = datetime.strptime(line[1], "%Y-%m-%d").date()
+            data.append(QueryResult4(store_name=store_name, birthdate=birthdate))
+        result_task = ResultTask(user_id, QueryId.Query4, False, False, data).to_bytes()
+        results_storage_middleware.send(result_task)
+
+    def __year_semester_decode(year_semester_str: str) -> Tuple[date, HalfCreatedAt]:
+        year_semester = int(year_semester_str)
+        year_str = str((year_semester * 6 // 12) + 2024)
+        year = datetime.strptime(str(year_str), "%Y").date()
+        if year_semester % 2 == 0:
+            semester = HalfCreatedAt.H1
+        else:
+            semester = HalfCreatedAt.H2
+        return year, semester
+
+    def handle_result(msg):
+        user_id = msg.ids[0]
+        query_type = msg.types[0]
+        counter = get_counter(user_id)
+
+        if query_type == QUERY_1:
+            handle_query_1_result(msg, counter,  user_id)
+            if counter.is_eof_q1():
+                logging.info(f"GOT EOF FOR q1? count: {counter.count_query_1} exp: {counter.expected_count_query_1}")
+                result_task = ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
+
+        elif query_type == QUERY_2_QUANTITY: # TODO QUANTITY TRAE DATOS DE REVENUE
+            #logging.info(f"{QUERY_2_QUANTITY} IS EOF:{msg.is_eof()}")
+            handle_query_2_best_selling_result(msg,counter,  user_id)
+            if counter.is_eof_q2_quantity():
+                result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
+
+        elif query_type == QUERY_2_REVENUE:
+            #logging.info(f"{QUERY_2_REVENUE} IS EOF:{msg.is_eof()}")
+            handle_query_2_most_profit_result(msg,counter,  user_id)
+            
+            if counter.is_eof_q2_profit():
+                result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
+        elif query_type == QUERY_3:
+            #logging.info(f"{QUERY_3} IS EOF:{msg.is_eof()}")
+            handle_query_3_result(msg,counter,  user_id)
+
+            if counter.is_eof_q3():
+                result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
+        elif query_type == QUERY_4: # TODO DATOS DE QUERY 4
+            #logging.info(f"{QUERY_4} IS EOF:{msg.is_eof()}")
+            handle_query_4_result(msg,counter,  user_id)
+
+            if counter.is_eof_q4():
+                result_task = ResultTask(user_id, QueryId.Query4, True, False, []).to_bytes()
+                results_storage_middleware.send(result_task)
+
+        else:
+            logging.info(f"NO EXISTE {msg.types}")
+            #raise ValueError(f"Unknown query type: {query_type}")
+
+    result_middleware.start_consuming(handle_result)
 
 
 if __name__ == "__main__":

@@ -18,14 +18,14 @@ services:
     entrypoint: python3 /results/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - DIR_PATH=/results
+      - DIR_PATH=/storage
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./results/config.ini:/config.ini:ro
-      - ./.data/results:/results/results
+      - ./.data/storage:/results/storage
 
   server:
     container_name: server
@@ -46,14 +46,16 @@ services:
     entrypoint: python3 /client/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - DATA_DIR=/archive
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
     networks:
       - testing_net
     depends_on:
       - server
     volumes:
       - ./client/config.ini:/config.ini:ro
-      - ./.data/archive:/archive:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results:/output:rw
 
   dispatcher:
     container_name: dispatcher
@@ -88,12 +90,84 @@ services:
     entrypoint: python3 /selectnode/main.py
     environment:
       - SELECT_NODE_ID=1
+      - GROUPBY_NODE_COUNT=1
+      - JOIN_NODE_COUNT=1
     networks:
       - testing_net
     depends_on:
       - middleware
+    links:
+      - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+  selectnode2:
+    container_name: selectnode2
+    image: selectnode:latest
+    entrypoint: python3 /selectnode/main.py
+    environment:
+      - SELECT_NODE_ID=2
+      - GROUPBY_NODE_COUNT=1
+      - JOIN_NODE_COUNT=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./selectnode/config.ini:/config.ini:ro
+  selectnode3:
+    container_name: selectnode3
+    image: selectnode:latest
+    entrypoint: python3 /selectnode/main.py
+    environment:
+      - SELECT_NODE_ID=3
+      - GROUPBY_NODE_COUNT=1
+      - JOIN_NODE_COUNT=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./selectnode/config.ini:/config.ini:ro
+  groupbynode1:
+    container_name: groupbynode1
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=1
+      - JOIN_NODE_COUNT=1
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+
+  joinnode1:
+    container_name: joinnode1
+    image: joinnode:latest
+    entrypoint: python3 /joinnode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=1
+      - NODE_ID=0
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./joinnode/config.ini:/config.ini:ro
+
+
+
 
 networks:
   testing_net:

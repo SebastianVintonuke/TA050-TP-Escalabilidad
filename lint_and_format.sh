@@ -2,10 +2,10 @@
 
 target=$1
 
-dirs="client dispatcher middleware resultnode results selectnode server"
+dirs="client dispatcher resultnode results selectnode server"
 
 if [ $# -ne 1 ] || ! [[ "$dirs" =~ (^|[[:space:]])"$target"($|[[:space:]]) ]] && [ "$target" != "all" ]; then
-    echo "Uso: $0 <all | client | dispatcher | middleware | resultnode | results | selectnode | server>"
+    echo "Uso: $0 <all | client | dispatcher | resultnode | results | selectnode | server>"
     exit 1
 fi
 

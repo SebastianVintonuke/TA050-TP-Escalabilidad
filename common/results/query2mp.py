@@ -7,9 +7,8 @@ from common.results.query import QueryResult
 @dataclass
 class QueryResult2MostProfit(QueryResult):
     year_month_created_at: date
-    item_id: int
-    profit_sum: int
     item_name: str
+    profit_sum: float
 
     @classmethod
     def from_bytes(cls, data: bytes) -> "QueryResult2MostProfit":
@@ -17,11 +16,10 @@ class QueryResult2MostProfit(QueryResult):
         fields = line.split(",")
 
         year_month_created_at = datetime.strptime(fields[0], "%Y-%m").date()
-        item_id = int(fields[1])
-        profit_sum = int(fields[2])
-        item_name = fields[3].strip()
+        profit_sum = float(fields[1])
+        item_name = fields[2].strip()
 
-        return cls(year_month_created_at=year_month_created_at, item_id=item_id, profit_sum=profit_sum, item_name=item_name)
+        return cls(year_month_created_at=year_month_created_at, profit_sum=profit_sum, item_name=item_name)
 
     def __str__(self) -> str:
-        return f"{self.year_month_created_at.strftime('%Y-%m')},{self.item_id},{self.profit_sum},{self.item_name}"
+        return f"{self.year_month_created_at.strftime('%Y-%m')},{self.profit_sum},{self.item_name}"

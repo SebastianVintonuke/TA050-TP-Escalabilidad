@@ -28,10 +28,10 @@ class TransactionItem(Model):
 
         transaction_id = fields[0].strip()
         item_id = int(fields[1])
-        quantity = int(fields[1])
-        unit_price = float(fields[5])
-        subtotal = float(fields[5])
-        created_at = datetime.strptime(fields[8], "%Y-%m-%d %H:%M:%S")
+        quantity = int(fields[2])
+        unit_price = float(fields[3])
+        subtotal = float(fields[4])
+        created_at = datetime.strptime(fields[5], "%Y-%m-%d %H:%M:%S")
 
         return cls(
             transaction_id=transaction_id,
@@ -56,10 +56,10 @@ class TransactionItem(Model):
 
         transaction_id = fields[0].strip()
         item_id = int(fields[1])
-        quantity = int(fields[1])
-        unit_price = float(fields[5])
-        subtotal = float(fields[5])
-        created_at = datetime.strptime(fields[8], "%Y-%m-%d %H:%M:%S")
+        quantity = int(fields[2])
+        unit_price = float(fields[3])
+        subtotal = float(fields[4])
+        created_at = datetime.strptime(fields[5], "%Y-%m-%d %H:%M:%S")
 
         return cls(
             transaction_id=transaction_id,

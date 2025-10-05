@@ -1,173 +1,158 @@
+import errno
 import logging
 import os
 import socket
-import sys
-from configparser import ConfigParser
+import time
+from io import BufferedReader, BufferedWriter
 from pathlib import Path
+from types import FrameType
+from typing import List, Optional, Tuple, Union
 
-from common.protocol.clientserver import ClientProtocol
-
-MAX_BATCH_SIZE = 8 * 1024  # 8KB
-
-CONFIG_PATH = "config.ini"
-
-EXIT_ERROR = 1
+from common.protocol.client import ClientProtocol
 
 
 class Client:
+    @staticmethod
+    def decode(address: str) -> Tuple[str, int]:
+        host, port_str = address.split(":")
+        port = int(port_str)
+        return host, port
 
-    def __init__(self, config_path: str = CONFIG_PATH):
-        self.config = self.initialize_config(config_path)
-        self.initialize_log()
-
-    def initialize_config(self, config_path: str) -> dict:  # type: ignore[no-untyped-def]
-        """Parse env variables or config file to find program config params
-
-        Function that search and parse program configuration parameters in the
-        program environment variables first and the in a config file.
-        If at least one of the config parameters is not found a KeyError exception
-        is thrown. If a parameter could not be parsed, a ValueError is thrown.
-        If parsing succeeded, the function returns a ConfigParser object
-        with config parameters
+    @staticmethod
+    def __try_close(a_socket: socket.socket, socket_name_to_log: str) -> None:
         """
+        Attempt to gracefully close a given socket and log the result
 
-        config = ConfigParser(os.environ)
-        # If config.ini does not exists original config object is not modified
-        config.read(config_path)
-
-        config_params = {}
+        If the socket was already closed, for example by a signal, it will be silently ignored
+        Any other errors will be logged
+        """
         try:
-            config_params["port"] = int(os.getenv("PORT", config["DEFAULT"]["PORT"]))
-            config_params["server_ip"] = os.getenv(
-                "SERVER_IP", config["DEFAULT"]["SERVER_IP"]
-            )
-            config_params["server_port"] = int(
-                os.getenv("SERVER_PORT", config["DEFAULT"]["SERVER_PORT"])
-            )
-            config_params["data_dir"] = os.getenv(
-                "DATA_DIR", config["DEFAULT"]["DATA_DIR"]
-            )
-            config_params["logging_level"] = os.getenv(
-                "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
-            )
-        except KeyError as e:
-            raise KeyError("Key was not found. Error: {} .Aborting client".format(e))
-        except ValueError as e:
-            raise ValueError(
-                "Key could not be parsed. Error: {}. Aborting client".format(e)
-            )
+            a_socket.close()
+            logging.info(f"action: close_{socket_name_to_log} | result: success")
+        except OSError as e:
+            if e.errno == errno.EBADF:
+                pass  # The socket was already closed by the graceful shutdown
+            else:
+                logging.error(
+                    f"action: close_{socket_name_to_log} | result: fail | error: {e}"
+                )
 
-        return config_params
+    def __init__(self, server_address: str, input_dir: str, output_dir: str) -> None:
+        self._server_address = server_address
+        self._client_socket_to_server: Optional[socket.socket]
+        self._client_socket_to_dispatcher: Optional[socket.socket]
+        self._client_socket_to_results_storage: Optional[socket.socket]
+        self._input_dir = Path(input_dir)
+        self._output_dir = Path(output_dir)
+        self._file_descriptors: List[Union[BufferedWriter, BufferedReader]] = []
 
-    def initialize_log(self) -> None:
-        """
-        Python custom logging initialization
+    @staticmethod
+    def open_file(file_path: Path) -> Optional[int]:
+        try:
+            return os.open(file_path, os.O_RDONLY)
+        except Exception as e:
+            logging.critical(f"action: open_file | result: fail | error: {e}")
+            raise
 
-        Current timestamp is added to be able to identify in docker
-        compose logs the date when the log has arrived
-        """
-        logging_level = self.config["logging_level"]
-        logging.basicConfig(
-            format="%(asctime)s %(levelname)-8s %(message)s",
-            level=logging_level,
-            datefmt="%Y-%m-%d %H:%M:%S",
+    def create_client_socket(self, address: str) -> Optional[socket.socket]:
+        try:
+            server_host, server_port = self.decode(address)
+            return socket.create_connection((server_host, server_port))
+        except Exception as e:
+            logging.critical(
+                f"action: connect | result: fail | address: {address} | error: {e}"
+            )
+            return None
+
+    def start(self) -> None:
+        # Obtengo del servidor la dirección de un dispatcher
+        self._client_socket_to_server = self.create_client_socket(self._server_address)
+        if not self._client_socket_to_server:
+            return
+        client_protocol_to_server = ClientProtocol(self._client_socket_to_server)
+        dispatcher_address = client_protocol_to_server.request_dispatcher_address()
+        self._client_socket_to_server.close()
+        logging.info(
+            f"action: request_dispatcher | result: success | dispatcher: {dispatcher_address}"
         )
 
-    def handshake_with_server(self) -> tuple[str, int, str]:
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            client_socket.connect(
-                (self.config["server_ip"], self.config["server_port"])
-            )
+        # Subo los datos al dispatcher y obtengo mi id
+        self._client_socket_to_dispatcher = self.create_client_socket(
+            dispatcher_address
+        )
+        if not self._client_socket_to_dispatcher:
+            return
+        client_protocol_to_dispatcher = ClientProtocol(
+            self._client_socket_to_dispatcher
+        )
+        client_id = client_protocol_to_dispatcher.upload_files(
+            self._input_dir, self.__open_input_file, self.__close_file
+        )
+        self._client_socket_to_dispatcher.close()
+        logging.info(f"action: data_upload | result: success | client_id: {client_id}")
 
-            client_protocol = ClientProtocol(client_socket)
+        time.sleep(10)  # TODO sacar
+        # Obtengo del servidor la dirección de un results storage
+        self._client_socket_to_server = self.create_client_socket(self._server_address)
+        if not self._client_socket_to_server:
+            return
+        client_protocol_to_server = ClientProtocol(self._client_socket_to_server)
+        results_storage_address = (
+            client_protocol_to_server.request_results_storage_address(client_id)
+        )
+        self._client_socket_to_server.close()
+        logging.info(
+            f"action: request_results_storage | result: success | results_storage: {results_storage_address}"
+        )
 
-            dispatcher_ip, dispatcher_port, request_id = (
-                client_protocol.request_upload()
-            )
+        # Descargo los resultados del results storage
+        self._client_socket_to_results_storage = self.create_client_socket(
+            results_storage_address
+        )
+        if not self._client_socket_to_results_storage:
+            return
+        client_protocol_to_results_storage = ClientProtocol(
+            self._client_socket_to_results_storage
+        )
+        logging.info("action: data_download | result: in-progress")
+        client_protocol_to_results_storage.download_results(
+            self._output_dir, client_id, self.__open_output_file, self.__close_file
+        )
+        self._client_socket_to_results_storage.close()
+        logging.info("action: data_download | result: success")
 
-            logging.info(
-                f"Dispatcher: {dispatcher_ip}:{dispatcher_port}, request_id: {request_id}"
-            )
+    def graceful_shutdown(
+        self, _signal_number: int, _current_stack_frame: Optional[FrameType]
+    ) -> None:
+        """
+        On a signal, gracefully shutdown the client
 
-            return dispatcher_ip, dispatcher_port, request_id
+        Closes the client socket and close the file descriptors
+        """
+        if self._client_socket_to_server:
+            self._client_socket_to_server.close()
+        if self._client_socket_to_dispatcher:
+            self._client_socket_to_dispatcher.close()
+        if self._client_socket_to_results_storage:
+            self._client_socket_to_results_storage.close()
 
-        finally:
-            try:
-                client_socket.shutdown(socket.SHUT_RDWR)
-            except Exception:
-                pass
-            client_socket.close()
+        for file_descriptor in self._file_descriptors:
+            file_descriptor.close()
 
-    def upload(self) -> str:
-        logging.info("uploading files...")
+        logging.info("action: exit | result: success")
 
-        data_dir = Path(self.config["data_dir"])
-        csv_paths = [
-            data_dir / "stores" / "stores.csv",
-            data_dir / "transactions" / "transactions.csv",
-            data_dir / "users" / "users.csv",
-            # TODO: Agregar más archivos según sea necesario
-        ]
+    def __open_input_file(self, file_path: Path) -> BufferedReader:
+        reader = file_path.open("rb")
+        self._file_descriptors.append(reader)
+        return reader
 
-        dispatcher_ip, dispatcher_port, request_id = self.handshake_with_server()
+    def __open_output_file(self, file_path: Path) -> BufferedWriter:
+        writer = file_path.open("wb")
+        self._file_descriptors.append(writer)
+        return writer
 
-        dispatcher_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        try:
-            dispatcher_socket.connect((dispatcher_ip, dispatcher_port))
-
-            client_protocol = ClientProtocol(dispatcher_socket)
-
-            client_protocol.define_queries(["1", "2", "3", "4"])
-
-            for path in csv_paths:
-                client_protocol.process_and_send_file(path)
-
-            client_protocol.end_transmission()
-            logging.info("transmission completed")
-
-            return request_id
-
-        finally:
-            try:
-                dispatcher_socket.shutdown(socket.SHUT_RDWR)
-            except Exception:
-                pass
-            dispatcher_socket.close()
-
-    def get_results(self, request_id: str) -> None:
-        logging.info(f"requesting results with id: {request_id}")
-
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            client_socket.connect(
-                (self.config["server_ip"], self.config["server_port"])
-            )
-
-            client_protocol = ClientProtocol(client_socket)
-
-            results = client_protocol.request_results(request_id)
-
-            for item in results:
-                print(item.decode("utf-8"))
-
-        except Exception as e:
-            logging.error(f"Error: {e}")
-            raise
-        finally:
-            try:
-                client_socket.shutdown(socket.SHUT_RDWR)
-            except Exception:
-                pass
-            client_socket.close()
-
-    def run(self) -> None:
-        try:
-            request_id = self.upload()
-
-            self.get_results(request_id)
-
-        except Exception as e:
-            logging.exception(f"Error: {e}")
-            sys.exit(EXIT_ERROR)
+    def __close_file(
+        self, file_descriptor: Union[BufferedWriter, BufferedReader]
+    ) -> None:
+        self._file_descriptors.remove(file_descriptor)
+        file_descriptor.close()

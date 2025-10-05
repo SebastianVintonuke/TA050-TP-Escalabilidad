@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, List
+from typing import Callable, List, Union
 
 import pika
 from pika.channel import Channel
@@ -49,7 +49,7 @@ class MessageMiddleware(ABC):
     # Si se pierde la conexión con el middleware eleva MessageMiddlewareDisconnectedError.
     # Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
     @abstractmethod
-    def send(self, message: str | bytes) -> None:
+    def send(self, message: Union[str, bytes]) -> None:
         pass
 
     # Se desconecta de la cola o exchange al que estaba conectado.
@@ -111,7 +111,7 @@ class MessageMiddlewareExchange(MessageMiddleware):
     # Envía un mensaje al tópico con el que se inicializó el exchange.
     # Si se pierde la conexión con el middleware eleva MessageMiddlewareDisconnectedError.
     # Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
-    def send(self, message: str | bytes) -> None:
+    def send(self, message: Union[str, bytes]) -> None:
         try:
             for routing_key in self.route_keys:
                 self.channel.basic_publish(
@@ -183,7 +183,7 @@ class MessageMiddlewareQueue(MessageMiddleware):
     # Envía un mensaje a la cola con la que se inicializó el exchange.
     # Si se pierde la conexión con el middleware eleva MessageMiddlewareDisconnectedError.
     # Si ocurre un error interno que no puede resolverse eleva MessageMiddlewareMessageError.
-    def send(self, message: str | bytes) -> None:
+    def send(self, message: Union[str, bytes]) -> None:
         try:
             self.channel.basic_publish(
                 exchange="", routing_key=self.queue_name, body=message
