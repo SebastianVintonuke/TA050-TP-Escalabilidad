@@ -33,10 +33,13 @@ services:
     entrypoint: python3 /server/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - DISPATCHERS=dispatcher1:12347,dispatcher2:12348,dispatcher3:12349
     networks:
       - testing_net
     depends_on:
-      - dispatcher
+      - dispatcher1
+      - dispatcher2
+      - dispatcher3
     volumes:
       - ./server/config.ini:/config.ini:ro
 
@@ -57,18 +60,47 @@ services:
       - ./.data/archive:/input:ro
       - ./.data/results:/output:rw
 
-  dispatcher:
-    container_name: dispatcher
+  dispatcher1:
+    container_name: dispatcher1
     image: dispatcher:latest
     entrypoint: python3 /dispatcher/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - PORT=12347
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
+
+  dispatcher2:
+      container_name: dispatcher2
+      image: dispatcher:latest
+      entrypoint: python3 /dispatcher/main.py
+      environment:
+        - PYTHONUNBUFFERED=1
+        - PORT=12348
+      networks:
+        - testing_net
+      depends_on:
+        - middleware
+      volumes:
+        - ./dispatcher/config.ini:/config.ini:ro
+
+  dispatcher3:
+      container_name: dispatcher3
+      image: dispatcher:latest
+      entrypoint: python3 /dispatcher/main.py
+      environment:
+        - PYTHONUNBUFFERED=1
+        - PORT=12349
+      networks:
+        - testing_net
+      depends_on:
+        - middleware
+      volumes:
+        - ./dispatcher/config.ini:/config.ini:ro
 
   resultnode1:
     container_name: resultnode1
