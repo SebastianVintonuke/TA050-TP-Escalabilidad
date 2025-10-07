@@ -33,24 +33,24 @@ services:
     entrypoint: python3 /server/main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - DISPATCHERS=dispatcher1:12347,dispatcher2:12348,dispatcher3:12349
+      - DISPATCHERS=dispatcher1:12347,dispatcher2:12348
     networks:
       - testing_net
     depends_on:
       - dispatcher1
       - dispatcher2
-      - dispatcher3
     volumes:
       - ./server/config.ini:/config.ini:ro
 
-  client:
-    container_name: client
+  client1:
+    container_name: client1
     image: client:latest
     entrypoint: python3 /client/main.py
     environment:
       - PYTHONUNBUFFERED=1
       - INPUT_DIR=/input
       - OUTPUT_DIR=/output
+      - EXECUTIONS=2
     networks:
       - testing_net
     depends_on:
@@ -58,7 +58,79 @@ services:
     volumes:
       - ./client/config.ini:/config.ini:ro
       - ./.data/archive:/input:ro
-      - ./.data/results:/output:rw
+      - ./.data/results/client1:/output:rw
+
+  client2:
+    container_name: client2
+    image: client:latest
+    entrypoint: python3 /client/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
+      - EXECUTIONS=3
+    networks:
+      - testing_net
+    depends_on:
+      - server
+    volumes:
+      - ./client/config.ini:/config.ini:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results/client2:/output:rw
+
+  client3:
+    container_name: client3
+    image: client:latest
+    entrypoint: python3 /client/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
+      - EXECUTIONS=4
+    networks:
+      - testing_net
+    depends_on:
+      - server
+    volumes:
+      - ./client/config.ini:/config.ini:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results/client3:/output:rw
+
+  client4:
+    container_name: client4
+    image: client:latest
+    entrypoint: python3 /client/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
+      - EXECUTIONS=5
+    networks:
+      - testing_net
+    depends_on:
+      - server
+    volumes:
+      - ./client/config.ini:/config.ini:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results/client4:/output:rw
+
+  client5:
+    container_name: client5
+    image: client:latest
+    entrypoint: python3 /client/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
+      - EXECUTIONS=6
+    networks:
+      - testing_net
+    depends_on:
+      - server
+    volumes:
+      - ./client/config.ini:/config.ini:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results/client5:/output:rw
 
   dispatcher1:
     container_name: dispatcher1
@@ -75,32 +147,18 @@ services:
       - ./dispatcher/config.ini:/config.ini:ro
 
   dispatcher2:
-      container_name: dispatcher2
-      image: dispatcher:latest
-      entrypoint: python3 /dispatcher/main.py
-      environment:
-        - PYTHONUNBUFFERED=1
-        - PORT=12348
-      networks:
-        - testing_net
-      depends_on:
-        - middleware
-      volumes:
-        - ./dispatcher/config.ini:/config.ini:ro
-
-  dispatcher3:
-      container_name: dispatcher3
-      image: dispatcher:latest
-      entrypoint: python3 /dispatcher/main.py
-      environment:
-        - PYTHONUNBUFFERED=1
-        - PORT=12349
-      networks:
-        - testing_net
-      depends_on:
-        - middleware
-      volumes:
-        - ./dispatcher/config.ini:/config.ini:ro
+    container_name: dispatcher2
+    image: dispatcher:latest
+    entrypoint: python3 /dispatcher/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=12348
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./dispatcher/config.ini:/config.ini:ro
 
   resultnode1:
     container_name: resultnode1
@@ -115,6 +173,7 @@ services:
       - results
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
+
 
   selectnode1:
     container_name: selectnode1
@@ -132,6 +191,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+
   selectnode2:
     container_name: selectnode2
     image: selectnode:latest
@@ -148,6 +208,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+
   selectnode3:
     container_name: selectnode3
     image: selectnode:latest
@@ -164,6 +225,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+
   groupbynode1:
     container_name: groupbynode1
     image: groupbynode:latest
@@ -197,9 +259,7 @@ services:
       - middleware
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
-
-
-
+      
 
 networks:
   testing_net:
