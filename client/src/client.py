@@ -67,19 +67,23 @@ class Client:
                 f"action: connect | result: fail | address: {address} | error: {e}"
             )
             return None
-    
-    def start(self, executions=DEFAULT_EXECUTIONS) -> None:
+
+    def start(self, executions: int = DEFAULT_EXECUTIONS) -> None:
         for number_of_execution in range(executions):
-            logging.info(f"action: start_execution | execution: {number_of_execution + 1}/{executions}")
-            
+            logging.info(
+                f"action: start_execution | execution: {number_of_execution + 1}/{executions}"
+            )
+
             # Flujo del cliente
             self.exec()
-            
+
             # Pausa entre ejecuciones
             if number_of_execution < executions - 1:
                 time.sleep(1)
-                
-        logging.info(f"action: all_executions_completed | total_executions: {executions}")
+
+        logging.info(
+            f"action: all_executions_completed | total_executions: {executions}"
+        )
 
     def exec(self) -> None:
         # 1. Obtengo del servidor la dirección de un dispatcher
@@ -133,25 +137,29 @@ class Client:
             self._client_socket_to_results_storage
         )
         logging.info("action: data_download | result: in-progress")
-        
+
         attempts = MAX_ATTEMPTS
         while attempts > NO_ATTEMPTS:
             try:
                 client_protocol_to_results_storage.download_results(
-                    self._output_dir, client_id, self.__open_input_file, self.__close_file
+                    self._output_dir,
+                    client_id,
+                    self.__open_output_file,
+                    self.__close_file,
                 )
                 logging.info("action: data_download | result: success")
                 break
             except Exception as e:
                 attempts -= 1
-                logging.error(f"action: data_download | result: failure | error: {e} | attempts left: {attempts}")
+                logging.error(
+                    f"action: data_download | result: failure | error: {e} | attempts left: {attempts}"
+                )
                 time.sleep(1)
-        
+
         self._client_socket_to_results_storage.close()
 
         if attempts <= NO_ATTEMPTS:
             logging.info("action: data_download | result: failed all attempts")
-        
 
     def graceful_shutdown(
         self, _signal_number: int, _current_stack_frame: Optional[FrameType]

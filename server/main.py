@@ -34,10 +34,16 @@ def initialize_config():  # type: ignore[no-untyped-def]
         )
 
         dispatchers_str = os.getenv("DISPATCHERS", config["DEFAULT"]["DISPATCHERS"])
-        config_params["dispatchers"] = [dispatcher.strip() for dispatcher in dispatchers_str.split(",")]
-        
-        results_storages_str = os.getenv("RESULTS_STORAGES", config["DEFAULT"]["RESULTS_STORAGES"])
-        config_params["results_storages"] = [result_storage.strip() for result_storage in results_storages_str.split(",")]
+        config_params["dispatchers"] = [
+            dispatcher.strip() for dispatcher in dispatchers_str.split(",")
+        ]
+
+        results_storages_str = os.getenv(
+            "RESULTS_STORAGES", config["DEFAULT"]["RESULTS_STORAGES"]
+        )
+        config_params["results_storages"] = [
+            result_storage.strip() for result_storage in results_storages_str.split(",")
+        ]
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -77,9 +83,7 @@ def main() -> None:
         f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level} | dispatchers: {dispatchers} | results_storages: {results_storages}"
     )
 
-    server = Server(
-        port, listen_backlog, dispatchers, results_storages
-    )
+    server = Server(port, listen_backlog, dispatchers, results_storages)
     signal.signal(signal.SIGTERM, server.graceful_shutdown)
 
     server.run()

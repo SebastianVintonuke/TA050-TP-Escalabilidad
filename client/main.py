@@ -37,8 +37,8 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
-        config_params["executions"] = int(os.getenv(
-            "EXECUTIONS", config["DEFAULT"]["EXECUTIONS"])
+        config_params["executions"] = int(
+            os.getenv("EXECUTIONS", config["DEFAULT"]["EXECUTIONS"])
         )
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting client".format(e))

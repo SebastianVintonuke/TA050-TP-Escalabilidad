@@ -5,8 +5,8 @@ import threading
 from types import FrameType
 from typing import List, Optional, Tuple
 
-from common.protocol.server import ServerProtocol
 from common.manager.dispatcher_manager import DispatcherManager
+from common.protocol.server import ServerProtocol
 
 
 class Server:
@@ -95,7 +95,7 @@ class Server:
             self._results_storages,
             self._dispatcher_manager,
         )
-        
+
         try:
             protocol.handle_requests()
         except Exception as e:
