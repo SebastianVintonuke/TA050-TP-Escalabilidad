@@ -74,7 +74,7 @@ def main() -> None:
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level} | dispatchers: {dispatchers} | results_storages: {results_storages}"
     )
 
     server = Server(

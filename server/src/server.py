@@ -6,6 +6,7 @@ from types import FrameType
 from typing import List, Optional, Tuple
 
 from common.protocol.server import ServerProtocol
+from common.manager.dispatcher_manager import DispatcherManager
 
 
 class Server:
@@ -42,6 +43,9 @@ class Server:
         self._results_storages = results_storages
         self._was_stopped = False
         self._clients: List[Tuple[threading.Thread, socket.socket]] = []
+
+        self._dispatcher_manager = DispatcherManager(dispatchers)
+
         if not self._dispatchers or not self._results_storages:
             e = ValueError("Missing Dispatchers or Results Storages Addresses")
             logging.critical(f"action: initialize_server | result: error | error: {e}")
@@ -86,12 +90,16 @@ class Server:
         Read message, process it and close the socket
         """
         protocol = ServerProtocol(
-            client_socket, self._dispatchers, self._results_storages
+            client_socket,
+            self._dispatchers,
+            self._results_storages,
+            self._dispatcher_manager,
         )
+        
         try:
             protocol.handle_requests()
         except Exception as e:
-            logging.error(f"action: error | result: fail | error: {e}")
+            logging.error(f"action: handle_client | result: fail | error: {e}")
         finally:
 
             def closure_to_close(sock: socket.socket) -> None:
