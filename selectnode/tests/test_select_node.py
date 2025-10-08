@@ -41,7 +41,7 @@ class TestSelectNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         type_conf = SelectTypeConfiguration(
             result_grouper,
-            MockMessageBuilder,
+            BareMockMessageBuilder,
             in_fields=in_cols,
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -56,7 +56,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp = TypeExpander()
         type_exp.add_configurations("t1", type_conf)
 
-        node = SelectNode(in_middle, type_exp)
+        node = SelectNode(in_middle, MockMessage, type_exp)
         node.start()
 
         rows_pass = [
@@ -73,8 +73,7 @@ class TestSelectNode(unittest.TestCase):
             {"transaction_id": "tr6", "year": 2024, "hour": 6, "sum": 55},
         ]
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["query_3323"],
             ["t1"],
             rows_pass + rows_fail,
@@ -83,9 +82,12 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle.push_msg(message)
 
-        self.assertEqual(len(result_grouper.msgs), 1)
-        self.assertEqual(result_grouper.msgs[0].ind, 0)
-        self.assertEqual(result_grouper.msgs[0].msg_from, message)
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries())
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):            
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
 
         got_result = [x for x in result_grouper.msgs[0].payload]
         self.assertEqual(len(got_result), len(rows_pass))
@@ -104,7 +106,7 @@ class TestSelectNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         type_conf = SelectTypeConfiguration(
             result_grouper,
-            MockMessageBuilder,
+            BareMockMessageBuilder,
             in_fields=in_cols,  # In order
             filters_conf=[["year", EQUALS_ANY, ["2024", "2025"]]],
             out_conf={
@@ -128,7 +130,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp = TypeExpander()
         type_exp.add_configurations("t1", type_conf)
 
-        node = SelectNode(in_middle, type_exp)
+        node = SelectNode(in_middle, MockMessage, type_exp)
         node.start()
 
         rows_pass = [
@@ -148,8 +150,7 @@ class TestSelectNode(unittest.TestCase):
             {"product_id": "pr6", "year": 2020, "month": 6, "revenue": 55},
         ]
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["query_3323"],
             ["t1"],
             rows_pass + rows_fail,
@@ -158,9 +159,13 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle.push_msg(message)
 
-        self.assertEqual(len(result_grouper.msgs), 1)
-        self.assertEqual(result_grouper.msgs[0].ind, 0)
-        self.assertEqual(result_grouper.msgs[0].msg_from, message)
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries())
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):            
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
+
 
         got_result = [x for x in result_grouper.msgs[0].payload]
         self.assertEqual(len(got_result), len(rows_pass))
@@ -179,7 +184,7 @@ class TestSelectNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         type_conf = SelectTypeConfiguration(
             result_grouper,
-            MockMessageBuilder,
+            BareMockMessageBuilder,
             in_fields=in_cols,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -206,7 +211,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp = TypeExpander()
         type_exp.add_configurations("t1", type_conf)
 
-        node = SelectNode(in_middle, type_exp)
+        node = SelectNode(in_middle, MockMessage, type_exp)
         node.start()
 
         # in_cols = ["transaction_id","store_id", "year", "month", "hour", "revenue"]
@@ -285,8 +290,7 @@ class TestSelectNode(unittest.TestCase):
             },
         ]
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["query_3323"],
             ["t1"],
             rows_pass + rows_fail,
@@ -295,9 +299,12 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle.push_msg(message)
 
-        self.assertEqual(len(result_grouper.msgs), 1)
-        self.assertEqual(result_grouper.msgs[0].ind, 0)
-        self.assertEqual(result_grouper.msgs[0].msg_from, message)
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries())
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):            
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
 
         got_result = [x for x in result_grouper.msgs[0].payload]
         self.assertEqual(len(got_result), len(rows_pass))
@@ -316,7 +323,7 @@ class TestSelectNode(unittest.TestCase):
         result_grouper = MockMiddleware()
         type_conf = SelectTypeConfiguration(
             result_grouper,
-            MockMessageBuilder,
+            BareMockMessageBuilder,
             in_fields=in_cols,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -329,7 +336,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp = TypeExpander()
         type_exp.add_configurations("t4", type_conf)
 
-        node = SelectNode(in_middle, type_exp)
+        node = SelectNode(in_middle, MockMessage, type_exp)
         node.start()
 
         # in_cols = ["transaction_id","store_id","user_id", "year"]
@@ -381,8 +388,7 @@ class TestSelectNode(unittest.TestCase):
             },
         ]
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["query_3323"],
             ["t4"],
             rows_pass + rows_fail,
@@ -391,9 +397,12 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle.push_msg(message)
 
-        self.assertEqual(len(result_grouper.msgs), 1)
-        self.assertEqual(result_grouper.msgs[0].ind, 0)
-        self.assertEqual(result_grouper.msgs[0].msg_from, message)
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries())
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):            
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
 
         got_result = [x for x in result_grouper.msgs[0].payload]
         self.assertEqual(len(got_result), len(rows_pass))
@@ -432,7 +441,7 @@ class TestSelectNode(unittest.TestCase):
         # Type 4
         type_conf = SelectTypeConfiguration(
             result_grouper_4,
-            MockMessageBuilder,
+            BareMockMessageBuilder,
             in_fields=in_cols_final,  # All cols, drop it after.
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -444,7 +453,7 @@ class TestSelectNode(unittest.TestCase):
         ### Type 3
         type_conf = SelectTypeConfiguration(
             result_grouper_3,
-            MockMessageBuilder,
+            BareMockMessageBuilder,
             in_fields=in_cols_final,  # All cols, drop it after.
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -470,7 +479,7 @@ class TestSelectNode(unittest.TestCase):
         ### Type 1
         type_conf = SelectTypeConfiguration(
             result_grouper_1,
-            MockMessageBuilder,
+            BareMockMessageBuilder,
             in_fields=in_cols_final,  # All cols, drop it after.
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -483,7 +492,7 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle = MockMiddleware()
 
-        node = SelectNode(in_middle, type_exp)
+        node = SelectNode(in_middle, MockMessage, type_exp)
         node.start()
 
         # in_cols_final = ["transaction_id", "year", "store_id","user_id", "month", "hour", "revenue"]
@@ -549,8 +558,7 @@ class TestSelectNode(unittest.TestCase):
             ["tr4", "str1", "3", "90"],  # (12+8)//6 == 3
         ]
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["t_all"],
             rows,
@@ -601,11 +609,11 @@ class TestSelectNode(unittest.TestCase):
         in_middle = MockMiddleware()
 
         type_exp = {
-            "query_t_1": SelectTypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial),
-            "query_t_2": SelectTypeConfiguration(result_grouper, MockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial2)
+            "query_t_1": SelectTypeConfiguration(result_grouper, BareMockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial),
+            "query_t_2": SelectTypeConfiguration(result_grouper, BareMockMessageBuilder, in_fields =in_fields,filters_conf = filters_serial2)
         }
 
-        node = SelectNode(in_middle, type_exp)
+        node = SelectNode(in_middle, MockMessage, type_exp)
         node.start()
 
         rows_pass = [

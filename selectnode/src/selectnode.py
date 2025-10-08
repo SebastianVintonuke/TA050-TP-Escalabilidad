@@ -6,43 +6,33 @@ class TypeHandler:
     def __init__(self, type_conf, msg_builder):
         self.type_conf = type_conf
         self.msg_builder = msg_builder
-
-    def __init__(self, type_conf, msg, ind):
-        self.type_conf = type_conf
-        self.msg_builder = type_conf.new_builder_for(msg, ind)
-
+    
     def check(self, row):
-        row = self.type_conf.filter_map(row)
-        if row != None:
-            self.msg_builder.add_row(row)
-
+        self.type_conf.filter_map(row, self.msg_builder)
+    
     def send_built(self):
         self.type_conf.send(self.msg_builder)
-        #if self.msg_builder.has_payload():
-        #    self.type_conf.send(self.msg_builder)
-        #else:
-            # logging.info(f"action: filtered_full_msg | result: success | complete message for {self.msg_builder.types} was filtered")
 
 
 class SelectNode:
-    def __init__(self, select_middleware, type_expander):
+    def __init__(self, select_middleware, payload_deserializer, type_expander):
         self.middleware = select_middleware
         self.type_expander = type_expander
+        self.payload_deserializer = payload_deserializer
 
-    def handle_task(self, msg):
-        # msg.describe()
+    def handle_task(self, headers, msg):
+        msg = self.payload_deserializer(msg)
 
-        if (msg.is_eof()):  # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
-            self.type_expander.propagate_signal_in(msg)
-            return
+        if msg.is_empty():  # Empty msg is signal of EOF or error, depending on headers.
+            self.type_expander.propagate_signal_in(headers)
+            return True
 
         outputs = []
-        ind = 0
         types = set()
-        for type in msg.types:
-            for config in self.type_expander.get_configurations_for(type):
-                outputs.append(TypeHandler(config, msg, ind))
-            ind += 1
+        for type_header in headers.split():
+            for config in self.type_expander.get_configurations_for(type_header.types[0]):
+                outputs.append(TypeHandler(config,
+                    config.new_builder_for(type_header)))
 
         for row in msg.stream_rows():
             for output in outputs:
@@ -50,6 +40,8 @@ class SelectNode:
 
         for output in outputs:
             output.send_built()
+
+        return True
 
     def start(self):
         self.middleware.start_consuming(self.handle_task)

@@ -4,12 +4,14 @@ from hashlib import sha256 as hash_function
 
 # Message builder
 class MessageBuilder:
-    def __init__(self,queries_id, queries_type, partition = DEFAULT_PARTITION_VALUE):
-        self.ids = queries_id
-        self.types = queries_type
+    def __init__(self,headers_obj : BaseHeaders):
+        self.headers = headers_obj
         self.payload = []
-        self.partition_ind = partition
         self.should_be_eof = False
+
+        #self.ids = queries_id
+        #self.types = queries_type
+        #self.partition_ind = partition
 
     def add_row(self,row):
         #assert len(row) == len(fields) # Same size of fields 
@@ -31,21 +33,11 @@ class MessageBuilder:
         return ("\n".join(self.payload)).encode()
 
     def get_headers(self):
-        res = {
-            FIELD_QUERY_ID: self.ids,
-        }
-
-        if len(self.types) >0 and self.types[0] != DEFAULT_QUERY_TYPE:
-            res[FIELD_QUERY_TYPE] = self.types
-
-        if self.partition_ind != DEFAULT_PARTITION_VALUE: # If it is the default one, then save it.
-            res[FIELD_PARTITION_IND]= self.partition_ind
-
-        return res
+        return self.headers.to_dict()
 
     def set_as_eof(self, count: int = 0):
         self.should_be_eof = True
-        self.partition_ind = count
+        self.headers.msg_count = count
 
     def is_eof(self):
         return self.should_be_eof
@@ -54,13 +46,13 @@ class MessageBuilder:
         self.set_as_eof(DEFAULT_ERROR_SIGNAL if code >=EOF_SIGNAL else code)
 
     def clone(self):
-        return MessageBuilder(self.ids, self.types, self.partition_ind)
+        return MessageBuilder(self.headers.clone())
 
 
 # HashedMessage Builder, add key hash methods
 class HashedMessageBuilder(MessageBuilder):
-    def __init__(self,queries_id, queries_type, key_hash, partition = 0):
-        super().__init__(queries_id, queries_type, partition)
+    def __init__(self,headers_obj, key_hash):
+        super().__init__(headers_obj)
         self.key_hash = key_hash
 
     def add_to_key_hash(self, string):
@@ -69,3 +61,6 @@ class HashedMessageBuilder(MessageBuilder):
     def hash_in(self, count):
         h = hash_function(self.key_hash.encode()).hexdigest()
         return int(h, 16) % count
+
+    def clone(self):
+        return HashedMessageBuilder(self.headers.clone(), self.key_hash)

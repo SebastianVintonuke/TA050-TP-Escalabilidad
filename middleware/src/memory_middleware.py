@@ -7,47 +7,38 @@ from middleware.routing.message import *
 import logging
 
 
-
-def not_none(itm):
-    return itm != None
-
-# Do nothing but let have the contract, for the ack...
-class MemoryMessageChannel:
-    def basic_ack(self, delivery_tag):
-        pass
+class MemoryMessage(Message):
+    def __init__(self, payload):
+        super().__init__(payload)
 
 class HashedMemoryMessageBuilder(HashedMessageBuilder):
-    def __init__(self,queries_id, queries_type, key_hash, partition = 0):
-        super().__init__(queries_id, queries_type, key_hash, partition)
+
+    def default():
+        return HashedMemoryMessageBuilder(BaseHeaders.default(), "")
+
+    def __init__(self,headers_obj,key_hash):
+        super().__init__(headers_obj, key_hash)
 
     def add_row(self, row):
         # assert len(row) == len(fields) # Same size of fields
         self.payload.append(row)
 
     def clone(self):
-        return HashedMemoryMessageBuilder(self.ids, self.types, self.key_hash, self.partition_ind)
+        return HashedMemoryMessageBuilder(self.headers_obj, self.key_hash)
 
 
-class MemoryMessage(Message):
-    def __init__(self,  headers, payload):
-        super().__init__(headers, payload)
+def build_memory_message_builder(uuid, type,msg_count = DEFAULT_PARTITION_VALUE):
+    return HashedMemoryMessageBuilder(
+        BaseHeaders([uuid], [type], msg_count)
+        , str(uuid)+str(type))
 
-    def _deserialize_payload(self, payload): # Do nothing with it.
-        return payload
+def build_memory_messages_builder(uuids, types, hashed,msg_count):
+    return HashedMemoryMessageBuilder(
+        BaseHeaders(uuids, types,msg_count),
+        hashed)
 
-    def stream_rows(self):
-        return [] if self.payload == None else self.payload
-    def map_stream_rows(self, map_func):
-        return filter(not_none, map(map_func, [] if self.payload == None else self.payload)) # payload is already a stream, assumed only will be iterated once.
-
-def build_memory_message_builder(uuid, type,partition = 0):
-    return HashedMemoryMessageBuilder([uuid], [type], str(uuid)+str(type), partition)
-
-def build_memory_messages_builder(uuids, types, hashed,partition = 0):
-    return HashedMemoryMessageBuilder(uuids, types, hashed, partition)
-
-def memory_builder_from_msg(msg, ind):
-    return build_memory_message_builder(msg.ids[ind], msg.types[ind], msg.partition)
+def memory_builder_from_msg(headers, ind):
+    return build_memory_message_builder(headers.ids[ind], headers.types[ind], headers.msg_count)
 
 
 
@@ -55,20 +46,13 @@ def builder_to_memory_msg(builder):
     logging.info(f"SENDING over memory middleware {builder.get_headers()} {len(builder.payload)} Not serializing?")
     return MemoryMessage(builder.get_headers(), builder.payload)
 
-def csv_builder_to_msg(builder):
-    logging.info(f"SENDING over memory middleware {builder.get_headers()} {len(builder.payload)}")
-    return CSVMessage(builder.get_headers(), builder.serialize_payload())
-
-
 
 class MemoryMiddleware(MessageMiddleware):
-    def __init__(self, msg_creator = csv_builder_to_msg):
+    def __init__(self):
         self.listener = None
-        self.msg_creator = msg_creator
 
     def send(self, builder):
-        self.listener(self.msg_creator(builder))
-
+        self.listener(builder.headers, builder.payload)
 
     def start_consuming(self, on_message_callback):
         self.listener = on_message_callback

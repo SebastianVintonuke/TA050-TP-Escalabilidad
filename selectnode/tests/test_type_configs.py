@@ -90,11 +90,12 @@ class TestTypeConfigs(unittest.TestCase):
             {"year": 2020, "hour": 8, "month": 0, "product_id": "prod_2"},
         ]
 
-        out_rows = []
+        out_rows = MockMessageBuilder.default()
         for row in rows:
-            out_rows.append(config.filter_map(map_dict_to_vect(row)))
+            config.filter_map(map_dict_to_vect(row),out_rows)
 
-        self.assertEqual(len(out_rows), len(rows))
+        out_rows= out_rows.payload
+        self.assertEqual(len(out_rows), 2)
 
         self.assertEqual(out_rows[0], ["prod_1", "7", "59"])  # 59 == 12* 4 + 11 = 59
         self.assertEqual(out_rows[1], ["prod_2", "8", "0"])  # 0 == 12* 0 + 0 = 0
@@ -137,10 +138,11 @@ class TestTypeConfigs(unittest.TestCase):
             {"year": 2020, "hour": 8, "month": 0, "product_id": "prod_2"},
         ]
 
-        out_rows = []
+        out_rows = MockMessageBuilder.default()
         for row in rows:
-            out_rows.append(config.filter_map(map_dict_to_vect(row)))
+            config.filter_map(map_dict_to_vect(row), out_rows)
 
+        out_rows = out_rows.payload
         self.assertEqual(len(out_rows), len(rows))
 
         self.assertEqual(out_rows[0], ["prod_1", "7", "59"])  # 59 == 12* 4 + 11 = 59
@@ -155,10 +157,11 @@ class TestTypeConfigs(unittest.TestCase):
             {"year": 2020, "hour": 8, "month": 0, "product_id": "prod_2"},
         ]
 
-        out_rows = []
+        out_rows = MockMessageBuilder.default()
         for row in rows:
-            out_rows.append(config.filter_map(map_dict_to_vect(row)))
-
+            config.filter_map(map_dict_to_vect(row), out_rows)
+        out_rows = out_rows.payload
+        
         self.assertEqual(len(out_rows), len(rows))
 
         self.assertEqual(out_rows[0], ["prod_1", "7", "59"])  # 59 == 12* 4 + 11 = 59
@@ -181,18 +184,17 @@ class TestTypeConfigs(unittest.TestCase):
             {"year": 2025, "hour": 24, "month": 0, "product_id": "prod_2"},
         ]
 
-        out_rows = []
+        out_rows = MockMessageBuilder.default()
         for row in rows:
-            out_rows.append(config.filter_map(map_dict_to_vect(row)))
+            config.filter_map(map_dict_to_vect(row), out_rows)
 
-        self.assertEqual(len(out_rows), len(rows))
-        # Len is still the same but filled with nones when filtered
+        out_rows = out_rows.payload
+        self.assertEqual(len(out_rows), 2)
+        # Len
         #    {'year': 2024, 'hour': 7, 'month': 11, "product_id":"prod_1"},
         #    {'year': 2025, 'hour': 22, 'month': 0, "product_id":"prod_2"},
-        # this two columns were processed,
         # [['prod_1', '7', '59'], None, ['prod_2', '22', '60'], None]
+        # Nones are filtered
 
         self.assertEqual(out_rows[0], ["prod_1", "7", "59"])  # 59 == 12* 4 + 11 = 59
-        self.assertEqual(out_rows[1], None)  # filtered
-        self.assertEqual(out_rows[2], ["prod_2", "22", "60"])  # 60 == 12* 5 + 0 = 60
-        self.assertEqual(out_rows[3], None)  # filtered
+        self.assertEqual(out_rows[1], ["prod_2", "22", "60"])  # 60 == 12* 5 + 0 = 60

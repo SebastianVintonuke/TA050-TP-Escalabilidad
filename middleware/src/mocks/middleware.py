@@ -14,7 +14,7 @@ class MockMiddleware(MessageMiddleware):
         self.msgs.append(msg)
 
     def push_msg(self, msg):
-        self.callback(msg)
+        self.callback(msg.headers, msg.payload)
 
     def start_consuming(self, on_message_callback):
         self.callback = on_message_callback
@@ -36,11 +36,13 @@ class MockCopyMiddleware(MockMiddleware):
 
 
 class MockMessageBuilder(HashedMessageBuilder):
+
+    def default():
+        return MockMessageBuilder(None, -1)
     def __init__(self, msg, ind):
-        super().__init__([], [], "key_hash", msg.partition)
+        super().__init__(BaseHeaders.default(), "")
         self.msg_from = msg
         self.ind = ind
-        self.payload = []
 
     def add_row(self, row):
         # assert len(row) == len(fields) # Same size of fields
@@ -48,51 +50,43 @@ class MockMessageBuilder(HashedMessageBuilder):
 
     def clone(self):
         msg = MockMessageBuilder(self.msg_from, self.ind)
-        msg.partition_ind = self.partition_ind
-        msg.should_be_eof = self.should_be_eof
+        msg.headers = self.headers.clone()
         return msg
 
 
 class BareMockMessageBuilder(HashedMessageBuilder):
-    def __init__(self, msg, ind):
-        super().__init__([], [], "key_hash", 0)
-        self.payload = []
+    def default():
+        return BareMockMessageBuilder(BaseHeaders.default())
+    
+    def for_payload(ids, types, rows, mapper):
+        res = BareMockMessageBuilder(BaseHeaders(ids, types))
+        
+        for row in rows:
+            res.add_row(mapper(row))
 
+        return res
+
+    def __init__(self, headers):
+        super().__init__(headers, "")
     def add_row(self, row):
-        # assert len(row) == len(fields) # Same size of fields
         self.payload.append(row)
 
     def clone(self):
-        msg = BareMockMessageBuilder(None, 0)
-        msg.partition_ind = self.partition_ind
-        msg.should_be_eof = self.should_be_eof
-        return msg
+        return BareMockMessageBuilder(self.headers)
 
 
+
+def identity(itm):
+    return itm
 
 class MockMessage(Message):
 
-    def from_headers(headers, payload, map_to_vec):
-        msg= MockMessage("tag", headers[FIELD_QUERY_ID], headers[FIELD_QUERY_TYPE], payload, map_to_vec)
-        msg.partition = headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE)
-        return msg
-    def __init__(self, tag, queries_id, queries_type, payload, map_to_vec):
-        super().from_data(queries_id, queries_type, payload)
-        self.tag = tag
-        self.map_to_vec = map_to_vec
-
-    def _deserialize_payload(self, payload):  # Do nothing with it.
-        return payload
-
-    def clone_with(self, queries_id, queries_type):
-        return MockMessage(self.tag, queries_id, queries_type, self.payload)
-
-    def stream_rows(self):
-        return map(self.map_to_vec, iter(self.payload))
-        
+    def __init__(self, payload, map_to_vec= identity):
+        super().__init__([map_to_vec(itm) for itm in payload])
 
     def _set_eof(self):
-        self.payload = None
+        self.empty = True
+        self.payload = []
 
     def set_error(self, code):
         self._set_eof()

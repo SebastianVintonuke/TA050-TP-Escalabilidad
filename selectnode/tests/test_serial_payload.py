@@ -1,6 +1,7 @@
 import unittest
 
 from middleware.routing.csv_message import *
+from middleware.routing.header_fields import *
 
 from common.config.row_filtering import *
 
@@ -16,9 +17,7 @@ def map_vect_to_dict(row):
 class TestSerialPayload(unittest.TestCase):
 
     def test_serial_deserial_csv_message(self):
-        msg_build = CSVMessageBuilder(
-            ["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"]
-        )
+        msg_build = CSVMessageBuilder(BaseHeaders.default())
 
         rows_pass = [
             {"year": 2024, "hour": 7, "sum": 88},
@@ -33,8 +32,7 @@ class TestSerialPayload(unittest.TestCase):
             msg_build.add_row(map_dict_to_vect(itm))
 
         payload = msg_build.serialize_payload()
-        res_msg = CSVMessage(msg_build.get_headers(), payload)
-        res_msg.describe()
+        res_msg = CSVMessage(payload)
         res = [itm for itm in res_msg.map_stream_rows(map_vect_to_dict)]
 
         self.assertTrue(len(rows_pass) == len(res))
@@ -43,9 +41,7 @@ class TestSerialPayload(unittest.TestCase):
             self.assertTrue(rows_pass[i] == res[i])
 
     def test_serial_deserial_hashed_csv_message(self):
-        msg_build = CSVHashedMessageBuilder(
-            ["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], "KEY_HASH_1"
-        )
+        msg_build = CSVHashedMessageBuilder(BaseHeaders.default(), "KEY_HASH_1")
 
         rows_pass = [
             {"year": 2024, "hour": 7, "sum": 88},
@@ -60,8 +56,7 @@ class TestSerialPayload(unittest.TestCase):
             msg_build.add_row(map_dict_to_vect(itm))
 
         payload = msg_build.serialize_payload()
-        res_msg = CSVMessage(msg_build.get_headers(), payload)
-        res_msg.describe()
+        res_msg = CSVMessage(payload)
         res = [itm for itm in res_msg.map_stream_rows(map_vect_to_dict)]
 
         self.assertTrue(len(rows_pass) == len(res))

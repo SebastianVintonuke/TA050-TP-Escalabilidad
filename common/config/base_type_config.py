@@ -12,16 +12,13 @@ class BaseTypeConfiguration:
 
     def __init__(self, out_middleware, builder_creator, in_fields_count):
         self.middleware = out_middleware
-        self.builder_creator = builder_creator
+        self.new_builder_for = builder_creator
         self.in_fields_count = in_fields_count  # ["year","month","some"] == 3 fields
 
         self.mapper = NoActionRowMapper()
 
     def load_mapper(self, config):
         self.mapper = RowMapper(config)
-
-    def new_builder_for(self, inp_msg, ind_query):
-        return self.builder_creator(inp_msg, ind_query)
 
     def send(self, builder):
         return self.middleware.send(builder)
@@ -30,9 +27,9 @@ class BaseTypeConfiguration:
     def pad_copy_row(self, row):
         return row + [None] * (self.in_fields_count - len(row))
 
-    def filter_map(self, row):
+    def filter_map(self, row, msg_builder):
         try:
-            return self.mapper(self.pad_copy_row(row))
+            return msg_builder.add_row(self.mapper(self.pad_copy_row(row)))
         except Exception as e:
             logging.error(f"Failed filter map of row {row} invalid {e}")
             return None
@@ -51,9 +48,9 @@ class BaseDictTypeConfiguration(BaseTypeConfiguration):
             self.mapper = DictConvertWrapperMapper(in_fields, self.mapper, in_fields)
 
     # mapper does the mapping of input, not needed to pad.
-    def filter_map(self, row):
+    def filter_map(self, row, msg_builder):
         try:
-            return self.mapper(self.mapper.map_input(row))
+            return msg_builder.add_row(self.mapper(self.mapper.map_input(row)))
         except Exception as e:
             logging.error(f"Failed filter map of row {row} invalid {e}")
             return None

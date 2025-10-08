@@ -21,14 +21,13 @@ class SelectTypeConfiguration(BaseDictTypeConfiguration):
     def should_keep(self, row):
         return self.row_filter.should_keep(row)#should_keep(self.filters, row)
 
-    def filter_map(self, row):
+    def filter_map(self, row, msg_builder):
         try:
             # No pad needed ? self.pad_copy_row(row), mapping to dict and if not enough rows... fail
             row = self.mapper.map_input(row)
-            # logging.info(f"MAPPED ROW {row}")
+            
             if self.row_filter.should_keep(row):
-                return self.mapper(row)
-            return None
+                msg_builder.add_row(self.mapper(row))
+
         except Exception as e:
             logging.error(f"Failed filter map of row {row} invalid {e}")
-            return None

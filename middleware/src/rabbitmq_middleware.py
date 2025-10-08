@@ -3,6 +3,7 @@ from .errors import *
 from . import routing
 import logging
 from .routing.csv_message import CSVMessageBuilder, CSVMessage
+from .routing.header_fields import BaseHeaders
 
 DEFAULT_EXCHANGE = ''
 CONNECTIONS_ATTMPS = 10
@@ -64,7 +65,7 @@ class RabbitMQChannel:
 			#CSVMessage(properties.headers, body)
 
 			try:
-				ack_msg = callback(properties.headers, body) # Handle msg
+				ack_msg = callback(BaseHeaders.from_headers(properties.headers), body) # Handle msg
 
 				if ack_msg:
 					ch.basic_ack(delivery_tag = method.delivery_tag)

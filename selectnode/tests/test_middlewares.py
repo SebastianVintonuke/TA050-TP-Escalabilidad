@@ -6,6 +6,7 @@ from middleware.groupby_middleware import (
     GroupbyTasksMiddleware,
 )
 from middleware.routing.csv_message import *
+from middleware.routing.header_fields import *
 from middleware.select_tasks_middleware import SelectTasksMiddleware
 from middleware.memory_middleware import *
 
@@ -174,22 +175,19 @@ class TestMiddlewares(unittest.TestCase):
         self.assertTrue(push_method != None)
 
         # Should push ch, method, properties, body
-        exp_headers = {
-                    "queries_id": ["q1"],
-                    "queries_type": ["t_1"],
-        }
+        exp_headers = BaseHeaders(ids = ["q1"], types= "t_1")
         exp_payload = b"123,23,345"
 
         push_method(
             channel,
             MethodClass("test_msg_1"),
-            routing.build_headers(exp_headers),
+            routing.build_headers(exp_headers.to_dict()),
             exp_payload,
         )
 
         self.assertEqual(len(out_msgs), 1)
         msg = out_msgs[0]
-        self.assertEqual(msg.headers, exp_headers)
+        self.assertEqual(msg.headers.to_dict(), exp_headers.to_dict())
         self.assertEqual(msg.payload, exp_payload)
         self.assertIn("test_msg_1", channel.acked_tags)
         self.assertNotIn(("test_msg_1", True), channel.nacked_tags)
@@ -213,7 +211,7 @@ class TestMiddlewares(unittest.TestCase):
         channel.queue_declare(QUEUE_NAME)
 
         msg_build = CSVMessageBuilder(
-            ["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], partition=2
+            BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], 2)
         )
 
         rows_pass = [
@@ -252,10 +250,9 @@ class TestMiddlewares(unittest.TestCase):
         self.assertFalse(channel.consuming)
 
         msg_build = CSVHashedMessageBuilder(
-            ["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"],
-            ["query_1"],
+            BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"],
+            ["query_1"],2),
             "hash_base",
-            partition=2,
         )
 
         hashed_id = msg_build.hash_in(COUNT_NODES)
@@ -318,22 +315,19 @@ class TestMiddlewares(unittest.TestCase):
 
         # Should push ch, method, properties, body
 
-        exp_headers = {
-                    "queries_id": ["q1"],
-                    "queries_type": ["t_1"],
-        }
+        exp_headers = BaseHeaders(ids = ["q1"], types= "t_1")
         exp_payload = b"123,23,345"
 
         push_method(
             channel,
             MethodClass("test_msg_1"),
-            routing.build_headers(exp_headers),
+            routing.build_headers(exp_headers.to_dict()),
             exp_payload,
         )
 
         self.assertEqual(len(out_msgs), 1)
         msg = out_msgs[0]
-        self.assertEqual(msg.headers, exp_headers)
+        self.assertEqual(msg.headers.to_dict(), exp_headers.to_dict())
         self.assertEqual(msg.payload, exp_payload)
 
         self.assertNotIn("test_msg_1", channel.acked_tags)
@@ -346,10 +340,10 @@ class TestMiddlewares(unittest.TestCase):
 
         msgs = []
 
-        middleware.start_consuming(lambda msg: msgs.append(msg))
+        middleware.start_consuming(lambda headers, payload: msgs.append(MemoryMessage(payload)))
 
         msg_build = CSVMessageBuilder(
-            ["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"]
+            BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"])
         )
 
         rows_pass = [
@@ -364,26 +358,22 @@ class TestMiddlewares(unittest.TestCase):
         for itm in rows_pass:
             msg_build.add_row(map_dict_to_vect(itm))
 
+        exp_payload = list(msg_build.payload)
+
         middleware.send(msg_build)
         
         self.assertEqual(1, len(msgs))
         res_msg= msgs[0]
-        res_msg.describe()
-        res = [itm for itm in res_msg.map_stream_rows(map_vect_to_dict)]
-
-        self.assertTrue(len(rows_pass) == len(res))
-
-        for i in range(len(rows_pass)):
-            self.assertTrue(rows_pass[i] == res[i])        
+        self.assertEqual(res_msg.payload, exp_payload)
 
 
 
     def test_memory_middleware_delegates_builder_and_sends_msg_no_serialization(self):
-        middleware = MemoryMiddleware(builder_to_memory_msg)
+        middleware = MemoryMiddleware()
 
         msgs = []
 
-        middleware.start_consuming(lambda msg: msgs.append(msg))
+        middleware.start_consuming(lambda h, payload: msgs.append(MemoryMessage(payload)))
 
         msg_build = build_memory_message_builder("8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5", "query_1")
 
@@ -403,7 +393,6 @@ class TestMiddlewares(unittest.TestCase):
         
         self.assertEqual(1, len(msgs))
         res_msg= msgs[0]
-        res_msg.describe()
         res = [itm for itm in res_msg.stream_rows()]
 
         self.assertTrue(len(rows_pass) == len(res))

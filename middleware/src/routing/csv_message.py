@@ -4,36 +4,19 @@ from .message import *
 from .message_building import *
 import logging
 
-def not_none(itm):
-    return itm != None
-
-
-def map_all_ints(row):
-    try:
-        return [int(x) for x in row]
-    except Exception as e:
-        logging.error(f"Failed deserial of row {row} invalid {e}")
-        return None
-
 class CSVMessage(Message):
-    def __init__(self, headers, payload):
-        super().__init__(headers, payload)
-
-    def _from_headers(self, headers):
-        super()._from_headers(headers)
-        # Check fields? eg: extra fields.
-
-    def _deserialize_payload(self, payload): # Do nothing with it.
+    def deserialize_payload(payload): # Do nothing with it.
+        if len(payload) == 0:
+            return None # Empty payload == None == eof signal
         return CSVPayloadDeserializer(payload)
 
-    def stream_rows(self):
-        return [] if self.payload == None else self.payload
-    def map_stream_rows(self, map_func):
-        return filter(not_none, map(map_func, self.payload)) # payload is already a stream, assumed only will be iterated once.
+    def __init__(self, payload):
+        super().__init__(CSVMessage.deserialize_payload(payload))
+
 
 class CSVMessageBuilder(MessageBuilder):
-    def __init__(self,queries_id, queries_type, partition = DEFAULT_PARTITION_VALUE):
-        super().__init__(queries_id, queries_type, partition)
+    def __init__(self,headers_obj):
+        super().__init__(headers_obj)
     
     def add_row(self,row):
         self.payload.append(",".join(map(str, row)))
@@ -43,11 +26,11 @@ class CSVMessageBuilder(MessageBuilder):
     def add_row_dict(self,row):
         self.add_row_vec(row.values())
     def clone(self):
-        return CSVMessageBuilder(self.ids, self.types, self.partition_ind)
+        return CSVMessageBuilder(self.headers.clone())
 
 class CSVHashedMessageBuilder(HashedMessageBuilder):
-    def __init__(self,queries_id, queries_type, key_hash, partition = DEFAULT_PARTITION_VALUE):
-        super().__init__(queries_id, queries_type, key_hash, partition)
+    def __init__(self,headers_obj, key_hash):
+        super().__init__(headers_obj, key_hash)
 
     def add_row(self,row):
         self.payload.append(",".join(map(str, row)))
@@ -56,8 +39,9 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
 
     def add_row_dict(self,row):
         self.add_row_vec(row.values())
+
     def clone(self):
-        return CSVHashedMessageBuilder(self.ids, self.types, self.key_hash, self.partition_ind)
+        return CSVHashedMessageBuilder(self.headers.clone(), self.key_hash)
 
 
 def builder_to_msg(builder):
