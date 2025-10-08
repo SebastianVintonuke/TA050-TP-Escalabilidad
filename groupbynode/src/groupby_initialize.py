@@ -22,12 +22,13 @@ def configure_types_groupby(join_middleware, topk_middleware, topk_middleware_ty
 
     types_config[QUERY_2] = GroupbyTypeConfiguration(topk_middleware, 
             topk_middleware_type.creator_with_types(QUERY_2_REVENUE, QUERY_2_QUANTITY),
-            in_fields = ["product_id", "month", "revenue"], #EQUALS to out cols from select node main 
+            in_fields = ["product_id", "month", "revenue", "quantity"], #EQUALS to out cols from select node main 
             grouping_conf = [["product_id", "month"], [
                 [SUM_ACTION,"revenue"],
-                [COUNT_ACTION, "quantity_sold"],
+                #[COUNT_ACTION, "quantity_sold"],
+                [SUM_ACTION,"quantity"],
             ]],
-            out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity_sold"]},
+            out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity"]},
     )
 
     types_config[QUERY_3] = GroupbyTypeConfiguration(join_middleware, CSVHashedMessageBuilder.simple_creator(), 

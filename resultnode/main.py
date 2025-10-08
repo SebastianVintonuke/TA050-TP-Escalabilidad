@@ -143,6 +143,7 @@ def main() -> None:
 
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
+            logging.info(f"Q_2_QUAN {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
             year = month_encoded // 12 + 2024
@@ -163,6 +164,7 @@ def main() -> None:
 
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
+            logging.info(f"Q_2_prof {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
             year = month_encoded // 12 + 2024
@@ -184,6 +186,7 @@ def main() -> None:
 
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
+            logging.info(f"Q_3 {line}")
             store_name = line[0]
             year_created_at, half_created_at = __year_semester_decode(line[1])
             tpv = float(line[2])
@@ -200,6 +203,7 @@ def main() -> None:
 
         data: List[QueryResult4] = []
         for line in msg.stream_rows():
+            logging.info(f"Q_4 {line}")
             store_name: str = line[0]
             birthdate: date = datetime.strptime(line[1], "%Y-%m-%d").date()
             data.append(QueryResult4(store_name=store_name, birthdate=birthdate))

@@ -29,6 +29,8 @@ class CSVMessageBuilder(MessageBuilder):
     def creator_with_types(*types):
         def converter(headers):
             headers.types = list(types)
+            headers.ids = [headers.ids[0]] * len(types) # Ensure same count.
+            
             return CSVMessageBuilder(headers)
 
         return converter
@@ -60,6 +62,7 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
     def creator_with_types(*types):
         def converter(headers):
             headers.types = list(types)
+            headers.ids = [headers.ids[0]] * len(types) # Ensure same count.
             return CSVHashedMessageBuilder(headers, headers.ids[0])
         return converter
 

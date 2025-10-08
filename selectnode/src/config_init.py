@@ -55,7 +55,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
         SelectTypeConfiguration(
             groupby_middleware,
             CSVHashedMessageBuilder.creator_with_type(QUERY_2),
-            in_fields=["product_id", "year", "month", "revenue"],  # In order
+            in_fields=["product_id", "year", "month", "revenue", "quantity"],  # In order
             filters_conf=[["year", EQUALS_ANY, ["2024", "2025"]]],
             out_conf={
                 ROW_CONFIG_ACTIONS: [
@@ -69,7 +69,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
                         },
                     ]
                 ],
-                ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue"],
+                ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity"],
             },
         ),
     )

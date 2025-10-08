@@ -25,6 +25,7 @@ class HashedMemoryMessageBuilder(HashedMessageBuilder):
     def creator_with_types(*types):
         def converter(headers):
             headers.types = list(types)
+            headers.ids = [headers.ids[0]] * len(types) # Ensure same count.
             return HashedMemoryMessageBuilder(headers, headers.ids[0])
         return converter
 

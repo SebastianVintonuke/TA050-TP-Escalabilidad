@@ -22,6 +22,7 @@ class TransactionItem(Model):
             str(created_at.year).encode(), #
             str(created_at.month).encode(), #
             fields[4], # sub total
+            fields[2], # quantity
         ]
 
     @classmethod
