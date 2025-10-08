@@ -7,7 +7,7 @@ class MessageBuilder:
     def __init__(self,headers_obj : BaseHeaders):
         self.headers = headers_obj
         self.payload = []
-        self.should_be_eof = False
+        self.should_be_eof = headers_obj.is_eof()
 
         #self.ids = queries_id
         #self.types = queries_type

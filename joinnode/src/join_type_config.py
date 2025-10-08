@@ -64,11 +64,9 @@ class JoinTypeConfiguration:
 
             self.out_mapper = JoinProjectMapperOrdered(out_left, out_right)
 
-        self.builder_creator = builder_creator
+        self.new_builder_for = builder_creator
         self.middleware = out_middleware
 
-    def new_builder_for(self, inp_msg, ind_query):
-        return self.builder_creator(inp_msg, ind_query)
     def send(self, builder):
         return self.middleware.send(builder)
 

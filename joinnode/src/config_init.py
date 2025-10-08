@@ -1,7 +1,6 @@
 
-from middleware.errors import *
-from middleware.routing import csv_message
 from middleware.routing.query_types import *
+from middleware.routing.csv_message import CSVMessageBuilder,CSVHashedMessageBuilder
 
 from src.join_type_config import *
 from common.config.row_joining import *
@@ -16,9 +15,7 @@ def add_joinnode_config(types_expander, result_middleware, join_middleware):
     # Config for revenue on query2
     types_expander.add_configuration_to_many(
         JoinTypeConfiguration(result_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_2_REVENUE, msg.partition
-            ),
+            CSVMessageBuilder.creator_with_type(QUERY_2_REVENUE),
             left_type= QUERY_PRODUCT_NAMES, #
             join_id = QUERY_2_REVENUE, 
             in_fields_left=["product_id","product_name"],  # ..product names
@@ -35,10 +32,7 @@ def add_joinnode_config(types_expander, result_middleware, join_middleware):
     #Config for quantity on query2
     types_expander.add_configuration_to_many(
         JoinTypeConfiguration(result_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_2_QUANTITY, msg.partition
-            )
-            ,
+            CSVMessageBuilder.creator_with_type(QUERY_2_QUANTITY),
             left_type= QUERY_PRODUCT_NAMES, 
             join_id=QUERY_2_QUANTITY,
             in_fields_left=["product_id","product_name"],  # ..product names
@@ -58,9 +52,7 @@ def add_joinnode_config(types_expander, result_middleware, join_middleware):
     """    
     types_expander.add_configuration_to_many(
         JoinTypeConfiguration(result_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_3, msg.partition
-            ),
+            CSVMessageBuilder.creator_with_type(QUERY_3),
             left_type= QUERY_STORE_NAMES, 
             join_id=QUERY_3,
             in_fields_left=["store_id","store_name"],  # ..store names
@@ -80,10 +72,7 @@ def add_joinnode_config(types_expander, result_middleware, join_middleware):
     """
     types_expander.add_configuration_to_many(
         JoinTypeConfiguration(join_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_4_JOIN_STORE_NAMES, msg.partition
-            )
-            ,
+            CSVHashedMessageBuilder.creator_with_type(QUERY_4_JOIN_STORE_NAMES),
             left_type= QUERY_USERS, 
             join_id=QUERY_4,
             in_fields_left=["user_id","birthday"],  # .. users birthday
@@ -98,10 +87,7 @@ def add_joinnode_config(types_expander, result_middleware, join_middleware):
 
     types_expander.add_configuration_to_many(
         JoinTypeConfiguration(result_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_4, msg.partition
-            )
-            ,
+            CSVMessageBuilder.creator_with_type(QUERY_4),
             left_type= QUERY_STORE_NAMES, 
             join_id=QUERY_4_JOIN_STORE_NAMES,
             in_fields_left=["store_id","store_name"],  # ..store names

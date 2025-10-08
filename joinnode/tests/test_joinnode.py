@@ -65,19 +65,17 @@ class TestJoinAccumulator(unittest.TestCase):
 
         types_expander.add_configuration_to_many(config, "LEFT", "RIGHT")
 
-        node = JoinNode(in_middle, types_expander)
+        node = JoinNode(in_middle, MockMessage, types_expander)
         node.start()
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["LEFT"],
             rows_left,
             lambda r: r,
         )
         in_middle.push_msg(message)
-        message = MockMessage(
-            "tag2",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["RIGHT"],
             rows_right,
@@ -130,19 +128,17 @@ class TestJoinAccumulator(unittest.TestCase):
 
         types_expander.add_configuration_to_many(config, "LEFT", "RIGHT")
 
-        node = JoinNode(in_middle, types_expander)
+        node = JoinNode(in_middle, MockMessage, types_expander)
         node.start()
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["LEFT"],
             rows_left,
             lambda r: r,
         )
         in_middle.push_msg(message)
-        message = MockMessage(
-            "tag2",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["RIGHT"],
             rows_right,
@@ -152,16 +148,16 @@ class TestJoinAccumulator(unittest.TestCase):
 
         # EOFS LEFT
 
-        eof_message = MockMessage("tag1",["user_id"],["LEFT"],[], lambda r: r) 
+        eof_message = BareMockMessageBuilder.for_payload(["user_id"],["LEFT"],[], lambda r: r) 
         eof_message.set_as_eof(1)
-        in_middle.push_msg(eof_message)        
+        in_middle.push_msg(eof_message)
 
         # LIMITED BY LIMIT 
         self.assertEqual(len(result_grouper.msgs), 0)
 
         # EOFS RIGHT
         #FINAL EOF
-        eof_message = MockMessage("tag1",["user_id"],["RIGHT"],[], lambda r: r) 
+        eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT"],[], lambda r: r) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
@@ -220,11 +216,10 @@ class TestJoinAccumulator(unittest.TestCase):
 
         types_expander.add_configuration_to_many(config, "LEFT", "RIGHT")
 
-        node = JoinNode(in_middle, types_expander)
+        node = JoinNode(in_middle, MockMessage, types_expander)
         node.start()
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["LEFT"],
             rows_left,
@@ -236,8 +231,7 @@ class TestJoinAccumulator(unittest.TestCase):
         self.assertEqual(node.len_input_rows(), len(rows_left))
         self.assertEqual(node.len_out_rows(), 0)
 
-        message = MockMessage(
-            "tag2",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["RIGHT"],
             rows_right,
@@ -251,7 +245,7 @@ class TestJoinAccumulator(unittest.TestCase):
         self.assertEqual(node.len_out_rows(), 0)
 
         #FINAL EOF
-        eof_message = MockMessage("tag1",["user_id"],["LEFT"],[], lambda r: r) 
+        eof_message = BareMockMessageBuilder.for_payload(["user_id"],["LEFT"],[], lambda r: r) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
@@ -265,7 +259,7 @@ class TestJoinAccumulator(unittest.TestCase):
         self.assertEqual(len(result_grouper.msgs), 0)
 
         # EOFS RIGHT
-        eof_message = MockMessage("tag1",["user_id"],["RIGHT"],[], lambda r: r) 
+        eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT"],[], lambda r: r) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
@@ -353,19 +347,17 @@ class TestJoinAccumulator(unittest.TestCase):
 
         in_middle = MockMiddleware()
 
-        node = JoinNode(in_middle, types_expander)
+        node = JoinNode(in_middle, MockMessage, types_expander)
         node.start()
 
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["LEFT"],
             rows_left,
             lambda r: r,
         )
         in_middle.push_msg(message)
-        message = MockMessage(
-            "tag2",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["RIGHT"],
             rows_right,
@@ -374,7 +366,7 @@ class TestJoinAccumulator(unittest.TestCase):
         in_middle.push_msg(message)
 
         # EOFS LEFT
-        eof_message = MockMessage("tag1",["user_id"],["LEFT"],[], lambda r: r) 
+        eof_message = BareMockMessageBuilder.for_payload(["user_id"],["LEFT"],[], lambda r: r) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
@@ -382,7 +374,7 @@ class TestJoinAccumulator(unittest.TestCase):
         self.assertEqual(len(result_grouper.msgs), 0)
 
         #FINAL EOF
-        eof_message = MockMessage("tag1",["user_id"],["RIGHT"],[], lambda r: r) 
+        eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT"],[], lambda r: r) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 
@@ -399,8 +391,7 @@ class TestJoinAccumulator(unittest.TestCase):
         # RIGHT2 did not eof neither send anything yet.
         self.assertEqual(len(result_grouper2.msgs), 0)
 
-        message = MockMessage(
-            "tag2",
+        message = BareMockMessageBuilder.for_payload(
             ["user_id"],
             ["RIGHT2"],
             rows_right_quantity,
@@ -409,7 +400,7 @@ class TestJoinAccumulator(unittest.TestCase):
         in_middle.push_msg(message)
 
         #FINAL EOF
-        eof_message = MockMessage("tag1",["user_id"],["RIGHT2"],[], lambda r: r) 
+        eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT2"],[], lambda r: r) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)        
 

@@ -2,9 +2,9 @@
 import logging
 DEFAULT_LIMIT= 10000
 class JoinAccumulator:
-    def __init__(self, type_conf, msg, ind, limit = DEFAULT_LIMIT):
+    def __init__(self, type_conf, msg_builder, limit = DEFAULT_LIMIT):
         self.type_conf = type_conf
-        self.msg_builder = type_conf.new_builder_for(msg, ind)
+        self.msg_builder = msg_builder#type_conf.new_builder_for(msg, ind)
 
         self.left_rows = []
         self.right_rows = []
@@ -37,7 +37,7 @@ class JoinAccumulator:
 
     def _trigger_eof_right(self):
         self.right_finished = True
-        logging.info(f"HANDLING EOF RIGHT out types: {self.msg_builder.types} left finished? {self.left_finished}")
+        logging.info(f"HANDLING EOF RIGHT out types: {self.msg_builder.headers.types} left finished? {self.left_finished}")
         if self.left_finished:
             self.send_eof()
             return True
@@ -52,7 +52,7 @@ class JoinAccumulator:
 
     def _trigger_eof_left(self):
         self.left_finished = True
-        logging.info(f"HANDLING EOF LEFT {self.type_conf.left_type} out types: {self.msg_builder.types} right finished? {self.right_finished}")
+        logging.info(f"HANDLING EOF LEFT {self.type_conf.left_type} out types: {self.msg_builder.headers.types} right finished? {self.right_finished}")
 
         if self.right_finished:
             self.send_eof()
@@ -156,12 +156,12 @@ class JoinAccumulator:
             self.type_conf.send(self.msg_builder)
             self.msg_sent+=1
         eof_signal = self.msg_builder.clone()
-        logging.info(f"EOF SIGNAL TO {eof_signal.types} {eof_signal.ids}")
+        logging.info(f"EOF SIGNAL TO {eof_signal.headers.types} {eof_signal.headers.ids}")
         eof_signal.set_as_eof(self.msg_sent)
         self.type_conf.send(eof_signal)
 
     def describe_send(self):
-        logging.info(f"SENDING TO {self.msg_builder.types} {self.msg_builder.ids}")
+        logging.info(f"SENDING TO {self.msg_builder.headers.types} {self.msg_builder.headers.ids}")
         self.describe()
         #for itm in self.msg_builder.payload:
         #    logging.info(f"ROW {itm}")

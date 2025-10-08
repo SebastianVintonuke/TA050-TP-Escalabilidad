@@ -15,6 +15,7 @@ from common.config.type_expander import *
 from src.config_init import *
 
 from middleware.memory_middleware import * 
+from middleware.routing.csv_message import CSVMessage
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -92,11 +93,11 @@ def main() -> None:
         result_middleware = ResultNodeMiddleware()
 
         # First add a memory middleware to redirect for many nested joins.
-        nested_joins_middleware = MemoryMiddleware()
+        nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         add_joinnode_config(types_expander, result_middleware, nested_joins_middleware)
 
-        node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), types_expander)
+        node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), CSVMessage, types_expander)
 
         # 'Start' nested node. Means registering callbacks and so on
         node.start_on(nested_joins_middleware)

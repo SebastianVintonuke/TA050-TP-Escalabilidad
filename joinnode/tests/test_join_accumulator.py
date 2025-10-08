@@ -187,7 +187,7 @@ class TestJoinAccumulator(unittest.TestCase):
         ]
         expected_out = [map_dict_to_vect_cols(out_cols, row) for row in expected_out]
 
-        accumulator = JoinAccumulator(config, None, 0, limit = 1) # No need to mark a message nor index
+        accumulator = JoinAccumulator(config, BareMockMessageBuilder.default(), limit = 1) # No need to mark a message nor index
 
         left_action = accumulator.get_action_for_type("LEFT")
 
@@ -226,7 +226,7 @@ class TestJoinAccumulator(unittest.TestCase):
         ]
         expected_out = [map_dict_to_vect_cols(out_cols, row) for row in expected_out]
 
-        accumulator = JoinAccumulator(config, None, 0, limit = 1) # No need to mark a message nor index
+        accumulator = JoinAccumulator(config, BareMockMessageBuilder.default(), limit = 1) # No need to mark a message nor index
 
         left_action = accumulator.get_action_for_type("LEFT")
 
@@ -258,7 +258,7 @@ class TestJoinAccumulator(unittest.TestCase):
         rows_right = [map_dict_to_vect_cols(in_right, r) for r in rows_right]
         expected_output = [map_dict_to_vect_cols(out_cols, r) for r in expected_output]
 
-        acc = JoinAccumulator(config, None, 0, limit=10000)
+        acc = JoinAccumulator(config,BareMockMessageBuilder.default(), limit=10000)
         left_action = acc.get_action_for_type("LEFT")
         right_action = acc.get_action_for_type("RIGHT")
 
@@ -288,7 +288,7 @@ class TestJoinAccumulator(unittest.TestCase):
         rows_left = [map_dict_to_vect_cols(in_left, r) for r in rows_left]
         rows_right = [map_dict_to_vect_cols(in_right, r) for r in rows_right]
 
-        acc = JoinAccumulator(config, None, 0)
+        acc = JoinAccumulator(config, BareMockMessageBuilder.default())
         left_action = acc.get_action_for_type("LEFT")
         right_action = acc.get_action_for_type("RIGHT")
 
@@ -314,7 +314,7 @@ class TestJoinAccumulator(unittest.TestCase):
         rows_left = [map_dict_to_vect_cols(in_left, r) for r in rows_left]
         rows_right = [map_dict_to_vect_cols(in_right, r) for r in rows_right]
 
-        acc = JoinAccumulator(config, None, 0, limit=1)  # low limit to force flushing
+        acc = JoinAccumulator(config, BareMockMessageBuilder.default(), limit=1)  # low limit to force flushing
 
         left_action = acc.get_action_for_type("LEFT")
         right_action = acc.get_action_for_type("RIGHT")
@@ -342,7 +342,7 @@ class TestJoinAccumulator(unittest.TestCase):
         rows_left = [map_dict_to_vect_cols(in_left, r) for r in rows_left]
         rows_right = [map_dict_to_vect_cols(in_right, r) for r in rows_right]
 
-        acc = JoinAccumulator(config, None, 0, limit=10000)
+        acc = JoinAccumulator(config, BareMockMessageBuilder.default(), limit=10000)
 
         acc.get_action_for_type("LEFT")(rows_left[0])
         acc.get_action_for_type("RIGHT")(rows_right[0])
@@ -364,7 +364,7 @@ class TestJoinAccumulator(unittest.TestCase):
         rows_left = [map_dict_to_vect_cols(in_left, r) for r in rows_left]
         rows_right = [map_dict_to_vect_cols(in_right, r) for r in rows_right]
 
-        acc = JoinAccumulator(config, None, 0)
+        acc = JoinAccumulator(config, BareMockMessageBuilder.default())
         acc.get_action_for_type("RIGHT")(rows_right[0])
         acc.handle_eof_right(0)
         acc.get_action_for_type("LEFT")(rows_left[0])
