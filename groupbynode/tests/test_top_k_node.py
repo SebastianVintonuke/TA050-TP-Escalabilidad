@@ -34,7 +34,7 @@ class TestTopKNode(unittest.TestCase):
         out_cols = ["product_id", "month", "revenue"]
 
         result_grouper = MockMiddleware()
-        type_conf = TopKTypeConfiguration(result_grouper, MockMessageBuilder, 
+        type_conf = TopKTypeConfiguration(result_grouper, BareMockMessageBuilder, 
                 in_fields = in_cols, #EQUALS to out cols from select node main 
                 grouping_conf = [
                     ["month"], [KEEP_TOP_K, {'comp_key': "revenue", 'limit': 3}]
@@ -48,7 +48,7 @@ class TestTopKNode(unittest.TestCase):
         type_exp= {
             "t1": type_conf
         }
-        node = GroupbyNode(in_middle, type_exp)
+        node = GroupbyNode(in_middle, MockMessage, type_exp)
         node.start()
 
         rows = [
@@ -68,8 +68,7 @@ class TestTopKNode(unittest.TestCase):
         ]
 
         map_f = lambda r: map_dict_to_vect_cols(in_cols, r)
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["query_3323"],
             ["t1"],
             rows,map_f,
@@ -78,12 +77,17 @@ class TestTopKNode(unittest.TestCase):
         in_middle.push_msg(message)
 
         #Partition eof
-        eof_message = MockMessage("tag1",["query_3323"],["t1"],[], map_f) 
+        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)
 
-        self.assertEqual(len(result_grouper.msgs), 2)
-        self.assertEqual(result_grouper.msgs[0].ind, 0)
+
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
         #self.assertEqual(result_grouper.msgs[0].msg_from, message)
         got_result = [x for x in result_grouper.msgs[0].payload]
 
@@ -103,7 +107,7 @@ class TestTopKNode(unittest.TestCase):
         out_cols = ["product_id", "month", "quantity_sold"]
 
         result_grouper = MockMiddleware()
-        type_conf = TopKTypeConfiguration(result_grouper, MockMessageBuilder, 
+        type_conf = TopKTypeConfiguration(result_grouper, BareMockMessageBuilder, 
                 in_fields = in_cols, #EQUALS to out cols from select node main 
                 grouping_conf = [
                     ["month"], [KEEP_TOP_K, {'comp_key': "quantity_sold", 'limit': 3}]
@@ -117,7 +121,7 @@ class TestTopKNode(unittest.TestCase):
         type_exp= {
             "t1": type_conf
         }
-        node = GroupbyNode(in_middle, type_exp)
+        node = GroupbyNode(in_middle, MockMessage, type_exp)
         node.start()
 
         rows = [
@@ -137,8 +141,7 @@ class TestTopKNode(unittest.TestCase):
         ]
 
         map_f = lambda r: map_dict_to_vect_cols(in_cols, r)
-        message = MockMessage(
-            "tag1",
+        message = BareMockMessageBuilder.for_payload(
             ["query_3323"],
             ["t1"],
             rows,map_f,
@@ -147,12 +150,17 @@ class TestTopKNode(unittest.TestCase):
         in_middle.push_msg(message)
 
         #Partition eof
-        eof_message = MockMessage("tag1",["query_3323"],["t1"],[], map_f) 
+        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f) 
         eof_message.set_as_eof(1)
         in_middle.push_msg(eof_message)
-        self.assertEqual(len(result_grouper.msgs), 2)
 
-        self.assertEqual(result_grouper.msgs[0].ind, 0)
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
+            
         #self.assertEqual(result_grouper.msgs[0].msg_from, message)
         got_result = [x for x in result_grouper.msgs[0].payload]
 

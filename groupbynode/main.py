@@ -6,7 +6,8 @@ import os
 from configparser import ConfigParser
 
 from middleware.result_node_middleware import * 
-from middleware.memory_middleware import * 
+from middleware.memory_middleware import MemoryMiddleware, HashedMemoryMessageBuilder, MemoryMessage
+from middleware.routing.csv_message import CSVMessage
 
 from middleware.groupby_middleware import * 
 from middleware.join_tasks_middleware import * 
@@ -97,19 +98,20 @@ def main() -> None:
 
     try:
         #result_middleware = ResultNodeMiddleware()
-        topk_middleware = MemoryMiddleware(builder_to_memory_msg)
+        topk_middleware = MemoryMiddleware()
         join_middleware = JoinTasksMiddleware(join_node_count)
         middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind)
 
         #types_config_groupby = configure_types_groupby(join_middleware, topk_middleware)
-        types_config_groupby = configure_types_groupby_topk_memory(join_middleware, topk_middleware)
+        types_config_groupby = configure_types_groupby_topk_memory(
+                join_middleware, topk_middleware, topk_middleware_type = HashedMemoryMessageBuilder)
 
         # In memory it doesnt actually connect to network nor block for messeging
         types_config_topk = configure_types_topk(join_middleware)
-        node_topk = GroupbyNode(topk_middleware, types_config_topk)
+        node_topk = GroupbyNode(topk_middleware, MemoryMessage, types_config_topk)
         node_topk.start()
 
-        node = GroupbyNode(middleware_group, types_config_groupby)
+        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby)
 
         restart = True
         while restart:

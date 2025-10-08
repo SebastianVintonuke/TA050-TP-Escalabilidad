@@ -12,6 +12,7 @@ from middleware.join_tasks_middleware import *
 from src.groupbynode import GroupbyNode 
 from src.topk_initialize import * 
 from middleware.topk_middleware import * 
+from middleware.routing.csv_message import CSVMessage
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -99,7 +100,7 @@ def main() -> None:
 
         types_config_topk = configure_types_topk(join_middleware)
         
-        node = GroupbyNode(topk_middleware, types_config_topk)
+        node = GroupbyNode(topk_middleware, CSVMessage, types_config_topk)
 
         restart = True
         while restart:

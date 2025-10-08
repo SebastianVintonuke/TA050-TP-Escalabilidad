@@ -13,6 +13,25 @@ class MemoryMessage(Message):
 
 class HashedMemoryMessageBuilder(HashedMessageBuilder):
 
+    def creator_with_type(new_type):
+        def converter(headers):
+            headers.types[0] = new_type
+            return HashedMemoryMessageBuilder(headers, headers.ids[0])
+        return converter
+
+    def creator_with_types(*types):
+        def converter(headers):
+            headers.types = list(types)
+            return HashedMemoryMessageBuilder(headers, headers.ids[0])
+        return converter
+
+
+    def simple_creator():
+        def converter(headers):
+            return HashedMemoryMessageBuilder(headers, headers.ids[0])
+        return converter
+
+
     def default():
         return HashedMemoryMessageBuilder(BaseHeaders.default(), "")
 
@@ -24,7 +43,7 @@ class HashedMemoryMessageBuilder(HashedMessageBuilder):
         self.payload.append(row)
 
     def clone(self):
-        return HashedMemoryMessageBuilder(self.headers_obj, self.key_hash)
+        return HashedMemoryMessageBuilder(self.headers_obj.clone(), self.key_hash)
 
 
 def build_memory_message_builder(uuid, type,msg_count = DEFAULT_PARTITION_VALUE):

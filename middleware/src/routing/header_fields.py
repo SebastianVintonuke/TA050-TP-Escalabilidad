@@ -34,10 +34,13 @@ class BaseHeaders:
 
 	def clone(self):
 		return BaseHeaders(
-			ids,
-			types,
-			msg_count
+			list(self.ids),
+			list(self.types),
+			self.msg_count
 		)
+
+	def get_error_code(self):
+		return self.msg_count
 
 	def len_queries(self):
 		return len(self.ids)

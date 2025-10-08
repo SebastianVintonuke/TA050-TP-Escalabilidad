@@ -72,7 +72,7 @@ class BareMockMessageBuilder(HashedMessageBuilder):
         self.payload.append(row)
 
     def clone(self):
-        return BareMockMessageBuilder(self.headers)
+        return BareMockMessageBuilder(self.headers.clone())
 
 
 

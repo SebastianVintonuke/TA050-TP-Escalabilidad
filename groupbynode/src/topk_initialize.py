@@ -5,6 +5,8 @@ from middleware.routing.query_types import *
 
 from .topk_type_config import * 
 from .row_grouping import * 
+from middleware.routing.csv_message import CSVMessageBuilder,CSVHashedMessageBuilder
+
 """
 Transacciones (Id y monto) realizadas durante 2024 y 2025 entre las 06:00 AM y las
 11:00 PM con monto total mayor o igual a 75.
@@ -21,7 +23,7 @@ def configure_types_topk(join_middleware):
     
     #[KEEP_TOP_K, {'comp_key': "revenue", 'limit': 3}] # top k for products?
     types_config[QUERY_2_REVENUE] = TopKTypeConfiguration(join_middleware, 
-            csv_message.csv_hashed_from_msg, 
+            CSVHashedMessageBuilder.simple_creator(), 
             in_fields = ["product_id", "month", "revenue", "quantity_sold"],#["product_id", "month", "revenue"], 
             grouping_conf = [
                 ["month"], [KEEP_TOP, {'comp_key': "revenue"}]
@@ -30,7 +32,7 @@ def configure_types_topk(join_middleware):
     )
 
     types_config[QUERY_2_QUANTITY] = TopKTypeConfiguration(join_middleware, 
-            csv_message.csv_hashed_from_msg, 
+            CSVHashedMessageBuilder.simple_creator(), 
             in_fields = ["product_id", "month", "revenue", "quantity_sold"],#["product_id", "month", "quantity_sold"], 
             grouping_conf = [
                 ["month"], [KEEP_TOP, {'comp_key': "quantity_sold"}]
@@ -38,7 +40,7 @@ def configure_types_topk(join_middleware):
             out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "quantity_sold"]},
     )
 
-    types_config[QUERY_4] = TopKTypeConfiguration(join_middleware, csv_message.csv_hashed_from_msg,
+    types_config[QUERY_4] = TopKTypeConfiguration(join_middleware, CSVHashedMessageBuilder.simple_creator(),
             in_fields= ["store_id","user_id", "purchase_count"],
             grouping_conf = [
                 ["store_id"], [KEEP_ASCDESC, {'comp_key': "purchase_count",'comp_key2': "user_id", 'limit': 3}] # Get higher in purchases and least user_id

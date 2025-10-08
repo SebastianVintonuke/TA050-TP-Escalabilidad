@@ -12,7 +12,7 @@ GROUPED_FIELDS_ACTIONS = 1
 class GroupbyTypeConfiguration:
 	def __init__(self, out_middleware, builder_creator, in_fields, grouping_conf, out_conf=None):
 		self.middleware = out_middleware
-		self.builder_creator = builder_creator
+		self.new_builder_for = builder_creator
 
 		self.mapper = DictConvertWrapperMapper(
 			in_fields, NoActionRowMapper(), out_conf[ROW_CONFIG_OUT_COLS]
@@ -31,11 +31,6 @@ class GroupbyTypeConfiguration:
 		msg_builder.add_row(self.mapper.project_out(base))
 
 
-
-	def new_builder_for(self, inp_msg, ind_query):
-		return self.builder_creator(inp_msg, ind_query)
-
-
 	def send(self, builder):
-		logging.info(f"GROUPBY SENDING TO {builder.types} {builder.ids} len: {builder.len_payload()} eof? {builder.is_eof()}")
+		logging.info(f"GROUPBY SENDING TO {builder.headers.types} {builder.headers.ids} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
 		return self.middleware.send(builder)

@@ -37,12 +37,11 @@ class TypeExpander:
 	def get_configuration_for(self, exp):
 		return self.expansions[exp][0]
 
-	def propagate_signal_in(self, msg):
-		for ind in range(len(msg.types)):
+	def propagate_signal_in(self, headers):
+		for trg_headers in headers.split():
 			# Empty message that has same headers splitting to each destination.
-			for config in self.get_configurations_for(msg.types[ind]):
-				propagated_msg = config.new_builder_for(msg, ind)
-				config.send(propagated_msg)
+			for config in self.get_configurations_for(trg_headers.types[0]):
+				config.send(config.new_builder_for(trg_headers))
 
 	def close(self):
 		for config in self.type_configurations:

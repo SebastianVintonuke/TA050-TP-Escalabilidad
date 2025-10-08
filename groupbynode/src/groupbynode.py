@@ -7,17 +7,6 @@ class QueryAccumulator:
 	def __init__(self, type_conf, msg_builder):
 		self.type_conf = type_conf
 		self.msg_builder = msg_builder
-		self.ongoing_partitions = set()
-		self.groups = {}
-		self.messages_received=0
-		self.known_message_len= -1
-		self.rows_recv = 0
-
-	def __init__(self, type_conf, msg, ind):
-		self.type_conf = type_conf
-		self.msg_builder = type_conf.new_builder_for(msg, ind)
-		
-		self.ongoing_partitions = set()
 		self.groups = {}
 		self.messages_received=0
 		self.known_message_len= -1
@@ -64,17 +53,19 @@ class QueryAccumulator:
 		return count_messages <= self.messages_received
 
 class GroupbyNode:
-	def __init__(self, group_middleware, types_confs):
+	def __init__(self, group_middleware, payload_deserializer, types_confs):
 		self.middleware = group_middleware;
+		self.payload_deserializer = payload_deserializer
+
 		self.types_configurations = types_confs
 		self.accumulators = {}
 
 
-	def propagate_signal(self, msg):
-		for ind in range(msg.len_queries()):
-			conf = self.types_configurations[msg.types[ind]]
+	def propagate_signal(self, headers):
+		for prop_headers in headers.split():
+			conf = self.types_configurations[prop_headers.types[0]]
 			self.type_conf.send(
-				conf.new_builder_for(msg, ind) #Empty message that has same headers splitting to each destination.
+				conf.new_builder_for(prop_headers) #Empty message that has same headers splitting to each destination.
 			)
 
 	def len_in_progress(self):
@@ -87,43 +78,48 @@ class GroupbyNode:
 
 		return total
 
-	def handle_task(self, msg):
-		if msg.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
-			if msg.is_error():
-				logging.info(f"Received ERROR code: {msg.partition} IN {msg.ids}")
-				self.propagate_signal(msg)
+	def handle_task(self, headers, msg):
+		msg = self.payload_deserializer(msg)
+
+		if msg.is_empty(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+			if headers.is_error():
+				logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids}")
+				self.propagate_signal(headers)
 				return
 
-			logging.info(f"Received final eof OF {msg.ids} types: {msg.types}, should have been {msg.partition} messages")
-			ind=0
-			for query_id in msg.ids:
-				query_id = query_id+str(msg.types[ind])
+			logging.info(f"Received final eof OF {headers.ids} types: {headers.types}, should have been {headers.msg_count} messages")
+			for new_headers in headers.split():
+				q_type = new_headers.types[0]
+				query_id = new_headers.ids[0]+q_type
+
 				acc = self.accumulators.get(query_id, None)
 				if acc == None:
-					logging.info(f"For type {msg.types[ind]}, eof was the first message to be received")
+					logging.info(f"For type {q_type}, eof was the first message to be received")
+					
+					config = self.types_configurations[q_type]
+					acc = QueryAccumulator(config, config.new_builder_for(new_headers))
 
-					acc = QueryAccumulator(self.types_configurations[msg.types[ind]], msg, ind)
 					self.accumulators[query_id] = acc
 
-				if acc.check_eof(msg.partition):
+				if acc.check_eof(headers.msg_count):
 					acc.send_built()
 					del self.accumulators[query_id] # Remove it
-				ind+=1
 			
 			return
 
 		outputs = []
-		ind = 0
-		for query_id in msg.ids:
-			query_id = query_id+str(msg.types[ind]) # Change it take into account the type so we can do multiple queries at once
-			acc = self.accumulators.get(query_id, None)
+		for new_headers in headers.split():
+			q_type = new_headers.types[0]
+			query_id = new_headers.ids[0]+q_type
 
+			acc = self.accumulators.get(query_id, None)
 			if acc == None:
-				acc = QueryAccumulator(self.types_configurations[msg.types[ind]], msg, ind)
+				logging.info(f"New accumulator initialization for {new_headers.ids[0]}, type {q_type}")
+				config = self.types_configurations[q_type]
+				acc = QueryAccumulator(config, config.new_builder_for(new_headers))
+
 				self.accumulators[query_id] = acc
 			outputs.append(acc)
-
-			ind+=1
 
 		for row in msg.stream_rows():
 			for output in outputs:
@@ -131,12 +127,9 @@ class GroupbyNode:
 
 		for ind, acc in enumerate(outputs):
 			if acc.add_msg_count():
-				logging.info(f"query: {msg.ids[ind]} type: {msg.types[ind]}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Start sending.")
+				logging.info(f"query: {headers.ids[ind]} type: {headers.types[ind]}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Start sending.")
 				acc.send_built()
-				del self.accumulators[msg.ids[ind]+msg.types[ind]]
-
-		#for output in outputs:
-		#	output.describe()
+				del self.accumulators[headers.ids[ind]+headers.types[ind]]
 
 
 	def start(self):

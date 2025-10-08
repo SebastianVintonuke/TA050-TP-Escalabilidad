@@ -17,10 +17,18 @@ class CSVMessage(Message):
 class CSVMessageBuilder(MessageBuilder):
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] = new_type
+            headers.types[0] =new_type
             return CSVMessageBuilder(headers)
 
         return converter
+
+    def creator_with_types(*types):
+        def converter(headers):
+            headers.types = list(types)
+            return CSVMessageBuilder(headers)
+
+        return converter
+
 
     def __init__(self,headers_obj):
         super().__init__(headers_obj)
@@ -41,6 +49,13 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
             headers.types[0] = new_type
             return CSVHashedMessageBuilder(headers, headers.ids[0])
         return converter
+
+    def creator_with_types(*types):
+        def converter(headers):
+            headers.types = list(types)
+            return CSVHashedMessageBuilder(headers, headers.ids[0])
+        return converter
+
 
     def simple_creator():
         def converter(headers):

@@ -10,6 +10,7 @@ from middleware.result_node_middleware import *
 from middleware.groupby_middleware import * 
 from middleware.join_tasks_middleware import * 
 from middleware.topk_middleware import * 
+from middleware.routing.csv_message import CSVMessage
 
 
 from src.groupbynode import GroupbyNode 
@@ -106,7 +107,7 @@ def main() -> None:
 
         types_config_groupby = configure_types_groupby(join_middleware, topk_middleware)
 
-        node = GroupbyNode(middleware_group, types_config_groupby)
+        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby)
 
         restart = True
         while restart:
