@@ -15,6 +15,10 @@ class CSVMessage(Message):
 
 
 class CSVMessageBuilder(MessageBuilder):
+
+    def with_credentials(ids, types):
+        return CSVMessageBuilder(BaseHeaders(ids, types))
+
     def creator_with_type(new_type):
         def converter(headers):
             headers.types[0] =new_type
@@ -44,6 +48,9 @@ class CSVMessageBuilder(MessageBuilder):
         return CSVMessageBuilder(self.headers.clone())
 
 class CSVHashedMessageBuilder(HashedMessageBuilder):
+    def with_credentials(ids, types, key_hash):
+        return CSVHashedMessageBuilder(BaseHeaders(ids, types), key_hash)
+
     def creator_with_type(new_type):
         def converter(headers):
             headers.types[0] = new_type

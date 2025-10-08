@@ -21,18 +21,16 @@ class SelectNode:
         self.payload_deserializer = payload_deserializer
 
     def handle_task(self, headers, msg):
-        msg = self.payload_deserializer(msg)
-
-        if msg.is_empty():  # Empty msg is signal of EOF or error, depending on headers.
+        if headers.is_eof():  # Empty msg is signal of EOF or error, depending on headers.
             self.type_expander.propagate_signal_in(headers)
-            return True
-
+            return False
+            
+        msg = self.payload_deserializer(msg)
         outputs = []
-        types = set()
         for type_header in headers.split():
             for config in self.type_expander.get_configurations_for(type_header.types[0]):
                 outputs.append(TypeHandler(config,
-                    config.new_builder_for(type_header)))
+                    config.new_builder_for(type_header.clone())))
 
         for row in msg.stream_rows():
             for output in outputs:
@@ -41,7 +39,7 @@ class SelectNode:
         for output in outputs:
             output.send_built()
 
-        return True
+        return False
 
     def start(self):
         self.middleware.start_consuming(self.handle_task)

@@ -33,9 +33,7 @@ class JoinNode:
 
 
     def handle_task(self, headers, msg):
-        msg = self.payload_deserializer(msg) 
-
-        if msg.is_empty(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+        if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
             if headers.is_error():
                 logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids}")
                 self.type_expander.propagate_signal_in(headers)
@@ -63,6 +61,7 @@ class JoinNode:
                         del self.joiners[ide+config.join_id]
             
             return
+        msg = self.payload_deserializer(msg) 
 
         row_actions = []
         checkers = []

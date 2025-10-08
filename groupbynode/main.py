@@ -103,7 +103,7 @@ def main() -> None:
         middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind)
 
         #types_config_groupby = configure_types_groupby(join_middleware, topk_middleware)
-        types_config_groupby = configure_types_groupby_topk_memory(
+        types_config_groupby = configure_types_groupby(
                 join_middleware, topk_middleware, topk_middleware_type = HashedMemoryMessageBuilder)
 
         # In memory it doesnt actually connect to network nor block for messeging

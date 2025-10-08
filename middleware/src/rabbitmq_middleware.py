@@ -63,19 +63,20 @@ class RabbitMQChannel:
 		def real_callback(ch, method, properties, body):
 			#logging.info(f"action: msg_recv | result: success | queue: {self.queue_name} | method: {method} | props: {properties} | body:{body}")
 			#CSVMessage(properties.headers, body)
-
+			headers = BaseHeaders.from_headers(properties.headers)
 			try:
-				ack_msg = callback(BaseHeaders.from_headers(properties.headers), body) # Handle msg
+				msg_failed = callback(headers, body) # Handle msg
 
-				if ack_msg:
-					ch.basic_ack(delivery_tag = method.delivery_tag)
+				if msg_failed:
+					# If msg failed, requeue is desired else throw exception(for now?)
+					ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True) 				
 				else:
-					# If its explicitly told not to ack then dont requeue, If requeue is desired, throw exception(for now?)
-					ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False) 				
+					ch.basic_ack(delivery_tag = method.delivery_tag)
 
 			except Exception as e:
-				logging.error(f"Message handling failed {properties.headers} requeue again: {e}")
-				ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)	
+				logging.error(f"Message handling failed {headers}")
+				logging.error(f"payload: {body[:min(50,len(body))]} error: {e}")
+				ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)	
 
 
 		return real_callback

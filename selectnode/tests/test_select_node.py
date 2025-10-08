@@ -441,7 +441,7 @@ class TestSelectNode(unittest.TestCase):
         # Type 4
         type_conf = SelectTypeConfiguration(
             result_grouper_4,
-            BareMockMessageBuilder,
+            BareMockMessageBuilder.creator_with_type("oq_4"),
             in_fields=in_cols_final,  # All cols, drop it after.
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -453,7 +453,7 @@ class TestSelectNode(unittest.TestCase):
         ### Type 3
         type_conf = SelectTypeConfiguration(
             result_grouper_3,
-            BareMockMessageBuilder,
+            BareMockMessageBuilder.creator_with_type("oq_3"),
             in_fields=in_cols_final,  # All cols, drop it after.
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -479,7 +479,7 @@ class TestSelectNode(unittest.TestCase):
         ### Type 1
         type_conf = SelectTypeConfiguration(
             result_grouper_1,
-            BareMockMessageBuilder,
+            BareMockMessageBuilder.creator_with_type("oq_1"),
             in_fields=in_cols_final,  # All cols, drop it after.
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -567,8 +567,11 @@ class TestSelectNode(unittest.TestCase):
 
         in_middle.push_msg(message)
 
+        self.assertEqual(result_grouper_4.msgs[0].headers.types, ["oq_4"])
         got_result4 = [x for x in result_grouper_4.msgs[0].payload]
+        self.assertEqual(result_grouper_3.msgs[0].headers.types, ["oq_3"])
         got_result3 = [x for x in result_grouper_3.msgs[0].payload]
+        self.assertEqual(result_grouper_1.msgs[0].headers.types, ["oq_1"])
         got_result1 = [x for x in result_grouper_1.msgs[0].payload]
 
         self.assertEqual(len(got_result4), len(expected4))

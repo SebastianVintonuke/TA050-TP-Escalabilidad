@@ -57,7 +57,14 @@ class MockMessageBuilder(HashedMessageBuilder):
 class BareMockMessageBuilder(HashedMessageBuilder):
     def default():
         return BareMockMessageBuilder(BaseHeaders.default())
-    
+
+    def creator_with_type(new_type):
+        def converter(headers):
+            headers.types[0] =new_type
+            return BareMockMessageBuilder(headers)
+
+        return converter    
+
     def for_payload(ids, types, rows, mapper):
         res = BareMockMessageBuilder(BaseHeaders(ids, types))
         

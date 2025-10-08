@@ -13,6 +13,9 @@ class MemoryMessage(Message):
 
 class HashedMemoryMessageBuilder(HashedMessageBuilder):
 
+    def with_credentials(query_id, q_type):
+        return HashedMemoryMessageBuilder(BaseHeaders([query_id], [q_type]), query_id)
+
     def creator_with_type(new_type):
         def converter(headers):
             headers.types[0] = new_type
@@ -43,7 +46,7 @@ class HashedMemoryMessageBuilder(HashedMessageBuilder):
         self.payload.append(row)
 
     def clone(self):
-        return HashedMemoryMessageBuilder(self.headers_obj.clone(), self.key_hash)
+        return HashedMemoryMessageBuilder(self.headers.clone(), self.key_hash)
 
 class MemoryMiddleware(MessageMiddleware):
     def __init__(self):

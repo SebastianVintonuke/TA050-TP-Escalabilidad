@@ -32,6 +32,9 @@ class BaseHeaders:
 		self.types = types
 		self.msg_count = msg_count
 
+	def __repr__(self):
+		return f"ids:{self.ids}, types:{self.types}, msg_count:{self.msg_count}"
+
 	def clone(self):
 		return BaseHeaders(
 			list(self.ids),

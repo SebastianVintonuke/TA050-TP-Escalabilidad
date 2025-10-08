@@ -79,9 +79,7 @@ class GroupbyNode:
 		return total
 
 	def handle_task(self, headers, msg):
-		msg = self.payload_deserializer(msg)
-
-		if msg.is_empty(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+		if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
 			if headers.is_error():
 				logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids}")
 				self.propagate_signal(headers)
@@ -106,7 +104,8 @@ class GroupbyNode:
 					del self.accumulators[query_id] # Remove it
 			
 			return
-
+			
+		msg = self.payload_deserializer(msg)
 		outputs = []
 		for new_headers in headers.split():
 			q_type = new_headers.types[0]

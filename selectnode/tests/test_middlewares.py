@@ -161,7 +161,7 @@ class TestMiddlewares(unittest.TestCase):
         self.assertTrue(len(conn.channels) == 1)
         channel = conn.channels[0]
         out_msgs = []
-        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload)) or True) # Make it return true.
+        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload))) # Make it return true.
 
         declared_queues = list(channel.declared_queues())
 
@@ -211,7 +211,7 @@ class TestMiddlewares(unittest.TestCase):
         channel.queue_declare(QUEUE_NAME)
 
         msg_build = CSVMessageBuilder(
-            BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"], 2)
+            BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"])
         )
 
         rows_pass = [
@@ -251,7 +251,7 @@ class TestMiddlewares(unittest.TestCase):
 
         msg_build = CSVHashedMessageBuilder(
             BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"],
-            ["query_1"],2),
+            ["query_1"]),
             "hash_base",
         )
 
@@ -296,7 +296,7 @@ class TestMiddlewares(unittest.TestCase):
         self.assertTrue(len(conn.channels) == 1)
         channel = conn.channels[0]
         out_msgs = []
-        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload)))
+        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload)) or True) # return true... Requeue/nack
 
         declared_queues = list(channel.declared_queues())
 
@@ -331,8 +331,8 @@ class TestMiddlewares(unittest.TestCase):
         self.assertEqual(msg.payload, exp_payload)
 
         self.assertNotIn("test_msg_1", channel.acked_tags)
-        self.assertNotIn(("test_msg_1", True), channel.nacked_tags)
-        self.assertIn(("test_msg_1", False), channel.nacked_tags)
+        self.assertNotIn(("test_msg_1", False), channel.nacked_tags)
+        self.assertIn(("test_msg_1", True), channel.nacked_tags)
 
 
     def test_memory_middleware_delegates_builder_and_sends_msg(self):
@@ -375,7 +375,7 @@ class TestMiddlewares(unittest.TestCase):
 
         middleware.start_consuming(lambda h, payload: msgs.append(MemoryMessage(payload)))
 
-        msg_build = build_memory_message_builder("8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5", "query_1")
+        msg_build = HashedMemoryMessageBuilder.with_credentials("8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5", "query_1")
 
         rows_pass = [
             {"year": 2024, "hour": 7, "sum": 88},
