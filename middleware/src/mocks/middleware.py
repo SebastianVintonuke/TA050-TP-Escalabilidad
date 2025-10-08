@@ -71,6 +71,11 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
 
 class MockMessage(Message):
+
+    def from_headers(headers, payload, map_to_vec):
+        msg= MockMessage("tag", headers[FIELD_QUERY_ID], headers[FIELD_QUERY_TYPE], payload, map_to_vec)
+        msg.partition = headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE)
+        return msg
     def __init__(self, tag, queries_id, queries_type, payload, map_to_vec):
         super().from_data(queries_id, queries_type, payload)
         self.tag = tag

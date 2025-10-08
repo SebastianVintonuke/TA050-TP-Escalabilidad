@@ -26,6 +26,10 @@ def wait_middleware_init_nothing():
 class MethodClass:
     def __init__(self, tag):
         self.delivery_tag = tag
+class MessageHolder:
+    def __init__(self, headers, payload):
+        self.headers = headers
+        self.payload = payload
 
 
 class QueueConsumeObj:
@@ -47,6 +51,8 @@ class MockChannel:
         self.consuming = False
         self.queues = {}
         self.host = host
+        self.acked_tags = set()
+        self.nacked_tags = set()
 
     def basic_qos(self, prefetch_count):
         pass
@@ -87,7 +93,9 @@ class MockChannel:
         )
 
     def basic_ack(self, delivery_tag):
-        pass
+        self.acked_tags.add(delivery_tag)
+    def basic_nack(self, delivery_tag, requeue = False):
+        self.nacked_tags.add((delivery_tag, requeue))
 
 
 class MockConnection:
@@ -152,7 +160,7 @@ class TestMiddlewares(unittest.TestCase):
         self.assertTrue(len(conn.channels) == 1)
         channel = conn.channels[0]
         out_msgs = []
-        middleware.start_consuming(lambda msg: out_msgs.append(msg))
+        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload)) or True) # Make it return true.
 
         declared_queues = list(channel.declared_queues())
 
@@ -166,29 +174,26 @@ class TestMiddlewares(unittest.TestCase):
         self.assertTrue(push_method != None)
 
         # Should push ch, method, properties, body
+        exp_headers = {
+                    "queries_id": ["q1"],
+                    "queries_type": ["t_1"],
+        }
+        exp_payload = b"123,23,345"
 
         push_method(
             channel,
             MethodClass("test_msg_1"),
-            routing.build_headers(
-                {
-                    "queries_id": ["q1"],
-                    "queries_type": ["t_1"],
-                }
-            ),
-            b"123,23,345",
+            routing.build_headers(exp_headers),
+            exp_payload,
         )
 
         self.assertEqual(len(out_msgs), 1)
         msg = out_msgs[0]
-        self.assertEqual(["q1"], msg.ids)
-        self.assertEqual(["t_1"], msg.types)
-        self.assertEqual(-1, msg.partition) # DEF partition
-
-        rows = [itm for itm in msg.map_stream_rows(map_vect_to_dict)]
-        self.assertEqual(1, len(rows))
-
-        self.assertEqual({"year": 123, "hour": 23, "sum": 345}, rows[0])
+        self.assertEqual(msg.headers, exp_headers)
+        self.assertEqual(msg.payload, exp_payload)
+        self.assertIn("test_msg_1", channel.acked_tags)
+        self.assertNotIn(("test_msg_1", True), channel.nacked_tags)
+        self.assertNotIn(("test_msg_1", False), channel.nacked_tags)
 
     def test_simple_basic_publish(self):
         # routing.try_open_connection("SOME", 23)
@@ -294,7 +299,7 @@ class TestMiddlewares(unittest.TestCase):
         self.assertTrue(len(conn.channels) == 1)
         channel = conn.channels[0]
         out_msgs = []
-        middleware.start_consuming(lambda msg: out_msgs.append(msg))
+        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload)))
 
         declared_queues = list(channel.declared_queues())
 
@@ -313,35 +318,35 @@ class TestMiddlewares(unittest.TestCase):
 
         # Should push ch, method, properties, body
 
+        exp_headers = {
+                    "queries_id": ["q1"],
+                    "queries_type": ["t_1"],
+        }
+        exp_payload = b"123,23,345"
+
         push_method(
             channel,
             MethodClass("test_msg_1"),
-            routing.build_headers(
-                {
-                    "queries_id": ["q1"],
-                    "queries_type": ["t_1"],
-                }
-            ),
-            b"123,23,345",
+            routing.build_headers(exp_headers),
+            exp_payload,
         )
 
         self.assertEqual(len(out_msgs), 1)
         msg = out_msgs[0]
-        self.assertEqual(["q1"], msg.ids)
-        self.assertEqual(["t_1"], msg.types)
-        self.assertEqual(-1, msg.partition)
+        self.assertEqual(msg.headers, exp_headers)
+        self.assertEqual(msg.payload, exp_payload)
 
-        rows = [itm for itm in msg.map_stream_rows(map_vect_to_dict)]
-        self.assertEqual(1, len(rows))
+        self.assertNotIn("test_msg_1", channel.acked_tags)
+        self.assertNotIn(("test_msg_1", True), channel.nacked_tags)
+        self.assertIn(("test_msg_1", False), channel.nacked_tags)
 
-        self.assertEqual({"year": 123, "hour": 23, "sum": 345}, rows[0])
 
     def test_memory_middleware_delegates_builder_and_sends_msg(self):
         middleware = MemoryMiddleware()
 
         msgs = []
 
-        middleware.start_consuming(lambda x: msgs.append(x))
+        middleware.start_consuming(lambda msg: msgs.append(msg))
 
         msg_build = CSVMessageBuilder(
             ["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"], ["query_1"]
@@ -378,7 +383,7 @@ class TestMiddlewares(unittest.TestCase):
 
         msgs = []
 
-        middleware.start_consuming(lambda x: msgs.append(x))
+        middleware.start_consuming(lambda msg: msgs.append(msg))
 
         msg_build = build_memory_message_builder("8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5", "query_1")
 
