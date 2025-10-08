@@ -1,10 +1,14 @@
 
 from middleware.errors import *
-from middleware.routing import csv_message
+
 from middleware.routing.query_types import *
 from .select_type_config import *
 from common.config.row_filtering import *
 from common.config.row_mapping import *
+
+
+from middleware.routing.csv_message import CSVMessageBuilder,CSVHashedMessageBuilder
+
 
 SHARED_IN_FIELDS = [
     "transaction_id",
@@ -16,6 +20,7 @@ SHARED_IN_FIELDS = [
     "revenue",
 ]
 
+
 def add_selectnode_config(types_expander, result_middleware, groupby_middleware):
     # Basic filter description
     """
@@ -26,9 +31,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
     types_expander.add_configuration_to_many(
         SelectTypeConfiguration(
             result_middleware,
-            lambda msg, ind: csv_message.msg_from_credentials(
-                msg.ids[ind], QUERY_1, msg.partition
-            ),
+            CSVMessageBuilder.creator_with_type(QUERY_1),
             in_fields=SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -51,9 +54,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
         QUERY_2,
         SelectTypeConfiguration(
             groupby_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_2, msg.partition
-            ),
+            CSVHashedMessageBuilder.creator_with_type(QUERY_2),
             in_fields=["product_id", "year", "month", "revenue"],  # In order
             filters_conf=[["year", EQUALS_ANY, ["2024", "2025"]]],
             out_conf={
@@ -81,9 +82,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
     types_expander.add_configuration_to_many(
         SelectTypeConfiguration(
             groupby_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_3, msg.partition
-            ),
+            CSVHashedMessageBuilder.creator_with_type(QUERY_3),
             in_fields=SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
@@ -119,9 +118,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
     types_expander.add_configuration_to_many(
         SelectTypeConfiguration(
             groupby_middleware,
-            lambda msg, ind: csv_message.hashed_msg_from_credentials(
-                msg.ids[ind], QUERY_4, msg.partition
-            ),
+            CSVHashedMessageBuilder.creator_with_type(QUERY_4),
             in_fields=SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],

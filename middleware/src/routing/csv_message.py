@@ -15,6 +15,13 @@ class CSVMessage(Message):
 
 
 class CSVMessageBuilder(MessageBuilder):
+    def creator_with_type(new_type):
+        def converter(headers):
+            headers.types[0] = new_type
+            return CSVMessageBuilder(headers)
+
+        return converter
+
     def __init__(self,headers_obj):
         super().__init__(headers_obj)
     
@@ -29,6 +36,18 @@ class CSVMessageBuilder(MessageBuilder):
         return CSVMessageBuilder(self.headers.clone())
 
 class CSVHashedMessageBuilder(HashedMessageBuilder):
+    def creator_with_type(new_type):
+        def converter(headers):
+            headers.types[0] = new_type
+            return CSVHashedMessageBuilder(headers, headers.ids[0])
+        return converter
+
+    def simple_creator():
+        def converter(headers):
+            return CSVHashedMessageBuilder(headers, headers.ids[0])
+        return converter
+
+
     def __init__(self,headers_obj, key_hash):
         super().__init__(headers_obj, key_hash)
 
@@ -42,22 +61,3 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
 
     def clone(self):
         return CSVHashedMessageBuilder(self.headers.clone(), self.key_hash)
-
-
-def builder_to_msg(builder):
-    return CSVMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.partition)
-
-
-
-def csv_msg_from_msg(msg, ind):
-    return CSVMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.partition)
-
-def csv_hashed_from_msg(msg, ind):
-    return CSVHashedMessageBuilder([msg.ids[ind]], [msg.types[ind]], msg.ids[ind]+str(msg.types[ind]), msg.partition)
-
-def msg_from_credentials(uuid, type, partition):
-    return CSVMessageBuilder([uuid], [type], partition)
-
-
-def hashed_msg_from_credentials(uuid, type,partition):
-    return CSVHashedMessageBuilder([uuid], [type], str(uuid)+str(type), partition)

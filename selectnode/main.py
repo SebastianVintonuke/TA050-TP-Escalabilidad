@@ -14,6 +14,7 @@ from src.selectnode import SelectNode
 from common.config.type_expander import *
 from src.config_init import *
 
+from middleware.routing.csv_message import CSVMessage
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -87,7 +88,7 @@ def main() -> None:
         groupby_middleware = GroupbyTasksMiddleware(groupby_node_count)
         add_selectnode_config(types_expander, result_middleware, groupby_middleware)
 
-        node = SelectNode(SelectTasksMiddleware(), types_expander)
+        node = SelectNode(SelectTasksMiddleware(), CSVMessage, types_expander)
 
         restart = True
         while restart:
