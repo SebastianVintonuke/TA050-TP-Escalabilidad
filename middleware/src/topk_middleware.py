@@ -1,5 +1,5 @@
 from .rabbitmq_middleware import *
-from . import routing
+from .rabbitmq import constants as rbmq_consts
 from .routing.csv_message import *
 
 TOPK_TASKS_QUEUE_BASE = "groupby_queue-{IND}"
@@ -7,7 +7,7 @@ TOPK_EXCHANGE = "topk_exchange"
 #TOPK_EXCHANGE = "direct"
 
 class TopKTasksMiddleware(RabbitExchangeMiddleware):
-	def __init__(self, node_count,ind = 0, host = routing.RABBITMQ_HOST):
+	def __init__(self, node_count,ind = 0, host = rbmq_consts.RABBITMQ_HOST):
 		super().__init__(TOPK_TASKS_QUEUE_BASE.format(IND= ind), TOPK_EXCHANGE , host =host)
 		self.node_count = int(node_count)
 

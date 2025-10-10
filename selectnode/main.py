@@ -68,6 +68,7 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+import signal
 
 def main() -> None:
     config_params = initialize_config()
@@ -89,6 +90,11 @@ def main() -> None:
         add_selectnode_config(types_expander, result_middleware, groupby_middleware)
 
         node = SelectNode(SelectTasksMiddleware(), CSVMessage, types_expander)
+
+        def close_handler(sig, frame):
+            logging.info("Received close signal... gracefully finishing")
+        signal.signal(signal.SIGINT, close_handler)
+        signal.signal(signal.SIGTERM, close_handler)
 
         restart = True
         while restart:

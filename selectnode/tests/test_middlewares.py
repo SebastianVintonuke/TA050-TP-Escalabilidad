@@ -11,7 +11,7 @@ from middleware.select_tasks_middleware import SelectTasksMiddleware
 from middleware.memory_middleware import *
 
 from common.config.row_filtering import *
-from middleware import routing
+from middleware.rabbitmq import utils as rbmq_utils
 
 
 def map_dict_to_vect(row):
@@ -130,11 +130,11 @@ class TestMiddlewares(unittest.TestCase):
         return res
 
     def setUp(self):
-        routing.try_open_connection = self.mock_open_connection
-        routing.build_headers = PropHeaders
-        routing.wait_middleware_init = wait_middleware_init_nothing
+        rbmq_utils.try_open_connection = self.mock_open_connection
+        rbmq_utils.build_headers = PropHeaders
+        rbmq_utils.wait_middleware_init = wait_middleware_init_nothing
     def test_simple_queue_declare(self):
-        # routing.try_open_connection("SOME", 23)
+        # rbmq_utils.try_open_connection("SOME", 23)
         HOST = "test_register"
         QUEUE_NAME = "test_queue"
         middleware = SelectTasksMiddleware(host=HOST, queue_name=QUEUE_NAME)
@@ -150,7 +150,6 @@ class TestMiddlewares(unittest.TestCase):
         self.assertFalse(channel.consuming)
 
     def test_simple_basic_consume(self):
-        # routing.try_open_connection("SOME", 23)
         HOST = "test_basic_consume"
         QUEUE_NAME = "test_queue"
         middleware = SelectTasksMiddleware(host=HOST, queue_name=QUEUE_NAME)
@@ -181,7 +180,7 @@ class TestMiddlewares(unittest.TestCase):
         push_method(
             channel,
             MethodClass("test_msg_1"),
-            routing.build_headers(exp_headers.to_dict()),
+            rbmq_utils.build_headers(exp_headers.to_dict()),
             exp_payload,
         )
 
@@ -194,7 +193,6 @@ class TestMiddlewares(unittest.TestCase):
         self.assertNotIn(("test_msg_1", False), channel.nacked_tags)
 
     def test_simple_basic_publish(self):
-        # routing.try_open_connection("SOME", 23)
         HOST = "test_basic_publish"
         QUEUE_NAME = "test_queue"
         middleware = SelectTasksMiddleware(host=HOST, queue_name=QUEUE_NAME)
@@ -233,7 +231,6 @@ class TestMiddlewares(unittest.TestCase):
         self.assertEqual(msg["props"].headers, msg_build.get_headers())
 
     def test_simple_hashed_send(self):
-        # routing.try_open_connection("SOME", 23)
         HOST = "test_hashed_send"
         NODE_IND = 2
         QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND)
@@ -282,7 +279,6 @@ class TestMiddlewares(unittest.TestCase):
         self.assertEqual(msg["props"].headers, msg_build.get_headers())
 
     def test_simple_hashed_consume(self):
-        # routing.try_open_connection("SOME", 23)
         HOST = "test_hashed_send"
         NODE_IND = 2
         QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND)
@@ -321,7 +317,7 @@ class TestMiddlewares(unittest.TestCase):
         push_method(
             channel,
             MethodClass("test_msg_1"),
-            routing.build_headers(exp_headers.to_dict()),
+            rbmq_utils.build_headers(exp_headers.to_dict()),
             exp_payload,
         )
 
