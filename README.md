@@ -14,6 +14,12 @@ docker-compose-down
 docker-compose-logs
 `
 
+Generar automaticamente un archivo docker-compose
+
+`
+./generar-compose.sh <output_file> <number_of_result_nodes> <number_of_select_nodes> <number_of_clients> <number_of_dispatchers>
+`
+
 Correr tests unitarios del MessageMiddleware
 
 `

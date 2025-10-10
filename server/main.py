@@ -32,6 +32,18 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
+
+        dispatchers_str = os.getenv("DISPATCHERS", config["DEFAULT"]["DISPATCHERS"])
+        config_params["dispatchers"] = [
+            dispatcher.strip() for dispatcher in dispatchers_str.split(",")
+        ]
+
+        results_storages_str = os.getenv(
+            "RESULTS_STORAGES", config["DEFAULT"]["RESULTS_STORAGES"]
+        )
+        config_params["results_storages"] = [
+            result_storage.strip() for result_storage in results_storages_str.split(",")
+        ]
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -61,17 +73,17 @@ def main() -> None:
     port = config_params["port"]
     listen_backlog = config_params["listen_backlog"]
     logging_level = config_params["logging_level"]
+    dispatchers = config_params["dispatchers"]
+    results_storages = config_params["results_storages"]
 
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level} | dispatchers: {dispatchers} | results_storages: {results_storages}"
     )
 
-    server = Server(
-        port, listen_backlog, ["dispatcher:12347"], ["results:12349"]
-    )  # TODO parametrizar
+    server = Server(port, listen_backlog, dispatchers, results_storages)
     signal.signal(signal.SIGTERM, server.graceful_shutdown)
 
     server.run()

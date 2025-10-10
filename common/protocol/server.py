@@ -7,6 +7,7 @@ from typing import Callable, List
 from common.protocol.byte import ByteProtocol
 from common.protocol.signal import SignalProtocol
 from common.utils import stable_hash
+from common.manager.dispatcher_manager import DispatcherManager
 
 
 class ServerOperations(int, Enum):
@@ -14,11 +15,12 @@ class ServerOperations(int, Enum):
     AssignResultsStorageAddress = 0x02
 
 class ServerProtocol:
-    def __init__(self, a_socket: socket.socket, dispatchers: List[str], results_stores: List[str]) -> None:
+    def __init__(self, a_socket: socket.socket, dispatchers: List[str], results_stores: List[str], dispatcher_manager: DispatcherManager) -> None:
         self._byte_protocol = ByteProtocol(a_socket)
         self._signal_protocol = SignalProtocol(a_socket)
-        self._dispatchers: List[str] = sorted(dispatchers)
-        self._results_storages: List[str] = sorted(results_stores)
+        self._dispatchers = sorted(dispatchers)
+        self._results_storages = sorted(results_stores)
+        self._dispatcher_manager = dispatcher_manager
 
     def close_with(self, closure_to_close: Callable[[socket.socket], None]) -> None:
         """
@@ -36,7 +38,12 @@ class ServerProtocol:
             raise ValueError(f"Unknown operation code {operation_code}")
 
     def __assign_dispatcher_address(self) -> None:
-        address: str = random.choice(self._dispatchers)
+        if self._dispatcher_manager:
+            address = self._dispatcher_manager.get_next_dispatcher()
+        else:
+            # random si no hay dispatcher manager
+            address = random.choice(self._dispatchers)
+            
         self._byte_protocol.send_bytes(address.encode("utf-8"))
         self._signal_protocol.wait_signal()
         logging.info(f"action: assign_dispatcher_address | result: success | assigned: {address}")

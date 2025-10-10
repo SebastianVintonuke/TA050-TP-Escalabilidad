@@ -10,6 +10,10 @@ from typing import List, Optional, Tuple, Union
 
 from common.protocol.client import ClientProtocol
 
+MAX_ATTEMPTS = 3
+NO_ATTEMPTS = 0
+DEFAULT_EXECUTIONS = 1
+
 
 class Client:
     @staticmethod
@@ -64,8 +68,25 @@ class Client:
             )
             return None
 
-    def start(self) -> None:
-        # Obtengo del servidor la dirección de un dispatcher
+    def start(self, executions: int = DEFAULT_EXECUTIONS) -> None:
+        for number_of_execution in range(executions):
+            logging.info(
+                f"action: start_execution | execution: {number_of_execution + 1}/{executions}"
+            )
+
+            # Flujo del cliente
+            self.exec()
+
+            # Pausa entre ejecuciones
+            if number_of_execution < executions - 1:
+                time.sleep(1)
+
+        logging.info(
+            f"action: all_executions_completed | total_executions: {executions}"
+        )
+
+    def exec(self) -> None:
+        # 1. Obtengo del servidor la dirección de un dispatcher
         self._client_socket_to_server = self.create_client_socket(self._server_address)
         if not self._client_socket_to_server:
             return
@@ -76,7 +97,7 @@ class Client:
             f"action: request_dispatcher | result: success | dispatcher: {dispatcher_address}"
         )
 
-        # Subo los datos al dispatcher y obtengo mi id
+        # 2. Subo los datos al dispatcher y obtengo mi id
         self._client_socket_to_dispatcher = self.create_client_socket(
             dispatcher_address
         )
@@ -92,7 +113,8 @@ class Client:
         logging.info(f"action: data_upload | result: success | client_id: {client_id}")
 
         time.sleep(10)  # TODO sacar
-        # Obtengo del servidor la dirección de un results storage
+
+        # 3. Obtengo del servidor la dirección de un results storage
         self._client_socket_to_server = self.create_client_socket(self._server_address)
         if not self._client_socket_to_server:
             return
@@ -105,7 +127,7 @@ class Client:
             f"action: request_results_storage | result: success | results_storage: {results_storage_address}"
         )
 
-        # Descargo los resultados del results storage
+        # 4. Descargo los resultados del results storage
         self._client_socket_to_results_storage = self.create_client_socket(
             results_storage_address
         )
@@ -116,21 +138,28 @@ class Client:
         )
         logging.info("action: data_download | result: in-progress")
 
-        attempts = 3
-        while attempts > 0:
+        attempts = MAX_ATTEMPTS
+        while attempts > NO_ATTEMPTS:
             try:
                 client_protocol_to_results_storage.download_results(
-                    self._output_dir, client_id, self.__open_output_file, self.__close_file
+                    self._output_dir,
+                    client_id,
+                    self.__open_output_file,
+                    self.__close_file,
                 )
+                logging.info("action: data_download | result: success")
+                break
             except Exception as e:
-                attempts-=1
-                logging.error(f"action: data_download | result: in_progress | error happened {e} | attempts left {attempts}")
-                time.sleep(1) # Query result might not exist on result server..
+                attempts -= 1
+                logging.error(
+                    f"action: data_download | result: failure | error: {e} | attempts left: {attempts}"
+                )
+                time.sleep(1)
+
         self._client_socket_to_results_storage.close()
-        if attempts >0:
-            logging.info("action: data_download | result: success")
-        else:
-            logging.info("action: data_download | result: fail")
+
+        if attempts <= NO_ATTEMPTS:
+            logging.info("action: data_download | result: failed all attempts")
 
     def graceful_shutdown(
         self, _signal_number: int, _current_stack_frame: Optional[FrameType]
