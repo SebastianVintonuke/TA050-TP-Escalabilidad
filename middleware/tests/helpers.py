@@ -21,8 +21,8 @@ def wrap_callback_with_ack_handling(original_callback: Callable[[Any], bool]) ->
     return _wrapped
 
 
-def start_consumer_in_thread(mw: Any, callback: Callable[[Any], bool]) -> None:
-    thread = threading.Thread(target=mw.start_consuming, args=(callback,), daemon=True)
+def start_consumer_in_thread(middleware: Any, callback: Callable[[Any], bool]) -> threading.Thread:
+    thread = threading.Thread(target=middleware.start_consuming, args=(callback,), daemon=True)
     thread.start()
     time.sleep(0.3)
     return thread
@@ -38,3 +38,17 @@ def collecting_callback(target_queue: "queue.Queue[Any]") -> Callable[[Any], boo
         target_queue.put(message)
         return True
     return collect_message
+
+def safe_close(middleware):
+    try:
+        middleware.close()
+    except Exception:
+        pass
+
+def stop_consumer_and_join(middleware, thread: threading.Thread, timeout: float):
+    try:
+        middleware.stop_consuming()
+    except Exception:
+        pass
+    thread.join(timeout=timeout)
+
