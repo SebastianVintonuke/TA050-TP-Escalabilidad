@@ -144,5 +144,5 @@ class ClientProtocol:
     def __receive_result_and_store_into(self, file: BufferedWriter) -> None:
         batch = self._batch_protocol.wait_batch()
         while batch:
-            file.write(b"".join(batch))
+            file.write(b"\n".join(batch) + b"\n")
             batch = self._batch_protocol.wait_batch()
