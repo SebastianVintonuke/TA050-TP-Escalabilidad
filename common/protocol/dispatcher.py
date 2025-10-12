@@ -23,7 +23,7 @@ from common.utils import new_uuid, QueryId
 class OutMiddleware:
     def __init__(self):
         self.select_middleware = SelectTasksMiddleware()
-        self.join_middleware = JoinTasksMiddleware(1)
+        self.join_middleware = JoinTasksMiddleware(2)
 
 
 class Counter:

@@ -50,7 +50,7 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_DIR=/input
       - OUTPUT_DIR=/output
-      - EXECUTIONS=2
+      - EXECUTIONS=1
     networks:
       - testing_net
     depends_on:
@@ -68,7 +68,7 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_DIR=/input
       - OUTPUT_DIR=/output
-      - EXECUTIONS=3
+      - EXECUTIONS=1
     networks:
       - testing_net
     depends_on:
@@ -127,8 +127,8 @@ services:
     entrypoint: python3 /selectnode/main.py
     environment:
       - SELECT_NODE_ID=1
-      - GROUPBY_NODE_COUNT=1
-      - JOIN_NODE_COUNT=1
+      - GROUPBY_NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
     networks:
       - testing_net
     depends_on:
@@ -144,8 +144,8 @@ services:
     entrypoint: python3 /selectnode/main.py
     environment:
       - SELECT_NODE_ID=2
-      - GROUPBY_NODE_COUNT=1
-      - JOIN_NODE_COUNT=1
+      - GROUPBY_NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
     networks:
       - testing_net
     depends_on:
@@ -161,8 +161,8 @@ services:
     entrypoint: python3 /selectnode/main.py
     environment:
       - SELECT_NODE_ID=3
-      - GROUPBY_NODE_COUNT=1
-      - JOIN_NODE_COUNT=1
+      - GROUPBY_NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
     networks:
       - testing_net
     depends_on:
@@ -178,8 +178,25 @@ services:
     entrypoint: python3 /groupbynode/main.py
     environment:
       - NODE_IND=0
-      - NODE_COUNT=1
-      - JOIN_NODE_COUNT=1
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+
+  groupbynode2:
+    container_name: groupbynode2
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=1
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
     networks:
       - testing_net
     depends_on:
@@ -195,7 +212,24 @@ services:
     entrypoint: python3 /joinnode/main.py
     environment:
       - NODE_IND=0
-      - NODE_COUNT=1
+      - NODE_COUNT=2
+      - NODE_ID=0
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./joinnode/config.ini:/config.ini:ro
+  
+  joinnode2:
+    container_name: joinnode2
+    image: joinnode:latest
+    entrypoint: python3 /joinnode/main.py
+    environment:
+      - NODE_IND=1
+      - NODE_COUNT=2
       - NODE_ID=0
     networks:
       - testing_net

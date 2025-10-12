@@ -51,7 +51,7 @@ class ClientProtocol:
         Upload the files to a dispatcher
         Return the client_id assigned by the dispatcher
         """
-        folders_sent = ["menu_items","stores","transaction_items", "transactions", "users"]
+        folders_sent = ["transaction_items","menu_items","stores", "transactions", "users"]
 
         for folder in folders_sent:
             for file in input_dir.rglob(f"{folder}/*.csv"):
