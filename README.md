@@ -37,3 +37,9 @@ Linter & format
 `
 lint_and_format.sh
 `
+
+Comparar resultados obtenidos con los resultados esperados
+
+`
+make compare-results <expected_results_directory_path> <obtained_results_directory_path>
+`
