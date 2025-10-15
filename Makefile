@@ -60,3 +60,7 @@ compare-results:
 	   -v "$(PWD)/$$act:/data/actual:ro" \
 	   compare-results-pandas:latest /data/expected /data/actual
 %:: ;
+
+.PHONY: run-unit-tests
+run-unit-tests:
+	@bash unit_tests/run_tests.sh

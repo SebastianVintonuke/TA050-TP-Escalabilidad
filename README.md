@@ -23,7 +23,7 @@ Generar automaticamente un archivo docker-compose
 Correr tests unitarios del MessageMiddleware
 
 `
-unit_tests/run_tests.sh 
+make run-unit-tests
 `
 
 Instalar linter y formatter
