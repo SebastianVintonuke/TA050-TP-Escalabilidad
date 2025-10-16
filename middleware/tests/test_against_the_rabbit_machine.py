@@ -1,10 +1,8 @@
 import unittest
 import queue
 
-from typing import Any
-
 from middleware.src.rabbitmq_middleware import RabbitQueueMiddleware, RabbitExchangeMiddleware
-from middleware.tests.helpers import wrap_callback_with_ack_handling, start_consumer_in_thread, build_message, collecting_callback
+from middleware.tests.helpers import wrap_callback_with_ack_handling, start_consumer_in_thread, build_message, collecting_callback, stop_consumer_and_join, safe_close
 
 WAIT_TIMEOUT = 3.0
 
@@ -66,23 +64,30 @@ class MessageMiddlewareUnitTests(unittest.TestCase):
         rk_miss = "rk_miss"
 
         publisher = RabbitExchangeMiddleware(rk_hit, exchange_type)
-        sub_hit = RabbitExchangeMiddleware(rk_hit, exchange_type)
-        sub_miss = RabbitExchangeMiddleware(rk_miss, exchange_type)
-        self.addCleanup(sub_hit.stop_consuming)
-        self.addCleanup(sub_miss.stop_consuming)
-        self.addCleanup(publisher.close)
-        self.addCleanup(sub_hit.close)
-        self.addCleanup(sub_miss.close)
+        subscriber_hit  = RabbitExchangeMiddleware(rk_hit,  exchange_type)
+        subscriber_miss = RabbitExchangeMiddleware(rk_miss, exchange_type)
+
+        self.addCleanup(lambda: safe_close(publisher))
+        self.addCleanup(lambda: safe_close(subscriber_miss))
+        self.addCleanup(lambda: safe_close(subscriber_hit))
 
         received_hit, received_miss = queue.Queue(), queue.Queue()
 
-        start_consumer_in_thread(sub_hit,  wrap_callback_with_ack_handling(collecting_callback(received_hit)))
-        start_consumer_in_thread(sub_miss, wrap_callback_with_ack_handling(collecting_callback(received_miss)))
+        thread_hit = start_consumer_in_thread(
+            subscriber_hit,
+            wrap_callback_with_ack_handling(collecting_callback(received_hit))
+        )
+        self.addCleanup(lambda: stop_consumer_and_join(subscriber_hit, thread_hit, WAIT_TIMEOUT))
 
-        message = build_message([["exchange_test", "direct_only_hit"]])
+        thread_miss = start_consumer_in_thread(
+            subscriber_miss,
+            wrap_callback_with_ack_handling(collecting_callback(received_miss))
+        )
+        self.addCleanup(lambda: stop_consumer_and_join(subscriber_miss, thread_miss, WAIT_TIMEOUT))
 
         # Act
-        publisher.send(message)
+        msg = build_message([["exchange_test", "direct_only_hit"]])
+        publisher.send(msg)
 
         # Assert
         self.assertIsNotNone(received_hit.get(timeout=WAIT_TIMEOUT))

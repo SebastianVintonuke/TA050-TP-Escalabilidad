@@ -42,3 +42,25 @@ docker-compose-down:
 docker-compose-logs:
 	docker compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
+
+# para no imprimir cosas de los paths
+EXP := $(word 2,$(MAKECMDGOALS))
+ACT := $(word 3,$(MAKECMDGOALS))
+.PHONY: $(EXP) $(ACT)
+$(EXP) $(ACT):
+	@:
+
+.PHONY: compare-results
+compare-results:
+	@exp=$(word 2,$(MAKECMDGOALS)); \
+	 act=$(word 3,$(MAKECMDGOALS)); \
+	 docker build -f compare_results/Dockerfile -t compare-results-pandas:latest compare_results; \
+	 docker run --rm \
+	   -v "$(PWD)/$$exp:/data/expected:ro" \
+	   -v "$(PWD)/$$act:/data/actual:ro" \
+	   compare-results-pandas:latest /data/expected /data/actual
+%:: ;
+
+.PHONY: run-unit-tests
+run-unit-tests:
+	@bash unit_tests/run_tests.sh
