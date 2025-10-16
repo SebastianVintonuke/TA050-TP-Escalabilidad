@@ -68,11 +68,14 @@ class KeepTopAction:
 		self.comp_key = comp_key
 
 	def add_new(self, current_grouped, row):
+		row[self.comp_key] = float(row[self.comp_key])  # Map to float assumed float.
 		current_grouped.append(row)
 
 	def add_to(self, current_grouped, row):
+		row[self.comp_key] = float(row[self.comp_key])  # Map to float assumed float.
 		# Assumed len of grouped has to be one, you wont call this method without new.
 		if row[self.comp_key] > current_grouped[0][self.comp_key]:
+			print(f"BY {self.comp_key}  {row[self.comp_key]} >  {current_grouped[0][self.comp_key]} SO CHANGE TO ROW {row}")
 			current_grouped[0] = row
 	def add_all(self, current_grouped, rows):
 		itm = max(rows, key=lambda r: r[self.comp_key])
@@ -98,9 +101,11 @@ class KeepTopKAction:
 		return lo
 
 	def add_new(self, current_grouped, row):
+		row[self.comp_key] = float(row[self.comp_key])  # Map to float assumed float.
 		current_grouped.append(row)
 
 	def add_to(self, current_grouped, row):
+		row[self.comp_key] = float(row[self.comp_key])  # Map to float assumed float.
 		#Current grouped is assumed ordered since this is ordering it.
 		if len(current_grouped) >= self.limit:
 			ind =self._binary_insert_ind(current_grouped, row)
@@ -166,10 +171,12 @@ class KeepAscOrDescK:
 
 
 	def add_new(self, current_grouped, row):
+		row[self.comp_key] = float(row[self.comp_key])  # Map to float assumed float.
 		row[self.comp_key2] = int(row[self.comp_key2])		
 		current_grouped.append(row)
 
 	def add_to(self, current_grouped, row):
+		row[self.comp_key] = float(row[self.comp_key])  # Map to float assumed float.
 		row[self.comp_key2] = int(row[self.comp_key2])
 
 		#Current grouped is assumed ordered since this is ordering it.

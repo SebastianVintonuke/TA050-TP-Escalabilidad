@@ -39,6 +39,10 @@ class MessageBuilder:
         self.should_be_eof = True
         self.headers.msg_count = count
 
+    def reset_eof(self):
+        self.should_be_eof = False
+        self.headers.reset_eof()
+
     def is_eof(self):
         return self.should_be_eof
 

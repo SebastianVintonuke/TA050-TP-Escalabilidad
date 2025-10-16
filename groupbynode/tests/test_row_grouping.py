@@ -29,6 +29,16 @@ class TestKeepTopAction(unittest.TestCase):
         action.add_to(acc, ['C', 5])
         self.assertEqual(acc[0][1], 15)
 
+
+    def test_keep_top_str(self):
+        action = KeepTopAction(comp_key=1)
+        acc = []
+        action.add_new(acc, ['A', "99.0"])
+        action.add_to(acc, ['B', "100.0"])
+        action.add_to(acc, ['C', "5.0"])
+        self.assertEqual(acc[0][1], 100.0)
+
+
 class TestKeepTopKAction(unittest.TestCase):
     def test_top_k_basic(self):
         action = KeepTopKAction(comp_key='score', limit=3)
@@ -37,6 +47,16 @@ class TestKeepTopKAction(unittest.TestCase):
             action.add_to(acc, {'score': score})
         scores = [row['score'] for row in acc]
         self.assertEqual(scores, [30, 25, 20])
+
+    def test_keep_top_k_str(self):
+        action = KeepTopKAction(comp_key=1, limit=3)
+        acc = []
+        action.add_new(acc, ['A', "99.0"])
+        action.add_to(acc, ['B', "100.0"])
+        action.add_to(acc, ['C', "5.0"])
+        self.assertEqual(acc[0][1], 100.0)
+        self.assertEqual(acc[1][1], 99.0)
+
 
     def test_top_k_limit_1(self):
         action = KeepTopKAction(comp_key='score', limit=1)

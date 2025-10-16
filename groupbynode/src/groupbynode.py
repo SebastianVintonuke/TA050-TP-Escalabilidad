@@ -11,7 +11,7 @@ class QueryAccumulator:
 		self.messages_received=0
 		self.known_message_len= -1
 		self.rows_recv = 0
-		self.msg_builder.headers.reset_eof() # Ensure its not copying the eof flag from input sender
+		self.msg_builder.reset_eof() # Ensure its not copying the eof flag from input sender
 
 	def check(self, row):
 		self.rows_recv+=1
@@ -25,6 +25,7 @@ class QueryAccumulator:
 		else:
 			self.type_conf.grouper.add_group_acc(acc, row)
 			#acc.add_row(row) # Better in design? who knows
+		#print(f"{self.msg_builder.headers.types} HANDLED ", key, row,  acc)
 
 	def send_built(self): # What happens If the groupbynode fails here/shutdowns here?
 		for group, acc in self.groups.items():
