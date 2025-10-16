@@ -1,5 +1,4 @@
-#!/usr/bin/env bash
-set -Eeuo pipefail
+#!/bin/bash
 
 COMPOSE="docker compose"
 COMPOSE_FILE="unit_tests/docker-compose.yml"

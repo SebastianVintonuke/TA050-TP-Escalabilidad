@@ -147,7 +147,7 @@ def main() -> None:
             #logging.info(f"Q_2_QUAN {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
-            year = month_encoded // 12 + 2024
+            year = (month_encoded - 1) // 12 + 2024
             month = (month_encoded-1) % 12 + 1
             year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
             sellings_qty: int = int(float(line[2]))
@@ -168,7 +168,7 @@ def main() -> None:
             #logging.info(f"Q_2_prof {line}")
             item_name: str = line[0]
             month_encoded = int(line[1])
-            year = month_encoded // 12 + 2024
+            year = (month_encoded - 1) // 12 + 2024
             month = (month_encoded-1) % 12 + 1
             year_month_created_at: date = datetime.strptime(f"{year}-{month}", "%Y-%m").date()
             profit_sum: float = line[2]

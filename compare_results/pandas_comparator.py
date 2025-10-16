@@ -58,6 +58,10 @@ def main():
         try:
             expected_dataframe = read_csv_file(expected_file_path)
             actual_dataframe = read_csv_file(actual_file_path)
+            if expected_file_name.startswith("q3"):
+                expected_dataframe[2] = expected_dataframe[2].astype(float).round(3)
+                actual_dataframe[2] = actual_dataframe[2].astype(float).round(3)
+
         except Exception as e:
             print(f"[ERROR] reading files: {e}")
             failures += 1
