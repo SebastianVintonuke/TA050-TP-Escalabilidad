@@ -21,6 +21,7 @@ docker-image:
 	docker build -f ./groupbynode/Dockerfile -t "groupbynode:latest" .
 	docker build -f ./joinnode/Dockerfile -t "joinnode:latest" .
 	docker build -f ./server/Dockerfile -t "server:latest" .
+	docker build -f ./integration_tests/Dockerfile -t "integration_tests:latest" .
 
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this). Don't left uncommented if you 
