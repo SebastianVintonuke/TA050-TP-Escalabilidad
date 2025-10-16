@@ -27,7 +27,7 @@ class BaseHeaders:
 			headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE)
 		)
 
-	def __init__(self, ids, types, msg_count = DEFAULT_PARTITION_VALUE):
+	def __init__(self, ids, types = [DEFAULT_QUERY_TYPE], msg_count = DEFAULT_PARTITION_VALUE):
 		self.ids = ids
 		self.types = types
 		self.msg_count = msg_count
@@ -88,6 +88,16 @@ class BaseHeaders:
 		if len(self.types) >0 and self.types[0] != DEFAULT_QUERY_TYPE:
 			res[FIELD_QUERY_TYPE] = self.types
 
+		if self.msg_count != DEFAULT_PARTITION_VALUE: # If it is the default one, then save it.
+			res[FIELD_PARTITION_IND]= self.msg_count
+
+		return res
+
+	def to_dict_no_type(self):
+		res = {
+			FIELD_QUERY_ID: self.ids,
+		}
+		
 		if self.msg_count != DEFAULT_PARTITION_VALUE: # If it is the default one, then save it.
 			res[FIELD_PARTITION_IND]= self.msg_count
 

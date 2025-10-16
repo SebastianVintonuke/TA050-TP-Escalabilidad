@@ -73,9 +73,13 @@ class RabbitMQChannel:
 
 		return real_callback
 
-	def declare_consumue(self, queue_name, on_message_callback):
+	def declare_consume(self, queue_name, on_message_callback):
 		self.channel.basic_consume(
 			queue=queue_name, on_message_callback=self._callback_wrapper(on_message_callback), auto_ack=False)
+
+	def declare_raw_consume(self, queue_name, on_message_callback):
+		self.channel.basic_consume(
+			queue=queue_name, on_message_callback=on_message_callback, auto_ack=False)
 
 	def start_consume(self, prefetch_count = 2):
 		try:

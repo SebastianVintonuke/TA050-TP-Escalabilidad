@@ -3,7 +3,6 @@ from .errors import *
 import logging
 from .routing.csv_message import CSVMessageBuilder, CSVMessage
 from .routing.header_fields import BaseHeaders
-
 from .rabbitmq import utils as rbmq_utils
 from .rabbitmq.blocking_manager import *
 
@@ -47,7 +46,7 @@ class RabbitQueueMiddleware(BaseRabbitMiddleware):
 		self._channel.declare_queues(queue_name)
 
 	def start_consuming(self, on_message_callback):
-		self._channel.declare_consumue(self.queue_name, on_message_callback)
+		self._channel.declare_consume(self.queue_name, on_message_callback)
 		self._channel.start_consume()
 
 	def send(self, message_builder: CSVMessageBuilder):
@@ -67,13 +66,14 @@ class RabbitExchangeMiddleware(RabbitQueueMiddleware):
 		self.exch_name = exchange_name
 		self._channel.exchange_declare(self.exch_name, self._get_exchange_type())
 	def _get_exchange_type(self):
-		return self.exch_name
+		return "direct"
 
 	def start_consuming(self, on_message_callback):
 		try:
 			self._channel.bind_queue(self.queue_name, self.queue_name)
-			self._channel.declare_consumue(self.queue_name, on_message_callback)
+			self._channel.declare_consume(self.queue_name, on_message_callback)
 		except rbmq_utils.RoutingConnectionErrors as e:
+
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ queue binding and consume declaring failed because of connection: {e}") from e
 		except Exception as e:
 			raise MessageMiddlewareMessageError(f"RabbitMQ queue binding and consume declaring failed: {e}") from e
@@ -88,11 +88,6 @@ class RabbitHashedExchangeMiddleware(RabbitExchangeMiddleware):
 		self.queue_name_base = queue_name_base
 		self.node_count = int(node_count)
 
-	# Redefine since it has custom exchange name. If it was just 'direct' or 'fanout' exchange name it would not be needed
-	def _get_exchange_type(self): 
-		return 'direct'
-
-
 	def send(self, hashed_message_builder): #: 
 		target = self.queue_name_base.format(IND= hashed_message_builder.hash_in(self.node_count))
 		headers = hashed_message_builder.get_headers()
@@ -106,7 +101,8 @@ class RabbitHashedExchangeMiddleware(RabbitExchangeMiddleware):
 
 
 class RabbitMultiQueueExchangeMiddleware(BaseRabbitMiddleware):
-	def __init__(self, route_keys, exchange_name = DEFAULT_EXCHANGE, host = rbmq_utils.RABBITMQ_HOST):
+	def __init__(self, route_keys, exchange_name, host = rbmq_utils.RABBITMQ_HOST):
+
 		super().__init__(host)
 		self.route_types = {}
 		self.exch_name = exchange_name
@@ -124,7 +120,7 @@ class RabbitMultiQueueExchangeMiddleware(BaseRabbitMiddleware):
 		self._channel.exchange_declare(self.exch_name, self._get_exchange_type())
 
 	def _get_exchange_type(self):
-		return self.exch_name
+		return "direct"
 
 	def parse_queue_name(self, queue_type):
 		return self.exch_name+"-"+queue_type
@@ -132,6 +128,35 @@ class RabbitMultiQueueExchangeMiddleware(BaseRabbitMiddleware):
 	def parse_real_route_key(self, msg_type):
 		return f"tasks-{msg_type}"		
 	
+
+
+
+
+
+	def _callback_wrapper(self, callback, r_type):
+		def real_callback(ch, method, properties, body):
+			#logging.info(f"action: msg_recv | result: success | queue: {self.queue_name} | method: {method} | props: {properties} | body:{body}")
+			#CSVMessage(properties.headers, body)
+			headers = BaseHeaders.from_headers(properties.headers)
+
+			headers.types = [r_type]
+			try:
+				msg_failed = callback(headers, body) # Handle msg
+
+				if msg_failed:
+					# If msg failed, requeue is desired else throw exception(for now?)
+					ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True) 				
+				else:
+					ch.basic_ack(delivery_tag = method.delivery_tag)
+
+			except Exception as e:
+				logging.error(f"Message handling failed {headers}")
+				logging.error(f"payload: {body[:min(50,len(body))]} error: {e}")
+				ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)	
+
+
+		return real_callback
+
 
 	def start_consuming(self, on_message_callbacks):
 		try:
@@ -141,8 +166,9 @@ class RabbitMultiQueueExchangeMiddleware(BaseRabbitMiddleware):
 
 				callback = on_message_callbacks.get(r_type, None)
 				if callback:
-					self._channel.declare_consumue(queue_name, callback)
+					self._channel.declare_raw_consume(queue_name, self._callback_wrapper(callback, r_type))
 		except rbmq_utils.RoutingConnectionErrors as e:
+
 			raise MessageMiddlewareDisconnectedError(f"RabbitMQ queue binding and consume declaring failed because of connection: {e}") from e
 		except Exception as e:
 			raise MessageMiddlewareMessageError(f"RabbitMQ queue binding and consume declaring failed: {e}") from e
@@ -152,10 +178,12 @@ class RabbitMultiQueueExchangeMiddleware(BaseRabbitMiddleware):
 
 	def send(self, message_builder: CSVMessageBuilder):
 		payload = message_builder.serialize_payload()
-		headers = message_builder.get_headers()
-		route_key = self.route_types.get(message_builder.types[0], message_builder.types[0]) 
 		
-		self._channel.send(route_key, headers,payload)
+		for single_headers in message_builder.headers.split():
+
+			route_key = self.route_types.get(single_headers.types[0], single_headers.types[0])
+			logging.info(f"----> sending to {self._channel.exch_name}/ {route_key} len: {len(payload)} {single_headers.to_dict_no_type()}")
+			self._channel.send(route_key, single_headers.to_dict_no_type(),payload)
 
 	def _delete(self):
 		if self.channel and self.channel.is_open:
