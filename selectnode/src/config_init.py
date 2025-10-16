@@ -10,7 +10,9 @@ from common.config.row_mapping import *
 from middleware.routing.csv_message import CSVMessageBuilder,CSVHashedMessageBuilder
 
 
-SHARED_IN_FIELDS = [
+SELECT_TRANSACTION_ITEMS_IN_FIELDS = ["product_id", "year", "month", "revenue", "quantity"]
+
+SELECT_TRANSACTION_SHARED_IN_FIELDS = [
     "transaction_id",
     "year",
     "store_id",
@@ -32,7 +34,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
         SelectTypeConfiguration(
             result_middleware,
             CSVMessageBuilder.creator_with_type(QUERY_1),
-            in_fields=SHARED_IN_FIELDS,  # In order
+            in_fields=SELECT_TRANSACTION_SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
@@ -55,7 +57,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
         SelectTypeConfiguration(
             groupby_middleware,
             CSVHashedMessageBuilder.creator_with_type(QUERY_2),
-            in_fields=["product_id", "year", "month", "revenue", "quantity"],  # In order
+            in_fields=SELECT_TRANSACTION_ITEMS_IN_FIELDS,  # In order
             filters_conf=[["year", EQUALS_ANY, ["2024", "2025"]]],
             out_conf={
                 ROW_CONFIG_ACTIONS: [
@@ -83,7 +85,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
         SelectTypeConfiguration(
             groupby_middleware,
             CSVHashedMessageBuilder.creator_with_type(QUERY_3),
-            in_fields=SHARED_IN_FIELDS,  # In order
+            in_fields=SELECT_TRANSACTION_SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
                 ["hour", BETWEEN_THAN_OP, [6, 23]],
@@ -119,7 +121,7 @@ def add_selectnode_config(types_expander, result_middleware, groupby_middleware)
         SelectTypeConfiguration(
             groupby_middleware,
             CSVHashedMessageBuilder.creator_with_type(QUERY_4),
-            in_fields=SHARED_IN_FIELDS,  # In order
+            in_fields=SELECT_TRANSACTION_SHARED_IN_FIELDS,  # In order
             filters_conf=[
                 ["year", EQUALS_ANY, ["2024", "2025"]],
                 ["user_id", NOT_EQUALS, ["", str(None)]],

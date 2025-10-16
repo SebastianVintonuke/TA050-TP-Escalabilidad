@@ -49,9 +49,11 @@ class HashedMemoryMessageBuilder(HashedMessageBuilder):
     def clone(self):
         return HashedMemoryMessageBuilder(self.headers.clone(), self.key_hash)
 
+def do_nothing(header, msg):
+    pass
 class MemoryMiddleware(MessageMiddleware):
     def __init__(self):
-        self.listener = None
+        self.listener = do_nothing
 
     def send(self, builder):
         self.listener(builder.headers, builder.payload)

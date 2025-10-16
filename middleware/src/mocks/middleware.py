@@ -5,6 +5,34 @@ from middleware.routing.message_building import *
 from middleware.routing.header_fields import *
 
 
+
+class IntermediateMiddleware(MessageMiddleware):
+    def __init__(self, inner_middleware):
+        self.msgs = []
+        self.inner_middleware = inner_middleware
+
+    def send(self, msg):
+        self.msgs.append(msg)
+        self.inner_middleware.send(msg);
+
+    def start_consuming(self, on_message_callback):
+        self.inner_middleware.start_consuming(on_message_callback)
+
+    def stop_consuming(self):
+        self.inner_middleware.stop_consuming()
+
+    def close(self):
+        self.inner_middleware.close()
+
+    def delete(self):
+        self.inner_middleware.delete()
+
+    def push_msg(self, msg):
+        self.inner_middleware.send(msg);
+        
+
+
+
 class MockMiddleware(MessageMiddleware):
     def __init__(self):
         self.msgs = []
