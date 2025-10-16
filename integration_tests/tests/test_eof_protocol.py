@@ -244,6 +244,75 @@ class TestEOFProtocol(unittest.TestCase):
 
 
 
+    def test_query_1_eof_is_inverted_reaches_inverted_to_result_node_with_full_filtered_msg(self):
+        #MemoryMessage , CSVMessage
+        #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
+
+        ## INIT NODES
+        nodes_setup = NodesSetup.mock_setup()
+
+        select_node = nodes_setup.get_select_node()
+        select_node.start()
+
+        results = nodes_setup.result_middleware
+
+        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_1])
+
+        rows = [
+            {
+                "transaction_id": "tr_1",
+                "year": "2023",
+                "store_id": "st_1",
+                "user_id": "u_1",
+                "month": "1",
+                "hour": "13",
+                "revenue": "10",
+            },
+            {
+                "transaction_id": "tr_1",
+                "year": "2024",
+                "store_id": "st_1",
+                "user_id": "u_1",
+                "month": "1",
+                "hour": "13",
+                "revenue": "85",
+            }
+        ]
+
+        exp_rows_q1 = parse_output_rows_query_1(rows[1:])
+
+        msg.add_row(get_row_query_transactions(rows[0]))
+
+        msg_eof = msg.clone()
+        msg_eof.set_as_eof(2)
+
+        msg2 = msg.clone()
+        msg2.add_row(get_row_query_transactions(rows[1]))
+
+        nodes_setup.select_middleware.push_msg(msg_eof)
+        nodes_setup.select_middleware.push_msg(msg) # Filtered completely by select
+        nodes_setup.select_middleware.push_msg(msg2)
+
+        # First message fully filtered is not eof.
+        self.assertFalse(results.msgs[1].is_eof());
+
+        # But has len 0
+        res = CSVMessage(results.msgs[1].serialize_payload())
+        q1_res_rows = [row for row in res.stream_rows()]
+        self.assertEqual(len(q1_res_rows), 0)
+
+        res = CSVMessage(results.msgs[2].serialize_payload())
+        q1_res_rows = [row for row in res.stream_rows()]
+        self.assertEqual(len(q1_res_rows) , len(exp_rows_q1))
+        for i in range(len(exp_rows_q1)):
+            self.assertEqual(q1_res_rows[i] , exp_rows_q1[i])
+
+
+        headers_msg = results.msgs[0].headers
+        self.assertTrue(headers_msg.is_eof());
+        self.assertEqual(headers_msg.msg_count, 2);
+
+
 
     def test_query_2_eof_is_inverted_reaches_inverted_to_groupby_but_it_waits(self):
         #MemoryMessage , CSVMessage
