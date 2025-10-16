@@ -21,7 +21,7 @@ from middleware.memory_middleware import *
 from middleware.routing.csv_message import * 
 from middleware.routing.query_types import * 
 
-
+from abc import ABC, abstractmethod
 def map_dict_to_vect_cols(cols, row):
     res = []
     for col in cols:
@@ -47,19 +47,6 @@ class NodesSetup:
             topk_middleware = SerializeMemoryMiddleware(),
             result_middleware = SerializeMemoryMiddleware(),
         )
-
-
-    def real_setup():
-        return NodesSetup(
-            msg_type= CSVMessage,# Initial msg_type
-            select_middleware = SelectTasksMiddleware(),
-            join_middleware = JoinTasksMiddleware(1, ind = 0),
-            groupby_middleware = GroupbyTasksMiddleware(1, ind = 0),
-            topk_middleware = SerializeMemoryMiddleware(),
-            result_middleware = SerializeMemoryMiddleware(),
-        )
-
-
 
     def __init__(self, msg_type, select_middleware, join_middleware, groupby_middleware, topk_middleware, result_middleware):
         self.select_middleware=IntermediateMiddleware(select_middleware)
@@ -114,7 +101,13 @@ def parse_output_rows_query_1(rows):
 def get_row_query_transaction_items(dict_data):
     return map_dict_to_vect_cols(SELECT_TRANSACTION_ITEMS_IN_FIELDS, dict_data)
 
-class TestEOFProtocol(unittest.TestCase):
+class BaseEOFProtocolTest(ABC):
+
+    @abstractmethod
+    def get_node_setup(self):
+        """Subclasses must implement this method to return NodeSetup instance."""
+        return None
+
     def test_compiled_config(self):
         types_expander = TypeExpander()
         result_grouper = MockMiddleware()
@@ -128,7 +121,7 @@ class TestEOFProtocol(unittest.TestCase):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = NodesSetup.mock_setup()
+        nodes_setup = self.get_node_setup()
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -187,7 +180,7 @@ class TestEOFProtocol(unittest.TestCase):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = NodesSetup.mock_setup()
+        nodes_setup = self.get_node_setup()
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -249,7 +242,7 @@ class TestEOFProtocol(unittest.TestCase):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = NodesSetup.mock_setup()
+        nodes_setup = self.get_node_setup()
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -292,6 +285,7 @@ class TestEOFProtocol(unittest.TestCase):
         nodes_setup.select_middleware.push_msg(msg_eof)
         nodes_setup.select_middleware.push_msg(msg) # Filtered completely by select
         nodes_setup.select_middleware.push_msg(msg2)
+        self.assertEqual(len(results.msgs), 3);
 
         # First message fully filtered is not eof.
         self.assertFalse(results.msgs[1].is_eof());
@@ -319,7 +313,7 @@ class TestEOFProtocol(unittest.TestCase):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = NodesSetup.mock_setup()
+        nodes_setup = self.get_node_setup()
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -415,7 +409,7 @@ class TestEOFProtocol(unittest.TestCase):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = NodesSetup.mock_setup()
+        nodes_setup = self.get_node_setup()
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -585,7 +579,7 @@ class TestEOFProtocol(unittest.TestCase):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = NodesSetup.mock_setup()
+        nodes_setup = self.get_node_setup()
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -675,7 +669,8 @@ class TestEOFProtocol(unittest.TestCase):
         # Even though received EOFS it did not send EOF to result node since not received product names
         self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
 
-        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_PRODUCT_NAMES])
+        #Message for join is hashed
+        msg = CSVHashedMessageBuilder.with_credentials(["q_id"], [QUERY_PRODUCT_NAMES], "key_hash_q_id")
 
         # ["pr_1", "1", "100.0"], FRom topk
         # ["pr_top_q", "1", "5.0"],
@@ -763,5 +758,3 @@ class TestEOFProtocol(unittest.TestCase):
         else:
             self.assertEqual(headers_msg_2.types, [QUERY_2_REVENUE])
             self.assertEqual(headers_msg_1.types, [QUERY_2_QUANTITY])
-
-
