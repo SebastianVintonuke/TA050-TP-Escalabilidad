@@ -12,7 +12,10 @@ class IntermediateMiddleware(MessageMiddleware):
         self.inner_middleware = inner_middleware
 
     def send(self, msg):
-        self.msgs.append(msg)
+        cloned = msg.clone()
+        cloned.payload = [itm for itm in msg.payload]
+        print(f"INTERME SENDING {cloned.headers} len: {len(cloned.payload)}")
+        self.msgs.append(cloned)
         self.inner_middleware.send(msg);
 
     def start_consuming(self, on_message_callback):
@@ -29,7 +32,7 @@ class IntermediateMiddleware(MessageMiddleware):
 
     def push_msg(self, msg):
         self.inner_middleware.send(msg);
-        
+
 
 
 

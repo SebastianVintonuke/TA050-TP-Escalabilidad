@@ -51,6 +51,9 @@ class BaseHeaders:
 		pass
 		#logging.info(f"action: msg_describe | result: success | queries_id:{self.ids} | queries_type: {self.types}")
 
+	def reset_eof(self):
+		self.msg_count = DEFAULT_PARTITION_VALUE
+
 	def is_eof(self):
 		return self.msg_count != DEFAULT_PARTITION_VALUE
 

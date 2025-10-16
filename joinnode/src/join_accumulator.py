@@ -5,6 +5,7 @@ class JoinAccumulator:
     def __init__(self, type_conf, msg_builder, limit = DEFAULT_LIMIT):
         self.type_conf = type_conf
         self.msg_builder = msg_builder#type_conf.new_builder_for(msg, ind)
+        self.msg_builder.headers.reset_eof() # Ensure its not copying the eof flag from input sender
 
         self.left_rows = []
         self.right_rows = []

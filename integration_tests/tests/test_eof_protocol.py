@@ -180,69 +180,158 @@ class TestEOFProtocol(unittest.TestCase):
         self.assertEqual(headers_msg.msg_count, 1);
 
 
+    def test_query_1_eof_is_inverted_reaches_inverted_to_result_node(self):
+        #MemoryMessage , CSVMessage
+        #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
+        ## INIT NODES
+        nodes_setup = NodesSetup.mock_setup()
 
-    def test_query_1_selectnode(self):
+        select_node = nodes_setup.get_select_node()
+        select_node.start()
 
-        # In order
-        in_cols = ["transaction_id", "year", "hour", "sum"]
-        out_cols = ["transaction_id", "sum"]
+        results = nodes_setup.result_middleware
 
-        result_grouper = MockMiddleware()
-        type_conf = SelectTypeConfiguration(
-            result_grouper,
-            BareMockMessageBuilder,
-            in_fields=in_cols,
-            filters_conf=[
-                ["year", EQUALS_ANY, ["2024", "2025"]],
-                ["hour", BETWEEN_THAN_OP, [6, 23]],
-                ["sum", GREATER_THAN_OP, [75]],
-            ],
-            out_conf={ROW_CONFIG_OUT_COLS: out_cols},
-        )
+        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_1])
 
-        in_middle = MockMiddleware()
-
-        type_exp = TypeExpander()
-        type_exp.add_configurations("t1", type_conf)
-
-        node = SelectNode(in_middle, MockMessage, type_exp)
-        node.start_single()
-
-        rows_pass = [
-            {"transaction_id": "tr1", "year": 2024, "hour": 7, "sum": 88},
-            {"transaction_id": "tr2", "year": 2025, "hour": 23, "sum": 942},
-            {"transaction_id": "tr3", "year": 2024, "hour": 6, "sum": 942},
-        ]
-        # out_cols = ["transaction_id", "sum"]
-        expected = [[r["transaction_id"], str(r["sum"])] for r in rows_pass]
-
-        rows_fail = [
-            {"transaction_id": "tr4", "year": 2027, "hour": 7, "sum": 88},
-            {"transaction_id": "tr5", "year": 2025, "hour": 24, "sum": 942},
-            {"transaction_id": "tr6", "year": 2024, "hour": 6, "sum": 55},
+        rows = [
+            {
+                "transaction_id": "tr_1",
+                "year": "2023",
+                "store_id": "st_1",
+                "user_id": "u_1",
+                "month": "1",
+                "hour": "13",
+                "revenue": "10",
+            },
+            {
+                "transaction_id": "tr_1",
+                "year": "2024",
+                "store_id": "st_1",
+                "user_id": "u_1",
+                "month": "1",
+                "hour": "13",
+                "revenue": "85",
+            }
         ]
 
-        message = BareMockMessageBuilder.for_payload(
-            ["query_3323"],
-            ["t1"],
-            rows_pass + rows_fail,
-            lambda r: map_dict_to_vect_cols(in_cols, r),
-        )
+        exp_rows_q1 = parse_output_rows_query_1(rows[1:])
 
-        in_middle.push_msg(message)
+        for row in rows:
+            msg.add_row(get_row_query_transactions(row))
 
-        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries())
+        msg_eof = msg.clone()
+        msg_eof.set_as_eof(1)
 
-        for ind, exp_out_headers in enumerate(message.headers.split()):            
-            self.assertEqual(
-                result_grouper.msgs[ind].headers.to_dict(), 
-                exp_out_headers.to_dict())
+        nodes_setup.select_middleware.push_msg(msg_eof)
+        nodes_setup.select_middleware.push_msg(msg)
 
-        got_result = [x for x in result_grouper.msgs[0].payload]
-        self.assertEqual(len(got_result), len(rows_pass))
+        self.assertEqual(len(results.msgs), 2)
 
-        ind = 0
-        for elem in expected:
-            self.assertEqual(got_result[ind], elem)
-            ind += 1
+        res = CSVMessage(results.msgs[1].serialize_payload())
+        q1_res_rows = [row for row in res.stream_rows()]
+        self.assertEqual(len(q1_res_rows) , len(exp_rows_q1))
+        for i in range(len(exp_rows_q1)):
+            self.assertEqual(q1_res_rows[i] , exp_rows_q1[i])
+
+
+        headers_msg = results.msgs[0].headers
+        self.assertTrue(headers_msg.is_eof());
+        self.assertEqual(headers_msg.msg_count, 1);
+
+
+
+
+
+    def test_query_2_eof_is_inverted_reaches_inverted_to_groupby_but_it_waits(self):
+        #MemoryMessage , CSVMessage
+        #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
+
+        ## INIT NODES
+        nodes_setup = NodesSetup.mock_setup()
+
+        select_node = nodes_setup.get_select_node()
+        select_node.start()
+
+        groupby_node = nodes_setup.get_groupby_node()
+        groupby_node.start()
+
+
+        groupby_middle = nodes_setup.groupby_middleware
+
+        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_2])
+
+        rows = [
+            {
+                "product_id": "pr_1",
+                "year": "2023",
+                "month": "1",
+                "revenue": "100",
+                "quantity": "2",
+            },
+            {
+                "product_id": "pr_1",
+                "year": "2024",
+                "month": "1",
+                "revenue": "100",
+                "quantity": "2",
+            },
+            {
+                "product_id": "pr_2",
+                "year": "2024",
+                "month": "1",
+                "revenue": "5",
+                "quantity": "2",
+            },
+            {
+                "product_id": "pr_2",
+                "year": "2024",
+                "month": "1",
+                "revenue": "5",
+                "quantity": "1",
+            },
+        ]
+
+
+        for row in rows:
+            msg.add_row(get_row_query_transaction_items(row))
+
+        msg_eof = msg.clone()
+        msg_eof.set_as_eof(1)
+
+        nodes_setup.select_middleware.push_msg(msg_eof)
+
+        self.assertEqual(len(groupby_middle.msgs), 1)
+
+        # No message sent, eof not reached 1 message left to be sent.
+        self.assertEqual(len(nodes_setup.topk_middleware.msgs), 0)
+        self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
+        self.assertEqual(len(nodes_setup.join_middleware.msgs), 0)
+
+        nodes_setup.select_middleware.push_msg(msg)
+
+        self.assertEqual(len(groupby_middle.msgs), 2)
+
+        # Grouped message was sent to topk together with EOF
+        self.assertEqual(len(nodes_setup.topk_middleware.msgs), 2)
+        self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
+        self.assertEqual(len(nodes_setup.join_middleware.msgs), 0)
+
+
+        exp_rows_q2_groupby = [
+            #["product_id", "month", "revenue", "quantity"]
+            ["pr_1", "1", "100.0", "2.0"], # Quantity is float for now
+            ["pr_2", "1", "10.0", "3.0"],
+        ]
+
+
+        self.assertFalse(nodes_setup.topk_middleware.msgs[0].headers.is_eof());
+        res = CSVMessage(nodes_setup.topk_middleware.msgs[0].serialize_payload())
+        q2_res_rows = [row for row in res.stream_rows()]
+        self.assertEqual(len(q2_res_rows) , len(exp_rows_q2_groupby))
+        for i in range(len(exp_rows_q2_groupby)):
+            self.assertEqual(q2_res_rows[i] , exp_rows_q2_groupby[i])
+
+        headers_msg = nodes_setup.topk_middleware.msgs[1].headers
+        self.assertTrue(headers_msg.is_eof());
+        self.assertEqual(headers_msg.msg_count, 1);

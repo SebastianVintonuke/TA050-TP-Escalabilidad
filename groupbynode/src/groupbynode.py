@@ -11,6 +11,7 @@ class QueryAccumulator:
 		self.messages_received=0
 		self.known_message_len= -1
 		self.rows_recv = 0
+		self.msg_builder.headers.reset_eof() # Ensure its not copying the eof flag from input sender
 
 	def check(self, row):
 		self.rows_recv+=1
