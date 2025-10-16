@@ -4,12 +4,12 @@ from typing import Any, Callable, Iterable
 
 import queue
 
-from middleware.src.routing.csv_message import CSVMessageBuilder
-
+from middleware.src.routing.csv_message import CSVMessageBuilder,CSVMessage
 
 def wrap_callback_with_ack_handling(original_callback: Callable[[Any], bool]) -> Callable[[Any], bool]:
     """Envuelve un callback y asegura ACK del mensaje después de ejecutarlo."""
-    def _wrapped(message: Any) -> bool:
+    def _wrapped(headers, message: Any) -> bool:
+        #message= CSVMessage(message)
         result: bool = original_callback(message)
         if hasattr(message, "delivery_tag"):
             message.ch.basic_ack(delivery_tag=message.delivery_tag)
@@ -28,7 +28,7 @@ def start_consumer_in_thread(middleware: Any, callback: Callable[[Any], bool]) -
     return thread
 
 def build_message(rows: Iterable[Iterable[str]]) -> CSVMessageBuilder:
-    message_builder = CSVMessageBuilder(["id"], ["type"])
+    message_builder = CSVMessageBuilder.with_credentials(["id"], ["type"])
     for row in rows:
         message_builder.add_row(row)
     return message_builder
