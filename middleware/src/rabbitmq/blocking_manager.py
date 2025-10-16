@@ -96,6 +96,14 @@ class RabbitMQChannel:
 	def set_prefetch(self, prefetch_count = 2):
 		self.channel.basic_qos(prefetch_count=prefetch_count)
 
+	def is_open(self):
+		return self.channel.is_open
+
+	def close(self):
+		self.channel.close()
+	def stop_consuming(self):
+		self.channel.stop_consuming()
+
 
 class RabbitMQManager:
 	def __init__(self, host):
@@ -118,12 +126,13 @@ class RabbitMQManager:
 
 	def stop_channels(self):
 		for channel in self.channels:
-			if channel.is_open:
+			if channel.is_open():
 				channel.stop_consuming()
 
 	def stop_consuming(self):
 		self.is_consuming.clear()
-		#self.stop_channels()
+		self.stop_channels()
+		self.is_stopped.set()
 
 	def async_stop_consuming(self):
 		# Schedule to trigger stop thread safely as soon as possible on connection.
@@ -132,7 +141,7 @@ class RabbitMQManager:
 
 	def close(self):
 		for channel in self.channels:
-			if channel.is_open:
+			if channel.is_open():
 				channel.close()
 
 		if self._conn.is_open:

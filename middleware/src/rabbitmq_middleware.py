@@ -81,6 +81,15 @@ class RabbitExchangeMiddleware(RabbitQueueMiddleware):
 		self._channel.start_consume()
 
 
+class RabbitExchangeMiddlewareTypeNamed(RabbitExchangeMiddleware):
+	def __init__(self, queue_name, exchange_name = DEFAULT_EXCHANGE, host = rbmq_utils.RABBITMQ_HOST):
+		self.exch_type = exchange_name
+		super().__init__(queue_name, exchange_name, host)
+
+	def _get_exchange_type(self):
+		return self.exch_type
+
+
 
 class RabbitHashedExchangeMiddleware(RabbitExchangeMiddleware):
 	def __init__(self, queue_name_base, exchange_name, node_count, ind = 0, host = rbmq_utils.RABBITMQ_HOST):
