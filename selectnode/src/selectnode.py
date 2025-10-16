@@ -11,7 +11,7 @@ class TypeHandler:
         self.type_conf.filter_map(row, self.msg_builder)
     
     def send_built(self):
-        logging.info(f"----------> {self.msg_builder.headers.types} message sent len:{self.msg_builder.len_payload()}")
+        #logging.info(f"----------> {self.msg_builder.headers.types} message sent len:{self.msg_builder.len_payload()}")
         self.type_conf.send(self.msg_builder)
 
 
