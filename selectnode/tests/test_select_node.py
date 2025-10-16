@@ -57,7 +57,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp.add_configurations("t1", type_conf)
 
         node = SelectNode(in_middle, MockMessage, type_exp)
-        node.start()
+        node.start_single()
 
         rows_pass = [
             {"transaction_id": "tr1", "year": 2024, "hour": 7, "sum": 88},
@@ -131,7 +131,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp.add_configurations("t1", type_conf)
 
         node = SelectNode(in_middle, MockMessage, type_exp)
-        node.start()
+        node.start_single()
 
         rows_pass = [
             {"product_id": "pr1", "year": 2024, "month": 7, "revenue": 88},
@@ -212,7 +212,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp.add_configurations("t1", type_conf)
 
         node = SelectNode(in_middle, MockMessage, type_exp)
-        node.start()
+        node.start_single()
 
         # in_cols = ["transaction_id","store_id", "year", "month", "hour", "revenue"]
         rows_pass = [
@@ -337,7 +337,7 @@ class TestSelectNode(unittest.TestCase):
         type_exp.add_configurations("t4", type_conf)
 
         node = SelectNode(in_middle, MockMessage, type_exp)
-        node.start()
+        node.start_single()
 
         # in_cols = ["transaction_id","store_id","user_id", "year"]
         rows_pass = [
@@ -493,7 +493,7 @@ class TestSelectNode(unittest.TestCase):
         in_middle = MockMiddleware()
 
         node = SelectNode(in_middle, MockMessage, type_exp)
-        node.start()
+        node.start_single()
 
         # in_cols_final = ["transaction_id", "year", "store_id","user_id", "month", "hour", "revenue"]
         # in_cols_final = ["month", "hour", "revenue"]
@@ -617,7 +617,7 @@ class TestSelectNode(unittest.TestCase):
         }
 
         node = SelectNode(in_middle, MockMessage, type_exp)
-        node.start()
+        node.start_single()
 
         rows_pass = [
             {'year': 2024, 'hour': 7, 'sum': 88},
