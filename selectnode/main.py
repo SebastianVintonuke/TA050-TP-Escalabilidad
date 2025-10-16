@@ -4,6 +4,7 @@ import logging
 import os
 import traceback
 from configparser import ConfigParser
+import signal
 
 from middleware.errors import *
 from middleware.groupby_middleware import *
@@ -68,7 +69,6 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-import signal
 
 def main() -> None:
     config_params = initialize_config()
@@ -93,6 +93,7 @@ def main() -> None:
 
         def close_handler(sig, frame):
             logging.info("Received close signal... gracefully finishing")
+            node.close()
         signal.signal(signal.SIGINT, close_handler)
         signal.signal(signal.SIGTERM, close_handler)
 

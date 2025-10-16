@@ -4,6 +4,7 @@ import logging
 import traceback
 import os
 from configparser import ConfigParser
+import signal
 
 from middleware.result_node_middleware import * 
 from middleware.memory_middleware import MemoryMiddleware, HashedMemoryMessageBuilder, MemoryMessage
@@ -112,6 +113,12 @@ def main() -> None:
         node_topk.start()
 
         node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby)
+
+        def close_handler(sig, frame):
+            logging.info("Received close signal... gracefully finishing")
+            node.close()
+        signal.signal(signal.SIGINT, close_handler)
+        signal.signal(signal.SIGTERM, close_handler)
 
         restart = True
         while restart:

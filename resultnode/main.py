@@ -5,6 +5,7 @@ import os
 from configparser import ConfigParser
 from datetime import datetime, date
 from typing import List, Tuple
+import signal
 
 from common import QueryId
 from common.middleware.middleware import MessageMiddlewareQueue
@@ -269,6 +270,14 @@ def main() -> None:
         else:
             logging.info(f"NO EXISTE {headers.types}")
             #raise ValueError(f"Unknown query type: {query_type}")
+
+    def close_handler(sig, frame):
+        logging.info("Received close signal... gracefully finishing")
+        result_middleware.close()
+        results_storage_middleware.close()
+        
+    signal.signal(signal.SIGINT, close_handler)
+    signal.signal(signal.SIGTERM, close_handler)
 
     result_middleware.start_consuming(handle_result)
 
