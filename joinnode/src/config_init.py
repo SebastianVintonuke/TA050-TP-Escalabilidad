@@ -2,7 +2,7 @@
 from middleware.routing.query_types import *
 from middleware.routing.csv_message import CSVMessageBuilder,CSVHashedMessageBuilder
 
-from src.join_type_config import *
+from .join_type_config import *
 from common.config.row_joining import *
 
 def add_joinnode_config(types_expander, result_middleware, join_middleware):

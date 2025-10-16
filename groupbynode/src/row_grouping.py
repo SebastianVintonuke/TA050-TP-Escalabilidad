@@ -75,7 +75,6 @@ class KeepTopAction:
 		row[self.comp_key] = float(row[self.comp_key])  # Map to float assumed float.
 		# Assumed len of grouped has to be one, you wont call this method without new.
 		if row[self.comp_key] > current_grouped[0][self.comp_key]:
-			print(f"BY {self.comp_key}  {row[self.comp_key]} >  {current_grouped[0][self.comp_key]} SO CHANGE TO ROW {row}")
 			current_grouped[0] = row
 	def add_all(self, current_grouped, rows):
 		itm = max(rows, key=lambda r: r[self.comp_key])
