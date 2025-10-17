@@ -1,6 +1,5 @@
 import unittest
 
-from middleware.mocks.middleware import *
 
 from common.config.row_filtering import *
 from common.config.row_mapping import *
@@ -27,5 +26,12 @@ from integration_tests.tests.base_test_eof_protocol import *
 
 class TestRealMiddlewaresEOFProtocol(unittest.TestCase, BaseEOFProtocolTest):
     def get_node_setup(self):
-        return NodesSetup.mock_setup()
+        return BaseEOFProtocolTest.wrap_intermediate(
+            msg_type= CSVMessage,# Initial msg_type
+            select_middleware = SerializeMemoryMiddleware(),
+            join_middleware = SerializeMemoryMiddleware(),
+            groupby_middleware = SerializeMemoryMiddleware(),
+            topk_middleware = SerializeMemoryMiddleware(),
+            result_middleware = SerializeMemoryMiddleware(),
+        )
 

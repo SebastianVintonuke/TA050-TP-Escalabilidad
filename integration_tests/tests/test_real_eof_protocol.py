@@ -32,7 +32,7 @@ from middleware.groupby_middleware import *
 from middleware.result_node_middleware import *
 
 def real_setup():
-    return NodesSetup(
+    return BaseEOFProtocolTest.wrap_intermediate(
         msg_type= CSVMessage,# Initial msg_type
         select_middleware = SelectTasksMiddleware(),
         join_middleware = JoinTasksMiddleware(1, ind = 0),
