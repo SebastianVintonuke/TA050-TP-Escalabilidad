@@ -79,6 +79,10 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+class RestartLogic:
+    def __init__(self):
+        self.restart= True
+
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
@@ -113,18 +117,19 @@ def main() -> None:
         node_topk.start()
 
         node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby)
+        restart = RestartLogic()
 
         def close_handler(sig, frame):
             logging.info("Received close signal... gracefully finishing")
+            restart.restart = False
             node.close()
         signal.signal(signal.SIGINT, close_handler)
         signal.signal(signal.SIGTERM, close_handler)
 
-        restart = True
-        while restart:
+        while restart.restart:
             try:
                 node.start()
-                restart = False
+                restart.restart = False
             except MessageMiddlewareMessageError as e:
                 traceback.print_exc()
                 logging.error(f"Non fatal fail {e}")

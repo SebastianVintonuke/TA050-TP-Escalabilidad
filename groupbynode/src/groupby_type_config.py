@@ -34,3 +34,6 @@ class GroupbyTypeConfiguration:
 	def send(self, builder):
 		logging.info(f"GROUPBY SENDING TO {builder.headers.types} {builder.headers.ids} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
 		return self.middleware.send(builder)
+
+	def close(self):
+		self.middleware.close()

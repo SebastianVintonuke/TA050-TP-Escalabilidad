@@ -33,3 +33,6 @@ class TopKTypeConfiguration:
 		#	logging.info(f"ROW {itm}")
 			
 		return self.middleware.send(builder)
+
+	def close(self):
+		self.middleware.close()
