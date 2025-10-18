@@ -90,10 +90,14 @@ server-up: server-down docker-image
 server-down:
 	docker compose -f docker-compose-server.yaml stop -t 1
 	docker compose -f docker-compose-server.yaml down
+server-logs:
+	docker compose -f docker-compose-server.yaml logs -f
 
 # Do client down just in case.
 clients-up: clients-down docker-image-client
 	docker compose -f docker-compose-clients.yaml up -d --build
+	docker compose -f docker-compose-clients.yaml logs -f
+clients-logs:
 	docker compose -f docker-compose-clients.yaml logs -f
 
 clients-up-end:

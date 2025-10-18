@@ -48,6 +48,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=12347
+      - PROFILE_NODE=1
     networks:
       - testing_net
     depends_on:
@@ -63,6 +64,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=12348
+      - PROFILE_NODE=1
     networks:
       - testing_net
     depends_on:
@@ -77,6 +79,7 @@ services:
     entrypoint: python3 /resultnode/main.py
     environment:
       - RESULT_NODE_ID=1
+      - PROFILE_NODE=1
     networks:
       - testing_net
     depends_on:

@@ -18,6 +18,8 @@ def profile(output_file="/etc/profiling/profile.prof", sort_by="cumulative"):
                 logging.info(f"Enabling profiler before running {func}")
                 profiler.enable()
                 return func(*args, **kwargs)
+            except Exception as e:
+                logging.info(f"Failed at profiling {e}") 
             finally:
                 profiler.disable()
                 logging.info(f"Saving profile info to {output_file}")

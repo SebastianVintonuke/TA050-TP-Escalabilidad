@@ -45,6 +45,9 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
+
+        config_params["profile_node"] = os.getenv(
+            "PROFILE_NODE", 0)        
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting resultnode".format(e))
     except ValueError as e:
@@ -69,8 +72,7 @@ def initialize_log(logging_level: int) -> None:
     )
 
 
-def main() -> None:
-    config_params = initialize_config()
+def main(config_params) -> None:
     port = config_params["port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
@@ -282,5 +284,15 @@ def main() -> None:
     result_middleware.start_consuming(handle_result)
 
 
+
 if __name__ == "__main__":
-    main()
+    config_params = initialize_config()
+
+    if config_params["profile_node"] == 0:
+        config_params["profile_node"] = False
+        main(config_params)
+    else:
+        from common.profiling import profile
+        config_params["profile_node"] = True
+        logging.info("Profiling...")
+        profile()(main)(config_params)
