@@ -49,7 +49,7 @@ def initialize_config():  # type: ignore[no-untyped-def]
         )
 
         config_params["profile_node"] = os.getenv(
-            "PROFILE_NODE", "False")
+            "PROFILE_NODE", 0)
 
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting selectnode".format(e))
@@ -79,11 +79,12 @@ def main(config_params) -> None:
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
     groupby_node_count = config_params["groupby_node_count"]
+    is_profiling = config_params["profile_node"]
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | profiling: {config_params["profile_node"]} | port: {port} | node_id: {node_id} | logging_level: {logging_level} | groupby_node_count: {groupby_node_count}"
+        f"action: config | result: success | profiling: {is_profiling} | port: {port} | node_id: {node_id} | logging_level: {logging_level} | groupby_node_count: {groupby_node_count}"
     )
 
     try:
@@ -113,9 +114,9 @@ def main(config_params) -> None:
 if __name__ == "__main__":
     config_params = initialize_config()
 
-    if config_params["profile_node"] == "False":
+    if config_params["profile_node"] == 0:
         config_params["profile_node"] = False
-        main()
+        main(config_params)
     else:
         from common.profiling import profile
         config_params["profile_node"] = True

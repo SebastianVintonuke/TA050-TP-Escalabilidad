@@ -1,4 +1,4 @@
-name: TP Escalabilidad - Coffee Shop Analysis
+name: CoffeeShopAnalysisServer
 services:
   middleware:
     container_name: middleware
@@ -40,44 +40,7 @@ services:
       - dispatcher1
       - dispatcher2
     volumes:
-      - ./server/config.ini:/config.ini:ro
-
-  client1:
-    container_name: client1
-    image: client:latest
-    entrypoint: python3 /client/main.py
-    environment:
-      - PYTHONUNBUFFERED=1
-      - INPUT_DIR=/input
-      - OUTPUT_DIR=/output
-      - EXECUTIONS=1
-    networks:
-      - testing_net
-    depends_on:
-      - server
-    volumes:
-      - ./client/config.ini:/config.ini:ro
-      - ./.data/archive:/input:ro
-      - ./.data/results/client1:/output:rw
-
-  client2:
-    container_name: client2
-    image: client:latest
-    entrypoint: python3 /client/main.py
-    environment:
-      - PYTHONUNBUFFERED=1
-      - INPUT_DIR=/input
-      - OUTPUT_DIR=/output
-      - EXECUTIONS=1
-    networks:
-      - testing_net
-    depends_on:
-      - server
-    volumes:
-      - ./client/config.ini:/config.ini:ro
-      - ./.data/archive:/input:ro
-      - ./.data/results/client2:/output:rw
-      
+      - ./server/config.ini:/config.ini:ro      
   dispatcher1:
     container_name: dispatcher1
     image: dispatcher:latest

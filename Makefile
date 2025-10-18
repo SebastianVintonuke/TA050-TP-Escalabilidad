@@ -12,6 +12,8 @@ build: deps
 .PHONY: build
 
 
+docker-image-client:
+	docker build -f ./client/Dockerfile -t "client:latest" .
 docker-image-prod:
 	docker build -f ./client/Dockerfile -t "client:latest" .
 	docker build -f ./dispatcher/Dockerfile -t "dispatcher:latest" .
@@ -43,6 +45,22 @@ docker-image: docker-image-prod
 	# docker rmi `docker images --filter label=intermediateStageToBeDeleted=true -q`
 
 .PHONY: docker-image
+
+# Do server down just in case.
+server-up: server-down docker-image
+	docker compose -f docker-compose-server.yaml up -d --build
+	docker compose -f docker-compose-server.yaml logs -f
+server-down:
+	docker compose -f docker-compose-server.yaml stop -t 1
+	docker compose -f docker-compose-server.yaml down
+
+# Do server down just in case.
+clients-up: clients-down docker-image-client
+	docker compose -f docker-compose-clients.yaml up -d --build
+	docker compose -f docker-compose-clients.yaml logs -f
+clients-down:
+	docker compose -f docker-compose-clients.yaml stop -t 1
+	docker compose -f docker-compose-clients.yaml down
 
 docker-compose-up: docker-image
 	docker compose -f docker-compose-dev.yaml up -d --build

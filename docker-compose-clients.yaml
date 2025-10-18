@@ -1,0 +1,40 @@
+name: TP Escalabilidad - Coffee Shop Analysis
+services:
+  client1:
+    container_name: client1
+    image: client:latest
+    entrypoint: python3 /client/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
+      - EXECUTIONS=1
+    networks:
+      - testing_net
+    volumes:
+      - ./client/config.ini:/config.ini:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results/client1:/output:rw
+
+  client2:
+    container_name: client2
+    image: client:latest
+    entrypoint: python3 /client/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/input
+      - OUTPUT_DIR=/output
+      - EXECUTIONS=1
+    networks:
+      - testing_net
+    volumes:
+      - ./client/config.ini:/config.ini:ro
+      - ./.data/archive:/input:ro
+      - ./.data/results/client2:/output:rw
+
+networks: # The network has to exist already i.e the server has to be up.
+  testing_net:
+    external: true
+    name: coffeeshopanalysisserver_testing_net
+# OR...
+#docker network create --subnet=172.25.125.0/24 testing_net and no file has the long name

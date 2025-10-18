@@ -4,7 +4,7 @@ class RestartLogic:
         self.restart= True
         self.allowed_type = allowed_type
 
-	def start_node_loop(self, node):
+    def start_node_loop(self, node):
         while self.restart:
             try:
                 node.start()
@@ -12,8 +12,8 @@ class RestartLogic:
             except self.allowed_type as e:
                 logging.error(f"Non fatal fail {e}")
 
-	def start_node_loop_verbose(self, node):
-		import traceback # Import it only If verbose, start node loop is called only once. So its fine
+    def start_node_loop_verbose(self, node):
+        import traceback # Import it only If verbose, start node loop is called only once. So its fine
 
         while self.restart:
             try:
@@ -23,5 +23,5 @@ class RestartLogic:
                 traceback.print_exc()
                 logging.error(f"Non fatal fail {e}")
 
-	def stop_restart(self):
-		self.restart = False
+    def stop_restart(self):
+        self.restart = False
