@@ -74,6 +74,8 @@ def initialize_log(logging_level: int) -> None:
     )
 
 
+from common.profiling import profile
+@profile()
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]

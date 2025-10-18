@@ -137,6 +137,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./.data/profiling/selectnode1.prof:/etc/profiling/profile.prof
 
   selectnode2:
     container_name: selectnode2
@@ -154,6 +155,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./.data/profiling/selectnode2.prof:/etc/profiling/profile.prof
 
   selectnode3:
     container_name: selectnode3
@@ -171,6 +173,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./.data/profiling/selectnode3.prof:/etc/profiling/profile.prof
 
   groupbynode1:
     container_name: groupbynode1
@@ -188,6 +191,7 @@ services:
       - middleware
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/profiling/groupbynode1.prof:/etc/profiling/profile.prof
 
   groupbynode2:
     container_name: groupbynode2
@@ -205,6 +209,7 @@ services:
       - middleware
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/profiling/groupbynode2.prof:/etc/profiling/profile.prof
 
   joinnode1:
     container_name: joinnode1
@@ -222,6 +227,7 @@ services:
       - middleware
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
+      - ./.data/profiling/joinnode1.prof:/etc/profiling/profile.prof
   
   joinnode2:
     container_name: joinnode2
@@ -239,6 +245,7 @@ services:
       - middleware
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
+      - ./.data/profiling/joinnode2.prof:/etc/profiling/profile.prof
       
 
 networks:

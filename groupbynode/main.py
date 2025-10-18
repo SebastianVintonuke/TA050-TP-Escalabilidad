@@ -78,7 +78,9 @@ def initialize_log(logging_level: int) -> None:
         level=logging_level,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-
+    
+from common.profiling import profile
+@profile()
 def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
