@@ -74,6 +74,10 @@ def initialize_log(logging_level: int) -> None:
     )
 
 
+class RestartLogic:
+    def __init__(self):
+        self.restart= True
+
 from common.profiling import profile
 @profile()
 def main() -> None:
@@ -103,8 +107,11 @@ def main() -> None:
         node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), CSVMessage, types_expander)
 
 
+        restart = RestartLogic()
+
         def close_handler(sig, frame):
             logging.info("Received close signal... gracefully finishing")
+            restart.restart = False
             node.close()
         signal.signal(signal.SIGINT, close_handler)
         signal.signal(signal.SIGTERM, close_handler)
@@ -112,18 +119,17 @@ def main() -> None:
         # 'Start' nested node. Means registering callbacks and so on
         node.start_on(nested_joins_middleware)
         
-        restart = True
-        while restart:
+        while restart.restart:
             try:
                 node.start()
-                restart = False
+                restart.restart = False
             except MessageMiddlewareMessageError as e:
                 traceback.print_exc()
                 logging.error(f"Non fatal fail {e}")
 
         node.close()
     except Exception as e:
-        logging.error(f"action: select_node_main | result: error | err:{e}")
+        logging.error(f"action: joinnode_node_main | result: error | err:{e}")
 
 
 if __name__ == "__main__":

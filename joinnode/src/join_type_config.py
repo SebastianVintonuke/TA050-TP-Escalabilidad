@@ -80,3 +80,6 @@ class JoinTypeConfiguration:
         for left_row in left_rows:
             if self.joiner.should_join(left_row, right_row):
                 join_receiver(self.out_mapper(left_row, right_row))
+
+    def close(self):
+        self.middleware.close()

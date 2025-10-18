@@ -31,3 +31,6 @@ class SelectTypeConfiguration(BaseDictTypeConfiguration):
 
         except Exception as e:
             logging.error(f"Failed filter map of row {row} invalid {e}")
+
+    def close(self):
+        self.middleware.close()

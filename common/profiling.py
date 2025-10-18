@@ -1,8 +1,8 @@
 import cProfile
 import pstats
 import functools
-
-def profile(output_file="/etc/profile.prof", sort_by="cumulative"):
+import logging
+def profile(output_file="/etc/profiling/profile.prof", sort_by="cumulative"):
     """
     Decorator to profile a function with cProfile and save the stats to a file.
 
@@ -15,14 +15,17 @@ def profile(output_file="/etc/profile.prof", sort_by="cumulative"):
         def wrapper(*args, **kwargs):
             profiler = cProfile.Profile()
             try:
+                logging.info(f"Enabling profiler before running {func}")
                 profiler.enable()
                 return func(*args, **kwargs)
             finally:
                 profiler.disable()
+                logging.info(f"Saving profile info to {output_file}")
                 with open(output_file, "w+") as f:
                     stats = pstats.Stats(profiler, stream=f)
                     stats.strip_dirs()
                     stats.sort_stats(sort_by)
                     stats.print_stats()
+                logging.info(f"Saved profile info to {output_file}")
         return wrapper
     return decorator
