@@ -21,11 +21,12 @@ def profile(output_file="/etc/profiling/profile.prof", sort_by="cumulative"):
             finally:
                 profiler.disable()
                 logging.info(f"Saving profile info to {output_file}")
-                with open(output_file, "w+") as f:
-                    stats = pstats.Stats(profiler, stream=f)
-                    stats.strip_dirs()
-                    stats.sort_stats(sort_by)
-                    stats.print_stats()
+                profiler.dump_stats(output_file)  # 🔧 Save binary format
+                # with open(output_file, "w+") as f:
+                #     stats = pstats.Stats(profiler, stream=f)
+                #     stats.strip_dirs()
+                #     stats.sort_stats(sort_by)
+                #     stats.print_stats()
                 logging.info(f"Saved profile info to {output_file}")
         return wrapper
     return decorator
