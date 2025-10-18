@@ -62,3 +62,10 @@ class NodesSetup:
             return GroupbyNode(self.groupby_middleware, msg_type, config)
             
         return GroupbyNode(self.groupby_middleware, self.msg_type, config)
+
+    def close(self):
+        self.select_middleware.close()
+        self.join_middleware.close()
+        self.groupby_middleware.close()
+        self.topk_middleware.close()
+        self.result_middleware.close()

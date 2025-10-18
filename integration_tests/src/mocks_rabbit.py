@@ -32,6 +32,10 @@ class MockChannel:
         self.host = host
         self.acked_tags = set()
         self.nacked_tags = set()
+        self.is_open = True
+
+    def close(self):
+        self.is_open = False 
 
     def basic_qos(self, prefetch_count):
         pass
@@ -63,11 +67,11 @@ class MockChannel:
         self.consuming = False
 
     def basic_consume(self, queue, on_message_callback, auto_ack):
-        print(f"ATTEMPT CONSUME AT queue {queue} {on_message_callback}")
+        #print(f"ATTEMPT CONSUME AT queue {queue} {on_message_callback}")
         self.queues[queue].listeners[self.host] = on_message_callback
 
     def basic_publish(self, exchange, routing_key, body, properties):
-        print(f"PUBLISH AT key {routing_key} exchange:{exchange} {properties.headers}")
+        #print(f"PUBLISH AT key {routing_key} exchange:{exchange} {properties.headers}")
 
         queue_obj=self.queues[routing_key]
         #ch, method, properties, body
@@ -92,6 +96,7 @@ class MockConnection:
     def __init__(self, host):
         self.host = host
         self.channels = []
+        self.is_open = True
 
     def channel(self):
         chann = MockChannel(self.host)
@@ -99,6 +104,8 @@ class MockConnection:
         self.channels.append(chann)
 
         return chann
+    def close(self):
+        self.is_open = False
 
 
 class PropHeaders:

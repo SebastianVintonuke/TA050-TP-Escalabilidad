@@ -3,7 +3,7 @@ from middleware.routing.message import *
 from middleware.middleware import *
 from middleware.routing.message_building import *
 from middleware.routing.header_fields import *
-
+import logging
 
 
 class IntermediateMiddleware(MessageMiddleware):
@@ -15,7 +15,7 @@ class IntermediateMiddleware(MessageMiddleware):
         cloned = msg.clone()
         cloned.payload = [itm for itm in msg.payload]
         self.msgs.append(cloned)
-        print(f"INTERME SENDING {cloned.headers} len: {len(cloned.payload)} len msg:{len(msg.serialize_payload())}")
+        logging.debug(f"INTERME SENDING {cloned.headers} len: {len(cloned.payload)} len msg:{len(msg.serialize_payload())}")
         self.inner_middleware.send(msg);
 
     def start_consuming(self, on_message_callback):

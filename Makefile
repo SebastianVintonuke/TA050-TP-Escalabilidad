@@ -11,7 +11,8 @@ build: deps
 
 .PHONY: build
 
-docker-image:
+
+docker-image-prod:
 	docker build -f ./client/Dockerfile -t "client:latest" .
 	docker build -f ./dispatcher/Dockerfile -t "dispatcher:latest" .
 	docker build -f ./middleware/Dockerfile -t "middleware:latest" .
@@ -20,7 +21,19 @@ docker-image:
 	docker build -f ./selectnode/Dockerfile -t "selectnode:latest" .
 	docker build -f ./groupbynode/Dockerfile -t "groupbynode:latest" .
 	docker build -f ./joinnode/Dockerfile -t "joinnode:latest" .
-	docker build -f ./server/Dockerfile -t "server:latest" .
+	docker build -f ./server/Dockerfile -t "server:latest" .	
+
+integration-tests: docker-image-prod
+	docker build -f ./integration_tests/Dockerfile -t "integration_tests:latest" .
+	docker compose -f integration_tests/docker-compose.yaml up -d --build
+	docker compose -f integration_tests/docker-compose.yaml logs -f
+integration-tests-down:
+	docker compose -f integration_tests/docker-compose.yaml stop -t 1
+	docker compose -f integration_tests/docker-compose.yaml down
+integration-tests-logs:
+	docker compose -f integration_tests/docker-compose.yaml logs -f
+
+docker-image: docker-image-prod
 	docker build -f ./integration_tests/Dockerfile -t "integration_tests:latest" .
 
 	# Execute this command from time to time to clean up intermediate stages generated 
