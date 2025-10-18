@@ -17,6 +17,7 @@ from src.config_init import *
 
 from middleware.memory_middleware import * 
 from middleware.routing.csv_message import CSVMessage
+from common.node_utils import RestartLogic
 
 
 def initialize_config():  # type: ignore[no-untyped-def]
@@ -74,14 +75,7 @@ def initialize_log(logging_level: int) -> None:
     )
 
 
-class RestartLogic:
-    def __init__(self):
-        self.restart= True
-
-from common.profiling import profile
-@profile()
-def main() -> None:
-    config_params = initialize_config()
+def main(config_params) -> None:
     port = config_params["port"]
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
@@ -91,7 +85,7 @@ def main() -> None:
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level} | join_node_count: {join_node_count}"
+        f"action: config | result: success | profiling: {config_params["profile_node"]} | port: {port} | node_id: {node_id} | logging_level: {logging_level} | join_node_count: {join_node_count}"
     )
 
     try:
@@ -107,11 +101,11 @@ def main() -> None:
         node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), CSVMessage, types_expander)
 
 
-        restart = RestartLogic()
+        restarter = RestartLogic(MessageMiddlewareMessageError)
 
         def close_handler(sig, frame):
             logging.info("Received close signal... gracefully finishing")
-            restart.restart = False
+            restarter.stop_restart()
             node.close()
         signal.signal(signal.SIGINT, close_handler)
         signal.signal(signal.SIGTERM, close_handler)
@@ -119,13 +113,7 @@ def main() -> None:
         # 'Start' nested node. Means registering callbacks and so on
         node.start_on(nested_joins_middleware)
         
-        while restart.restart:
-            try:
-                node.start()
-                restart.restart = False
-            except MessageMiddlewareMessageError as e:
-                traceback.print_exc()
-                logging.error(f"Non fatal fail {e}")
+        restarter.start_node_loop(node)
 
         node.close()
     except Exception as e:
@@ -133,4 +121,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    config_params = initialize_config()
+
+    if config_params["profile_node"] == "False":
+        config_params["profile_node"] = False
+        main()
+    else:
+        from common.profiling import profile
+        config_params["profile_node"] = True
+        profile()(main)(config_params)
