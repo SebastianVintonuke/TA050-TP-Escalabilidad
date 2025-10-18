@@ -1,25 +1,19 @@
 import unittest
 
-from middleware.mocks.middleware import *
-
 from common.config.row_filtering import *
 from common.config.row_mapping import *
 from common.config.type_expander import *
-from selectnode.src.select_type_config import *
-from selectnode.src.selectnode import *
-from selectnode.src.config_init import *
 
-from groupbynode.src.groupbynode import *
-from groupbynode.src.groupby_initialize import *
-from groupbynode.src.topk_initialize import *
+from integration_tests.src.nodes_setup import NodesSetup
 
-from groupbynode.src.topk_initialize import *
-from joinnode.src.config_init import *
-from joinnode.src.joinnode import *
-
-from middleware.memory_middleware import * 
+#from middleware.memory_middleware import * 
 from middleware.routing.csv_message import * 
+from middleware.mocks.middleware import *
+
 from middleware.routing.query_types import * 
+
+from selectnode.src.config_init import SELECT_TRANSACTION_ITEMS_IN_FIELDS, SELECT_TRANSACTION_SHARED_IN_FIELDS
+
 
 from abc import ABC, abstractmethod
 def map_dict_to_vect_cols(cols, row):
@@ -35,62 +29,6 @@ def map_vect_to_dict_cols(cols, row):
         res[cols[i]] = row[i]
     return res
 
-
-
-class NodesSetup:
-    def mock_setup():
-        return NodesSetup(
-            msg_type= CSVMessage,# Initial msg_type
-            select_middleware = SerializeMemoryMiddleware(),
-            join_middleware = SerializeMemoryMiddleware(),
-            groupby_middleware = SerializeMemoryMiddleware(),
-            topk_middleware = SerializeMemoryMiddleware(),
-            result_middleware = SerializeMemoryMiddleware(),
-        )
-
-    def __init__(self, msg_type, select_middleware, join_middleware, groupby_middleware, topk_middleware, result_middleware):
-        self.select_middleware=IntermediateMiddleware(select_middleware)
-        self.join_middleware=IntermediateMiddleware(join_middleware)
-        self.groupby_middleware=IntermediateMiddleware(groupby_middleware)
-        self.topk_middleware=IntermediateMiddleware(topk_middleware)
-        self.result_middleware=IntermediateMiddleware(result_middleware)
-        self.msg_type = msg_type
-
-    def get_select_node(self, msg_type = None):
-        types_expander = TypeExpander()
-        add_selectnode_config(types_expander, self.result_middleware, self.groupby_middleware)
-        if msg_type:
-            return SelectNode(self.select_middleware, msg_type, types_expander)
-
-        return SelectNode(self.select_middleware, self.msg_type, types_expander)
-
-    def get_join_node(self, msg_type = None):
-        types_expander = TypeExpander()
-        add_joinnode_config(types_expander, self.result_middleware, self.join_middleware)
-
-        if msg_type:
-            return JoinNode(self.join_middleware, msg_type, types_expander)
-            
-        return JoinNode(self.join_middleware, self.msg_type, types_expander)
-
-
-    def get_topk_node(self, msg_type = None):
-        config = configure_types_topk(self.join_middleware)
-        if msg_type:
-            return GroupbyNode(self.topk_middleware, msg_type, config)
-            
-        return GroupbyNode(self.topk_middleware, self.msg_type, config)
-
-    def get_groupby_node(self, msg_type = None):
-        config = configure_types_groupby(
-                self.join_middleware, self.topk_middleware) #topk_middleware_type = HashedMemoryMessageBuilder
-
-        if msg_type:
-            return GroupbyNode(self.groupby_middleware, msg_type, config)
-            
-        return GroupbyNode(self.groupby_middleware, self.msg_type, config)
-
-
 def get_row_query_transactions(dict_data):
     return map_dict_to_vect_cols(SELECT_TRANSACTION_SHARED_IN_FIELDS, dict_data)
 
@@ -102,18 +40,22 @@ def get_row_query_transaction_items(dict_data):
     return map_dict_to_vect_cols(SELECT_TRANSACTION_ITEMS_IN_FIELDS, dict_data)
 
 class BaseEOFProtocolTest(ABC):
+    def wrap_intermediate(msg_type, select_middleware, join_middleware, groupby_middleware, topk_middleware, result_middleware):
+        return NodesSetup(
+            msg_type= msg_type,# Initial msg_type
+            select_middleware = IntermediateMiddleware(select_middleware),
+            join_middleware = IntermediateMiddleware(join_middleware),
+            groupby_middleware = IntermediateMiddleware(groupby_middleware),
+            topk_middleware = IntermediateMiddleware(topk_middleware),
+            result_middleware = IntermediateMiddleware(result_middleware),
+        )
+
+
 
     @abstractmethod
     def get_node_setup(self):
         """Subclasses must implement this method to return NodeSetup instance."""
         return None
-
-    def test_compiled_config(self):
-        types_expander = TypeExpander()
-        result_grouper = MockMiddleware()
-        groupby_middleware = MockMiddleware()
-        add_selectnode_config(types_expander, result_grouper, groupby_middleware)
-        self.assertFalse(False) # Just be able to compile it basically.
 
     def test_query_1_simple_set_up(self):
 

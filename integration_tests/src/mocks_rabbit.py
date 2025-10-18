@@ -32,6 +32,10 @@ class MockChannel:
         self.host = host
         self.acked_tags = set()
         self.nacked_tags = set()
+        self.is_open = True
+
+    def close(self):
+        self.is_open = False 
 
     def basic_qos(self, prefetch_count):
         pass
@@ -92,6 +96,7 @@ class MockConnection:
     def __init__(self, host):
         self.host = host
         self.channels = []
+        self.is_open = True
 
     def channel(self):
         chann = MockChannel(self.host)
@@ -99,6 +104,8 @@ class MockConnection:
         self.channels.append(chann)
 
         return chann
+    def close(self):
+        self.is_open = False
 
 
 class PropHeaders:
