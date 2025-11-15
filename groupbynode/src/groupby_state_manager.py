@@ -4,6 +4,8 @@ import json
 
 For groupby "state" is the previous QueryAccumulator , specifically the "groups"
 """
+
+## State is :dict
 class GroupbyStateManager(JSONStateManager):
 	def __init__(self, accumulators):
 		self.accumulators = accumulators
@@ -25,5 +27,5 @@ class GroupbyStateManager(JSONStateManager):
 	def deserialize_changes(self, changes_bytes):
 		return json.loads(str(changes_bytes))
 
-	def empty_state(self):
+	def serialize_initial_state(self, metadata):
 		return b""

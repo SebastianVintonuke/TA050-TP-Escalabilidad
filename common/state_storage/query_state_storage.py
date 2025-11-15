@@ -178,7 +178,7 @@ class QueryStateStorage:
     # 1. register_query
     # -------------------------------------------------------------
 
-    def register_query(self, query_id, initial_packet_id = 0):
+    def register_query(self, query_id, metadata, initial_packet_id = 0):
         """
         Check if query id state/ commit time and so on exists.
         """
@@ -188,6 +188,8 @@ class QueryStateStorage:
             # If it crashes before creating commit file then at most you would create again or so these ones
             file_state = self.states / f"{query_id}_{initial_packet_id}" # First/initial state
             file_state.touch()
+            # Since commit file not created no issues with having it corrupted. If it crashes here.
+            file_state.write_bytes(self.manager.serialize_initial_state(metadata))
 
             # Now create commit one
             file.touch()

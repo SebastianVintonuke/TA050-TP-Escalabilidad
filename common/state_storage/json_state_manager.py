@@ -18,5 +18,5 @@ class JSONStateManager(BaseStateManager):
 	def deserialize_changes(self, changes_bytes):
 		return json.loads(str(changes_bytes))
 
-	def empty_state(self):
+	def serialize_initial_state(self, metadata):
 		return b""

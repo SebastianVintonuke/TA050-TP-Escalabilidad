@@ -78,13 +78,13 @@ class TestStateStorage(unittest.TestCase):
         state_manager= MockStateManager()
         state_storage = q_state.QueryStateStorage("initial_folder", state_manager)
 
-        state_storage.register_query("q1")
+        state_storage.register_query("q1", {})
         exp_file = "initial_folder/states/q1_0"
         self.assertIn(exp_file, self.mock_fs.paths)
 
         file_stat = self.mock_fs.stats[exp_file]
         self.assertEqual(file_stat.count_modified_time_stamp, 0 )
-        self.assertEqual(file_stat.count_written_times, 0)
+        self.assertEqual(file_stat.count_written_times, 1)
 
         exp_file = "initial_folder/metadata/q1_commit"
         self.assertIn(exp_file, self.mock_fs.paths)
@@ -97,7 +97,7 @@ class TestStateStorage(unittest.TestCase):
         state_manager= MockStateManager()
         state_storage = q_state.QueryStateStorage("initial_folder", state_manager)
 
-        state_storage.register_query("q1")
+        state_storage.register_query("q1", {})
         state_storage.commit_changes("q1")
 
         exp_file = "initial_folder/metadata/q1_commit"
@@ -112,15 +112,15 @@ class TestStateStorage(unittest.TestCase):
         state_storage = q_state.QueryStateStorage("initial_folder", state_manager)
 
 
-        state_storage.register_query("q1")
-        state_storage.register_query("q1")
+        state_storage.register_query("q1", {})
+        state_storage.register_query("q1", {})
 
         exp_file = "initial_folder/states/q1_0"
         self.assertIn(exp_file, self.mock_fs.paths)
 
         file_stat = self.mock_fs.stats[exp_file]
         self.assertEqual(file_stat.count_modified_time_stamp, 0 )
-        self.assertEqual(file_stat.count_written_times, 0)
+        self.assertEqual(file_stat.count_written_times, 1) # It did in fact... write initial state for register query.. once
 
         exp_file = "initial_folder/metadata/q1_commit"
         self.assertIn(exp_file, self.mock_fs.paths)
@@ -134,7 +134,7 @@ class TestStateStorage(unittest.TestCase):
         state_manager= MockStateManager()
         state_storage = q_state.QueryStateStorage("initial_folder", state_manager)
 
-        state_storage.register_query("q1")
+        state_storage.register_query("q1", {})
         state_storage.commit_changes("q1")
 
         self.assertRaises(q_state.InvalidStateError, state_storage.push_changes, "q1", 1, "SOME NEW STATE!", ["msg1"])
@@ -144,7 +144,7 @@ class TestStateStorage(unittest.TestCase):
         state_manager= MockStateManager(acks = exp_acks)
         state_storage = q_state.QueryStateStorage("initial_folder", state_manager)
 
-        state_storage.register_query("q1")
+        state_storage.register_query("q1", {})
         state_storage.commit_changes("q1")
 
         exp_file = "initial_folder/states/q1_1"
@@ -187,7 +187,7 @@ class TestStateStorage(unittest.TestCase):
         state_manager= MockStateManager(acks = ["msg1"])
         state_storage = q_state.QueryStateStorage("initial_folder", state_manager)
 
-        state_storage.register_query("q1")
+        state_storage.register_query("q1", {})
         state_storage.commit_changes("q1")
 
         exp_file = "initial_folder/states/q1_1"
@@ -232,7 +232,7 @@ class TestStateStorage(unittest.TestCase):
         state_manager= MockStateManager(acks = ["msg1"])
         state_storage = q_state.QueryStateStorage("initial_folder", state_manager)
 
-        state_storage.register_query("q1")
+        state_storage.register_query("q1", {})
         state_storage.commit_changes("q1")
 
         exp_file = "initial_folder/states/q1_1"
