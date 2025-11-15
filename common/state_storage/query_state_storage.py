@@ -116,9 +116,9 @@ class QueryStateStorage:
             items = query_changes.setdefault(query_id, [])
             items.append((packet_id, file))
 
-        print("-----------> CHECK WITH")
-        print(query_changes)
-        print("----------->")
+        # print("-----------> CHECK WITH")
+        # print(query_changes)
+        # print("----------->")
         for query_id, changes in query_changes.items():
             changes.sort(key=lambda x: x[0]) #Inplace
             first_pck = changes[0][0]

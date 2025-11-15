@@ -2,6 +2,13 @@ from abc import ABC, abstractmethod
 
 class MessageMiddleware(ABC):
 
+
+    ## Es necesario el metodo especifico para ack... y capaz otro para nack
+    # Con los nodos stateful que manejan los acks ellos mismos no se puede hacer meramente acks automaticos.
+    @abstractmethod
+    def ack_message(self, message_tag):
+        pass
+
     # Comienza a escuchar a la cola/exchange e invoca a on_message_callback tras
     # cada mensaje de datos o de control.
     # Si se pierde la conexión con el middleware eleva MessageMiddlewareDisconnectedError.

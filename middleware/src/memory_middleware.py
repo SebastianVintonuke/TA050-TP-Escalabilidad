@@ -55,6 +55,11 @@ class MemoryMiddleware(MessageMiddleware):
     def __init__(self):
         self.listener = do_nothing
 
+
+    def ack_message(self, delivery_tag):
+        pass
+        # self._channel.ack_message(delivery_tag)        
+
     def send(self, builder):
         self.listener(builder.headers, builder.payload)
 

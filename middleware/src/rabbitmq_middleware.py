@@ -14,6 +14,10 @@ class BaseRabbitMiddleware(MessageMiddleware):
 		except Exception as e:
 			raise MessageMiddlewareConnectError(f"RabbitMQ connect failed: {e}") from e
 
+
+	def ack_message(self, delivery_tag):
+		self._channel.ack_message(delivery_tag)
+		
 	def stop_consuming(self):
 		try:
 			self._rabbit_manager.stop_channels() # Asumming not async
