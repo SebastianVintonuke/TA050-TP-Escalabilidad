@@ -104,12 +104,13 @@ class QueryStateStorage:
     #                   Defined design/contract
     # -------------------------------------------------------------
 
-    def check_integrity(self):
+    def check_integrity(self, batch_size = 1):
 
         # 1. borrar not_finished (no confiables)
         clear_directory(self.not_finished)
 
         query_changes = {} # Internal cached data for changes to apply
+        query_states = {} # result so that caller can do some extra logic If needed
 
         for query_id, packet_id, file in map(get_file_credentials, self.not_applied.glob(f"*_*")):
             items = query_changes.setdefault(query_id, [])
@@ -122,24 +123,35 @@ class QueryStateStorage:
             changes.sort(key=lambda x: x[0]) #Inplace
             first_pck = changes[0][0]
 
-            ## TODO Cleanup any previous state that could be lingering up to first_pck-2//
+            ## TODO Cleanup any previous state that could be lingering up to first_pck-batch_size-1//
 
-            commit_ts, state = self._load_query_state(query_id,first_pck-1) # Load prev state.
+            commit_ts, state = self._load_query_state(query_id,first_pck- batch_size) # Load prev state.
             if state == None:
                 #If not state means packet_id -1 was not the current state ... was there concurrent changes? not supported for now
-                print(f"Not supported concurrent changes at check integrity ? {self._state_file(query_id, first_pck-1)} state did not exist!")
+                print(f"Not supported concurrent changes at check integrity ? change packet: {first_pck} max batch: {batch_size} {self._state_file(query_id, first_pck- batch_size)} state did not exist! So discard")
                 for _, file in changes: # Discard them
                     file.unlink()
+
+                # Should load last state 
+                # query_states[query_id] = ##                    
                 continue
 
             i = 0
-            while i < len(changes) and changes[i][1].stat().st_mtime <= commit_ts:
+            new_exp_packet = first_pck#- batch_size
+            while i < len(changes):
+
+                # Not the best lol but more readable in some ways 
+                packet_id, changes_file = changes[i]
+
+                ## Lets be clear... IF changes was commited then its always supposed packet_id == new_exp_packet in non concurrent versions
+                if packet_id != new_exp_packet or changes_file.stat().st_mtime > commit_ts:
+                    break
+                
                 # Apply changes on file
-                changes_to_apply, ack_tags = self.manager.deserialize_changes(changes[i][1].read_bytes())
+                changes_to_apply, ack_tags = self.manager.deserialize_changes(changes_file.read_bytes())
                 state = self.manager.apply_changes(state, changes_to_apply)
 
                 # Create temp file with new state.. check for conflicts? future stuff!
-                packet_id = changes[i][0]
                 new_file = self.not_finished / f"{query_id}_{packet_id}"
                 new_file.write_bytes(self.manager.serialize_state(state)) # Manager.serialize? or just str?
 
@@ -147,27 +159,40 @@ class QueryStateStorage:
                 #   f.write(str(state)) # Manager.serialize? or just str?
 
                 ## Atomic replace/move of file 
-                print("SHOULD REPLACE? by ", self.states / f"{query_id}_{packet_id}")
                 new_file.replace(self.states / f"{query_id}_{packet_id}")
 
                 ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
                 (self.states / f"{query_id}_{packet_id-1}").unlink()
 
-                ## Create ack
-                ack_file = self.finished / f"{query_id}_{ack_tags[0]}" # Just one ack tag assumed
-                ack_file.touch()
+                ## Create acks files for batch, also first on draft to ensure consistency on file content
+                ack_file = self.not_finished / f"{query_id}_{packet_id}"
+                # ack_file.touch()
+                ack_file.write_text("\n".join(ack_tags))
+                ack_file.replace(self.finished / f"{query_id}_{packet_id}")
 
-                # delete file! not_applied
-                changes[i][1].unlink()
+                # delete file! not_applied, acks already marked. If failed right before then this changes file on next recovery would be discarded since 
+                # first_pck-packet_size would not be the state.
+                changes_file.unlink()
 
+                new_exp_packet = packet_id+count_handled
                 i+=1
+
 
             while i < len(changes): #unlink any remaining change since its  modify time after commit...
                 #Assumed higher packet id was handled after! i.e sequential handling .. send nack?
-                changes[i][1].unlink()
+                # Extra overhead for logging... but this one happens just once.
+                file = changes[i][1]
+                if file.stat().st_mtime <= commit_ts:
+                    print(f"Discarding not applied change, id:{packet_id}, {file}. Not contiguios packet id range expected: {new_exp_packet}")
+                else:
+                    print(f"Discarding not applied change, id:{packet_id}, {file}. Not commited change")
+
+                file.unlink()
                 i+=1
 
+            query_states[query_id] = state # Save on res
 
+        return query_states
 
 
 
@@ -189,18 +214,25 @@ class QueryStateStorage:
             # Now create commit one
             file.touch()
 
-
     # -------------------------------------------------------------
     # 2. add_changes
     # -------------------------------------------------------------
 
-    def write_changes(self, query_id, packet_id, changes):
+    def write_changes(self, query_id, batch_packet_id, changes):
         """
         Se escribe el archivo en not_finished y se mueve a not_applied.
         """
-        nf = self._packet_file(self.not_finished, query_id, packet_id)
+        nf = self.not_finished / f"{query_id}_{batch_packet_id}"
         nf.write_bytes(self.manager.serialize_changes(changes)) 
-        nf.replace(self.not_applied / f"{query_id}_{packet_id}")  # operación atómica
+        
+        # For now we assume that you call this write changes with the batch changes not only 1 packet.
+        nf.replace(self.not_applied / f"{query_id}_{batch_packet_id}")  # operación atómica
+
+    # Move it/replace it from draft to applied
+    def finish_changes(self, query_id, batch_packet_id):
+        nf = self.not_finished / f"{query_id}_{batch_packet_id}"
+        nf.replace(self.not_applied / f"{query_id}_{batch_packet_id}")  # operación atómica
+
 
     # -------------------------------------------------------------
     # 3. commit_changes
@@ -218,9 +250,10 @@ class QueryStateStorage:
     ## Lets assume caller has the changes saved on change_file... change file is just for backup in case of a crash.
     ## And also has prev state since we assume non concurrent modifying 
     ## SOO essentially received the new state calculated from get new state
+    # Requires the ack_tags to have the names of every packet that should be acked
     # -------------------------------------------------------------
-    def push_changes(self, query_id, packet_id, new_state, ack_tag): ## Lets 
-        change_file = self.not_applied / f"{query_id}_{packet_id}"
+    def push_changes(self, query_id, batch_packet_id, new_state, ack_tags): 
+        change_file = self.not_applied / f"{query_id}_{batch_packet_id}"
         if not change_file.exists():
             raise InvalidStateError(f"Not supported concurrent changes.. saved changes '{change_file}' did not exist!")
         #changes = None
@@ -228,7 +261,7 @@ class QueryStateStorage:
         #    changes = self.manager.deserialize_changes(f)
 
         # Estado anterior
-        prev_state_file = self.states / f"{query_id}_{packet_id - 1}"
+        prev_state_file = self.states / f"{query_id}_{batch_packet_id - len(ack_tags)}"
 
         if not prev_state_file.exists():
             raise InvalidStateError("Not supported concurrent changes.. prev state did not exist!")
@@ -238,18 +271,20 @@ class QueryStateStorage:
         #    prev_state = self.manager.deserialize_state(f)
 
 
-        new_file = self.not_finished / f"{query_id}_{packet_id}"
+        new_file = self.not_finished / f"{query_id}_{batch_packet_id}"
         new_file.write_bytes(self.manager.serialize_state(new_state)) # Manager.serialize? or just str?
 
         ## Atomic replace/move of file 
-        new_file.replace(self.states / f"{query_id}_{packet_id}")
+        new_file.replace(self.states / f"{query_id}_{batch_packet_id}")
 
         ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
         prev_state_file.unlink()
 
-        ## Create ack
-        ack_file = self.finished / f"{ack_tag}"
-        ack_file.touch()
+        ## Create ack file
+        ack_file = self.not_finished / f"{query_id}_{packet_id}"
+        # ack_file.touch()
+        ack_file.write_text("\n".join(ack_tags))
+        ack_file.replace(self.finished / f"{query_id}_{packet_id}")
 
         # delete file! not_applied... should always exist since not concurrent
         change_file.unlink()
