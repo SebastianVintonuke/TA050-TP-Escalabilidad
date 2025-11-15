@@ -110,6 +110,7 @@ class QueryStateStorage:
         clear_directory(self.not_finished)
 
         query_changes = {} # Internal cached data for changes to apply
+        query_states = {} # result so that caller can do some extra logic If needed
 
         for query_id, packet_id, file in map(get_file_credentials, self.not_applied.glob(f"*_*")):
             items = query_changes.setdefault(query_id, [])
@@ -154,7 +155,7 @@ class QueryStateStorage:
                 (self.states / f"{query_id}_{packet_id-1}").unlink()
 
                 ## Create ack
-                ack_file = self.finished / f"{query_id}_{ack_tags[0]}" # Just one ack tag assumed
+                ack_file = self.finished / f"{ack_tags[0]}" # Just one ack tag assumed
                 ack_file.touch()
 
                 # delete file! not_applied
@@ -167,6 +168,8 @@ class QueryStateStorage:
                 changes[i][1].unlink()
                 i+=1
 
+            query_states[query_id] = state # Save on res
+        return query_states
 
 
 
@@ -219,7 +222,7 @@ class QueryStateStorage:
     ## And also has prev state since we assume non concurrent modifying 
     ## SOO essentially received the new state calculated from get new state
     # -------------------------------------------------------------
-    def push_changes(self, query_id, packet_id, new_state, ack_tag): ## Lets 
+    def push_changes(self, query_id, packet_id, new_state, ack_tags): ## Lets 
         change_file = self.not_applied / f"{query_id}_{packet_id}"
         if not change_file.exists():
             raise InvalidStateError(f"Not supported concurrent changes.. saved changes '{change_file}' did not exist!")
@@ -248,7 +251,7 @@ class QueryStateStorage:
         prev_state_file.unlink()
 
         ## Create ack
-        ack_file = self.finished / f"{ack_tag}"
+        ack_file = self.finished / f"{ack_tags[0]}" ## Assumed only 1 ack tag
         ack_file.touch()
 
         # delete file! not_applied... should always exist since not concurrent
@@ -258,11 +261,13 @@ class QueryStateStorage:
     # 5. unregister_packet
     # -------------------------------------------------------------
     def ack_finished(self, ack_func):
-        for query_id, packet_id, file in map(get_file_credentials, self.finished.glob(f"*_*")):
-            ack_func(query_id, packet_id)
+        # for query_id, packet_id, file in map(get_file_credentials, self.finished.glob(f"*_*")):
+        for file in self.finished.glob(f"*"):
+            ## here file name is the ack tag...
+            ack_func(file.name)
             file.unlink()
 
-    def unregister_packet(self, query_id, packet_id):
-        f = (self.finished / f"{query_id}_{packet_id}")
+    def unregister_packet(self, tag):
+        f = (self.finished / f"{tag}")
         if f.exists():
             f.unlink()

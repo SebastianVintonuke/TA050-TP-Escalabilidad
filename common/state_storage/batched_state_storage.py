@@ -174,7 +174,7 @@ class QueryStateStorage:
                 # first_pck-packet_size would not be the state.
                 changes_file.unlink()
 
-                new_exp_packet = packet_id+count_handled
+                new_exp_packet = packet_id+len(ack_tags)
                 i+=1
 
 
@@ -281,10 +281,10 @@ class QueryStateStorage:
         prev_state_file.unlink()
 
         ## Create ack file
-        ack_file = self.not_finished / f"{query_id}_{packet_id}"
+        ack_file = self.not_finished / f"{query_id}_{batch_packet_id}"
         # ack_file.touch()
         ack_file.write_text("\n".join(ack_tags))
-        ack_file.replace(self.finished / f"{query_id}_{packet_id}")
+        ack_file.replace(self.finished / f"{query_id}_{batch_packet_id}")
 
         # delete file! not_applied... should always exist since not concurrent
         change_file.unlink()
@@ -293,8 +293,12 @@ class QueryStateStorage:
     # 5. unregister_packet
     # -------------------------------------------------------------
     def ack_finished(self, ack_func):
-        for query_id, packet_id, file in map(get_file_credentials, self.finished.glob(f"*_*")):
-            ack_func(query_id, packet_id)
+        # for query_id, packet_id, file in map(get_file_credentials, self.finished.glob(f"*_*")):
+        for file in self.finished.glob(f"*"):
+            ## here lines are the ack tags... so 
+            tags = file.read_text().split("\n")
+            for tag in tags:
+                ack_func(tag)
             file.unlink()
 
     def unregister_packet(self, query_id, packet_id):
