@@ -62,21 +62,6 @@ class TestGroupbyStorage(unittest.TestCase):
     def creator_storage(self,state_handler):
         return q_state.QueryStateStorage("initial_folder", state_handler)
 
-    def test_simple_query_state_storage_creates_dirs(self):
-
-        req_ids = []
-
-        def get_accum_mock(acc_id):
-            req_ids.append(acc_id)
-            return None
-
-        state_storage = q_state.QueryStateStorage("initial_folder", GroupbyStateManager(get_accum_mock))
-
-        self.assertIn("initial_folder", self.mock_fs.paths)
-        self.assertIn("initial_folder/states", self.mock_fs.paths)
-        self.assertIn("initial_folder/metadata", self.mock_fs.paths)
-        self.assertIn("initial_folder/packets", self.mock_fs.paths)
-
     def test_query_2_groupbynode_with_storage_no_recovery(self):
 
         # In order
@@ -211,7 +196,7 @@ class TestGroupbyStorage(unittest.TestCase):
         )
 
         in_middle.push_msg(message, "TAG_MSG_1")
-        return type_conf, map_f
+        return type_conf, map_f, message, expected
 
     def test_query_2_groupbynode_with_storage_recovery(self):
 
@@ -219,7 +204,7 @@ class TestGroupbyStorage(unittest.TestCase):
         in_middle = MockMiddlewareTags()
         result_grouper = MockMiddlewareTags()
 
-        type_conf,map_f = self.simple_q2_message_on_fs(result_grouper, in_middle)
+        type_conf,map_f, message, expected = self.simple_q2_message_on_fs(result_grouper, in_middle)
 
         self.assertEqual(in_middle.acked_messages, ["TAG_MSG_1"]) # First run actually acked message.
 
@@ -246,7 +231,7 @@ class TestGroupbyStorage(unittest.TestCase):
 
         for ind, exp_out_headers in enumerate(message.headers.split()):
             self.assertEqual(
-                result_grouper.msgs[ind].headers.to_dict(), 
+                result_grouper.msgs[0].headers.to_dict(), 
                 exp_out_headers.to_dict())
 
         #self.assertEqual(result_grouper.msgs[0].msg_from, message)

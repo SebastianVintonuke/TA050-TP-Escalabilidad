@@ -5,6 +5,11 @@ from .groupby_state_manager import GroupbyStateManager, QueryAccumulator
 from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 # from common.state_storage.query_state_storage import  QueryStateStorage
 # DEF_STORE_PATH = "/etc/node_state"
+from middleware.routing.header_fields import BaseHeaders
+def get_credentials(accum_id):
+	parts = accum_id.split("_")
+
+	return "_".join(parts[:-1]), parts[-1]
 
 class GroupbyNode:
 	def __init__(self, group_middleware, payload_deserializer, types_confs, store_creator = NothingQueryStateStorage):
@@ -21,14 +26,17 @@ class GroupbyNode:
 	def get_accumulator(self, accum_id):
 		acc = self.accumulators.get(accum_id, None)
 		if acc == None:
-			q_type = accum_id.split("_")[-1]
-			logging.info(f"Get new accumulator initialization for id {accum_id}, type {q_type}")
+
+			query_id, q_type = get_credentials(accum_id)
+			new_headers = BaseHeaders(ids = [query_id], types= [q_type])
+			logging.info(f"Get new accumulator initialization for id {accum_id}, src type {q_type}")
 
 
 			config = self.types_configurations[q_type]
 			acc = QueryAccumulator(accum_id, config, config.new_builder_for(new_headers))
 
 			self.accumulators[accum_id] = acc		
+		return acc
 
 	def propagate_signal(self, headers):
 		for prop_headers in headers.split():

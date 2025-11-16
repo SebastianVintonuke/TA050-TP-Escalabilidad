@@ -115,20 +115,20 @@ class GroupbyStateManager:
 
 	def deserialize_state(self, state):
 
-		print(f"STR STATE TO DESERIAL? \n'{state}'")
+		# print(f"STR STATE TO DESERIAL? \n'{state}'")
 		state = json.loads(state.decode())
-		accum = self.get_accumulator(state[META_ACUM_ID])
+		query_accum = self.get_accumulator(state[META_ACUM_ID])
 
-		print("------> DESERIALIZED STATE?!! ", state)
+		# print("------> DESERIALIZED STATE?!! ", state)
 
-		for key, value in zip(changes[FIELD_GROUPS_KEY], changes[FIELD_GROUPS_STATE]):
+		for key, value in zip(state[FIELD_GROUPS_KEY], state[FIELD_GROUPS_STATE]):
 			# Convert key that is a list from serial to a tuple
 			query_accum.groups[tuple(key)] = value
 
-		accum.messages_received= state[META_MSG_COUNT]
-		accum.known_message_len= state[META_EXP_MSG_COUNT]
+		query_accum.messages_received= state[META_MSG_COUNT]
+		query_accum.known_message_len= state[META_EXP_MSG_COUNT]
 
-		return accum
+		return query_accum
 
 
 	## Almost the same as state... i.e is basically like a snapshot... but no acum id needed.
@@ -138,7 +138,7 @@ class GroupbyStateManager:
 		res = serial_acc(query_accum)
 		res[META_MSGS_TAGS] = query_accum.messages_tags
 
-		print("------> GOT STATE TO SERIALIZE JSON! ", res)
+		# print("------> GOT STATE TO SERIALIZE JSON! ", res)
 		return json.dumps(res).encode()
 
 	def deserialize_changes(self, changes_bytes):
