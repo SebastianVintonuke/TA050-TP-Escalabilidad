@@ -6,6 +6,11 @@ class NothingQueryStateStorage:
 	def __init__(self, manager):
 		self.acks = []
 
+
+	## This loads the states and removes all except highest query_state
+	def load_states(self):
+		return {}
+
 	# -------------------------------------------------------------
 	#				   Defined design/contract
 	# -------------------------------------------------------------

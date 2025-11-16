@@ -100,6 +100,31 @@ class QueryStateStorage:
         return (None, None)
 
 
+    ## This loads the states and removes all except highest query_state
+    def load_states(self):
+        query_states = {} # result so that caller can do some extra logic If needed
+
+        for query_id, packet_id, file in map(get_file_credentials, self.states.glob(f"*_*")):
+            newest_state = query_states.setdefault(query_id, None)
+
+            if newest_state == None:
+                query_states[query_id] = [packet_id, file]
+            elif newest_state[0] < packet_id: # Current state is newer
+
+                # Delete prev newest since its an old version.. and for now there is handling for those.
+                newest_state[1].unlink()
+                # Replace newest state
+                query_states[query_id] = [packet_id, file]
+            else: # Current state is older so del
+                file.unlink()
+
+        for value in query_states.values():
+            # Replace second vl with the deserial state
+            
+            value[1] =  self.manager.deserialize_state(value[1].read_bytes())
+
+        return query_states
+
     # -------------------------------------------------------------
     #                   Defined design/contract
     # -------------------------------------------------------------
@@ -122,8 +147,6 @@ class QueryStateStorage:
         for query_id, changes in query_changes.items():
             changes.sort(key=lambda x: x[0]) #Inplace
             first_pck = changes[0][0]
-
-            ## TODO Cleanup any previous state that could be lingering up to first_pck-2//
 
             commit_ts, state = self._load_query_state(query_id,first_pck-1) # Load prev state.
             if state == None:

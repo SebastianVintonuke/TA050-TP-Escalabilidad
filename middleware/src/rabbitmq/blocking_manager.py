@@ -59,6 +59,7 @@ class RabbitMQChannel:
 			#CSVMessage(properties.headers, body)
 			headers = BaseHeaders.from_headers(properties.headers)
 			try:
+				headers.tag = method.delivery_tag
 				msg_failed = callback(headers, body) # Handle msg
 
 				if msg_failed == True:
