@@ -23,7 +23,7 @@ from middleware.routing.query_types import *
 
 from middleware.rabbitmq import utils as rbmq_utils
 from integration_tests.src.mocks_rabbit import *
-from integration_tests.tests.base_test_eof_protocol import *
+from base_test_eof_protocol import *
 
 
 from middleware.select_tasks_middleware import *

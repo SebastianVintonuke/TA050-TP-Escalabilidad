@@ -22,7 +22,7 @@ from middleware.routing.query_types import *
 
 from middleware.rabbitmq import utils as rbmq_utils
 from integration_tests.src.mocks_rabbit import *
-from integration_tests.tests.base_test_eof_protocol import *
+from base_test_eof_protocol import *
 
 class TestRealMiddlewaresEOFProtocol(unittest.TestCase, BaseEOFProtocolTest):
     def get_node_setup(self):
