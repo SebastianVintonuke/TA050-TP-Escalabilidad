@@ -77,11 +77,12 @@ class GroupbyNode:
 
 					self.accumulators[accum_id] = acc
 
+					# May not always be needed but for debugging and descriptability.
+					self.state_storage.register_query(accum_id, acc)
+
 				if acc.check_eof(headers.msg_count):
 					acc.send_built()
 					del self.accumulators[accum_id] # Remove it
-				else:
-					self.state_storage.register_query(accum_id, acc)
 
 			return # This does auto ack since for now its stateless..
 			
@@ -111,7 +112,7 @@ class GroupbyNode:
 
 
 		# Not yet taking into account dups
-		acc.batch_msg_count+=1 # Add to msg batch count... for now 1 is the batch size so not difference. Just set it to 1
+		acc.batch_msg_count+=1 
 
 		if acc.batch_msg_count >= self.batch_size:
 			# Only save/push on batch size count.
@@ -124,46 +125,6 @@ class GroupbyNode:
 
 		return True # Return true to accumulate in batch.
 
-
-	def prev_handling(self):
-		outputs = []
-		for new_headers in headers.split():
-			q_type = new_headers.types[0]
-			accum_id = new_headers.ids[0]+"_"+q_type
-
-			acc = self.accumulators.get(accum_id, None)
-			if acc == None:
-				logging.info(f"New accumulator initialization for {new_headers.ids[0]}, type {q_type}")
-				config = self.types_configurations[q_type]
-				acc = QueryAccumulator(accum_id, config, config.new_builder_for(new_headers))
-
-				self.accumulators[accum_id] = acc
-				self.state_storage.register_query(accum_id, acc)
-			outputs.append(acc)
-
-		for row in msg.stream_rows():
-			for output in outputs:
-				output.check(row)
-
-		should_ack_batch = False
-		for ind, acc in enumerate(outputs):
-			if acc.add_msg_count():
-				logging.info(f"query: {headers.ids[ind]} type: {headers.types[ind]}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Start sending.")
-				acc.send_built()
-				del self.accumulators[acc.accum_id]
-				should_ack_batch = True
-			else:
-
-				# acc.batch_msg_count+=1 
-				acc.batch_msg_count=1 # Add to msg batch count... for now 1 is the batch size so not difference. Just set it to 1
-				should_ack_batch = should_ack_batch or acc.batch_msg_count >= self.batch_size
-
-				# acc.messages_tags.append(headers.tag)
-				# Packet id should be eq to acc.messages_received, since order does not matter as much?
-
-				self.state_storage.write_changes(acc.accum_id, acc.messages_received, acc) # Save state
-				self.state_storage.commit_changes(acc.accum_id)
-				self.state_storage.push_changes(acc.accum_id, acc.messages_received, acc, acc.batch_msg_count)
 
 	def start(self):
 		# Even If there is no pending changes, load states of queries, to continue on memory and not load always from disk.
