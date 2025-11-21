@@ -9,7 +9,7 @@ import logging
 
 
 
-def __year_semester_decode(year_semester_str: str) -> Tuple[date, HalfCreatedAt]:
+def year_semester_decode(year_semester_str: str) -> Tuple[date, HalfCreatedAt]:
     year_semester = int(year_semester_str)
     year_str = str((year_semester * 6 // 12) + 2024)
     year = datetime.strptime(str(year_str), "%Y").date()
@@ -32,7 +32,7 @@ class HandlerQuery3:
         for line in msg.stream_rows():
             #logging.info(f"Q_3 {line}")
             store_name = line[0]
-            year_created_at, half_created_at = __year_semester_decode(line[1])
+            year_created_at, half_created_at = year_semester_decode(line[1])
             tpv = float(line[2])
             data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
         return ResultTask(user_id, QueryId.Query3, False, False, data).to_bytes()
