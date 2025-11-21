@@ -43,7 +43,6 @@ class QueryStateStorage:
         self.not_finished = self.packets / "not_finished"
         self.not_applied = self.packets / "not_applied"
         self.applied = self.packets / "applied"
-        self.finished = self.packets / "finished"
 
         self._ensure_dirs()
 
@@ -51,7 +50,7 @@ class QueryStateStorage:
         for d in [
             self.metadata, self.states, self.packets,
             self.not_finished, self.not_applied,
-            self.applied, self.finished
+            self.applied
         ]:
             d.mkdir(parents=True, exist_ok=True)
 
@@ -67,9 +66,6 @@ class QueryStateStorage:
 
     def _packet_file(self, folder, query_id, packet_id):
         return folder / f"{query_id}_{packet_id}"
-
-    def _finished_packet(self, folder, query_id, packet_id):
-        return self.finished / f"{query_id}_{packet_id}"
 
     def _state_file(self, query_id, packet_id):
         return self.states / f"{query_id}_{packet_id}"
@@ -159,7 +155,7 @@ class QueryStateStorage:
             i = 0
             while i < len(changes) and changes[i][1].stat().st_mtime <= commit_ts:
                 # Apply changes on file
-                changes_to_apply, ack_tags = self.manager.deserialize_changes(changes[i][1].read_bytes())
+                changes_to_apply, _ = self.manager.deserialize_changes(changes[i][1].read_bytes())
                 state = self.manager.apply_changes(state, changes_to_apply)
 
                 # Create temp file with new state.. check for conflicts? future stuff!
@@ -171,15 +167,15 @@ class QueryStateStorage:
                 #   f.write(str(state)) # Manager.serialize? or just str?
 
                 ## Atomic replace/move of file 
-                print("SHOULD REPLACE? by ", self.states / f"{query_id}_{packet_id}")
+                # print("SHOULD REPLACE? by ", self.states / f"{query_id}_{packet_id}")
                 new_file.replace(self.states / f"{query_id}_{packet_id}")
 
                 ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
                 (self.states / f"{query_id}_{packet_id-1}").unlink()
 
-                ## Create ack
-                ack_file = self.finished / f"{ack_tags[0]}" # Just one ack tag assumed
-                ack_file.touch()
+
+                # No need to tag or do something to know wether to ack an already handled packet or not
+                # packet id is sequential. So If a new packet has one that is less thats it, already acked.
 
                 # delete file! not_applied
                 changes[i][1].unlink()
@@ -247,7 +243,7 @@ class QueryStateStorage:
     ## And also has prev state since we assume non concurrent modifying 
     ## SOO essentially received the new state calculated from get new state
     # -------------------------------------------------------------
-    def push_changes(self, query_id, packet_id, new_state, ack_tags): ## Lets 
+    def push_changes(self, query_id, packet_id, new_state, count_msgs): ## Lets 
         change_file = self.not_applied / f"{query_id}_{packet_id}"
         if not change_file.exists():
             raise InvalidStateError(f"Not supported concurrent changes.. saved changes '{change_file}' did not exist!")
@@ -256,7 +252,7 @@ class QueryStateStorage:
         #    changes = self.manager.deserialize_changes(f)
 
         # Estado anterior
-        prev_state_file = self.states / f"{query_id}_{packet_id - 1}"
+        prev_state_file = self.states / f"{query_id}_{packet_id - count_msgs}"
 
         if not prev_state_file.exists():
             raise InvalidStateError("Not supported concurrent changes.. prev state did not exist!")
@@ -275,24 +271,15 @@ class QueryStateStorage:
         ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
         prev_state_file.unlink()
 
-        ## Create ack
-        ack_file = self.finished / f"{ack_tags[0]}" ## Assumed only 1 ack tag
-        ack_file.touch()
+
+        # No need to tag or do something to know wether to ack an already handled packet or not
+        # packet id is sequential. So If a new packet has one that is less thats it, already acked.
 
         # delete file! not_applied... should always exist since not concurrent
         change_file.unlink()
 
     # -------------------------------------------------------------
-    # 5. unregister_packet
+    # 5. unregister_packet ... with no tag/ack saving not needed. 
     # -------------------------------------------------------------
-    def ack_finished(self, ack_func):
-        # for query_id, packet_id, file in map(get_file_credentials, self.finished.glob(f"*_*")):
-        for file in self.finished.glob(f"*"):
-            ## here file name is the ack tag...
-            ack_func(file.name)
-            file.unlink()
-
     def unregister_packet(self, tag):
-        f = (self.finished / f"{tag}")
-        if f.exists():
-            f.unlink()
+        pass

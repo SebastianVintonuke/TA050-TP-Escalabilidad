@@ -18,6 +18,11 @@ from src.groupbynode import GroupbyNode
 from src.groupby_initialize import * 
 from src.topk_initialize import * 
 
+from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
+from common.state_storage.query_state_storage import  QueryStateStorage
+def creator_query_storage_in(folder):
+    return lambda manager: QueryStateStorage(folder, manager)    
+
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
 
@@ -92,7 +97,9 @@ def main() -> None:
     join_node_count = config_params["join_node_count"]
     
     loadtopk = config_params["load_topk"] != 0
-
+    init_folder="/etc/node_state/"
+    grp_folder = init_folder+"groupby"
+    topk_folder = init_folder+"topk"
 
     initialize_log(logging_level)
 
@@ -100,6 +107,9 @@ def main() -> None:
     logging.debug(
         f"action: config | result: success | port: {port} | logging_level: {logging_level} | node_ind: {node_ind} | node_count:{node_count}" #| topk {loadtopk}
     )
+
+    logging.debug(f"Using for groupbynode state: {grp_folder} topk: {topk_folder}")
+
 
     try:
         #result_middleware = ResultNodeMiddleware()
@@ -113,10 +123,10 @@ def main() -> None:
 
         # In memory it doesnt actually connect to network nor block for messeging
         types_config_topk = configure_types_topk(join_middleware)
-        node_topk = GroupbyNode(topk_middleware, MemoryMessage, types_config_topk)
+        node_topk = GroupbyNode(topk_middleware, MemoryMessage, types_config_topk, store_creator = creator_query_storage_in(topk_folder))
         node_topk.start()
 
-        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby)
+        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, store_creator = creator_query_storage_in(grp_folder))
         restart = RestartLogic()
 
         def close_handler(sig, frame):

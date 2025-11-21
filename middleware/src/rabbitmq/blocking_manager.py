@@ -70,6 +70,8 @@ class RabbitMQChannel:
 
 			except Exception as e:
 				logging.error(f"Message handling failed {headers}")
+
+				logging.error(f"msg method: {method} prop: {properties}")
 				logging.error(f"payload: {body[:min(50,len(body))]} error: {e}")
 				ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)	
 
