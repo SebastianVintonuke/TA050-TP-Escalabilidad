@@ -48,6 +48,8 @@ class RabbitMQChannel:
 		
 		#return False
 
+	def ack_message(self, delivery_tag):
+		self.channel.basic_ack(delivery_tag = delivery_tag)
 
 
 	# Wrapper for rbmq messages, subclasses might override this in case they want to have specific types of messages
@@ -57,12 +59,13 @@ class RabbitMQChannel:
 			#CSVMessage(properties.headers, body)
 			headers = BaseHeaders.from_headers(properties.headers)
 			try:
+				headers.tag = method.delivery_tag
 				msg_failed = callback(headers, body) # Handle msg
 
-				if msg_failed:
+				if msg_failed == True:
 					# If msg failed, requeue is desired else throw exception(for now?)
 					ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True) 				
-				else:
+				elif msg_failed == None: # No return functions do by default auto ack messages.. return False to avoid auto acking
 					ch.basic_ack(delivery_tag = method.delivery_tag)
 
 			except Exception as e:

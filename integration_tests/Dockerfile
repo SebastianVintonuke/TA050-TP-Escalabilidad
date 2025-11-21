@@ -3,10 +3,11 @@ FROM python:3.9.7-slim
 RUN pip install pika
 
 WORKDIR /
-COPY selectnode /selectnode
-COPY groupbynode /groupbynode
-COPY joinnode /joinnode
-COPY integration_tests /integration_tests
+COPY selectnode/src /selectnode/src
+COPY groupbynode/src /groupbynode/src
+COPY joinnode/src /joinnode/src
+COPY integration_tests/src /integration_tests/src
+COPY integration_tests/main.py /main.py
 COPY common /common
 COPY middleware/src /middleware
 

@@ -18,6 +18,9 @@ class IntermediateMiddleware(MessageMiddleware):
         logging.debug(f"INTERME SENDING {cloned.headers} len: {len(cloned.payload)} len msg:{len(msg.serialize_payload())}")
         self.inner_middleware.send(msg);
 
+    def ack_message(self, message):
+        self.inner_middleware.ack_message(message)
+
     def start_consuming(self, on_message_callback):
         self.inner_middleware.start_consuming(on_message_callback)
 
@@ -40,11 +43,14 @@ class MockMiddleware(MessageMiddleware):
     def __init__(self):
         self.msgs = []
         self.callback = None
-
+    def ack_message(self, message):
+        pass
+        
     def send(self, msg):
         self.msgs.append(msg)
 
     def push_msg(self, msg):
+        msg.headers.tag = "tag"        
         self.callback(msg.headers, msg.payload)
 
     def start_consuming(self, on_message_callback):
@@ -58,6 +64,25 @@ class MockMiddleware(MessageMiddleware):
 
     def delete(self):
         pass
+
+
+class MockMiddlewareTags(MockMiddleware):
+    def __init__(self):
+        super().__init__()
+        self.acked_messages = []
+
+    def ack_message(self, message):
+        self.acked_messages.append(message)
+        
+    def send(self, msg):
+        self.msgs.append(msg)
+
+    def push_msg(self, msg, tag):
+        msg.headers.tag = tag
+        res = self.callback(msg.headers, msg.payload)
+        if res == None: # None == auto ack!
+            self.ack_message(tag)
+
 
 class MockCopyMiddleware(MockMiddleware):
     def send(self, msg):
