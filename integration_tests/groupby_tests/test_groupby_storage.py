@@ -1,7 +1,9 @@
 import unittest
 
 
-from common.state_storage import query_state_storage as q_state
+# from common.state_storage import query_state_storage as q_state
+from common.state_storage import batched_state_storage as q_state
+
 from common.state_storage.base_state_manager import BaseStateManager
 
 from groupbynode.src.groupby_state_manager import GroupbyStateManager
@@ -374,6 +376,124 @@ class TestGroupbyStorage(unittest.TestCase):
         self.push_msg(in_middle, eof_message, "TAG_MSG_EOF")
 
         self.assertEqual(list(conn_mock.iter_acked()), tags) # Ensure acked after processing message or so.
+        
+
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
+
+        #self.assertEqual(result_grouper.msgs[0].msg_from, message)
+
+        got_result = [x for x in result_grouper.msgs[0].payload]
+        self.assertEqual(len(got_result), len(expected))
+        ind = 0
+        for elem in expected:
+            self.assertEqual(got_result[ind], elem)
+            ind += 1
+
+
+
+
+
+
+
+
+
+
+
+
+    def test_query_2_groupbynode_with_storage_no_recovery_batched_recovery_would_lose_for_now_if_not_completed(self):
+
+        # In order
+        in_cols = ["product_id", "month", "revenue"]
+        out_cols = ["product_id", "month", "revenue", "quantity_sold"]
+
+
+        result_grouper = self.get_res_middleware()
+        type_conf = GroupbyTypeConfiguration(result_grouper, BareMockMessageBuilderNoSerial, 
+                in_fields = in_cols, #EQUALS to out cols from select node main 
+                grouping_conf = [["product_id", "month"], [
+                    [SUM_ACTION,"revenue"],
+                    [COUNT_ACTION, "quantity_sold"],
+                ]],
+                out_conf={ROW_CONFIG_OUT_COLS: out_cols},
+        )
+
+
+        in_middle = self.get_groupby_middleware()
+        conn_mock = self.active_conns.get(rbmq_utils.RABBITMQ_HOST, None)
+        self.assertNotEqual(conn_mock, None)
+        self.assertEqual(len(self.active_conns) ,1)
+        tags = ["TAG_MSG_1","TAG_MSG_2", "TAG_MSG_EOF"]
+        conn_mock.register_tags(tags)
+
+
+        type_exp= {
+            "t1": type_conf
+        }
+
+
+
+        node = GroupbyNode(in_middle, MockMessage, type_exp, store_creator = self.creator_storage, batch_size = 2)
+        node.start()
+
+        rows = [
+            {"product_id": "pr1", "month": 7, "revenue": 88},
+            {"product_id": "pr1", "month": 7, "revenue": 88},
+            {"product_id": "pr1", "month": 8, "revenue": 10},
+            
+            {"product_id": "pr2", "month": 7, "revenue": 942},
+            {"product_id": "pr2", "month": 23, "revenue": 942},
+            
+            {"product_id": "pr3", "month": 6, "revenue": 942},
+        ]
+        rep = 1
+        expected = [
+            ["pr1", "7", str(176.0* rep), str(2* rep)],
+            ["pr1", "8", str(10.0 * rep), str(rep)],
+            ["pr2", "7", str(942.0 * rep), str(rep)],
+            ["pr2", "23", str(942.0 * rep), str(rep)],
+            ["pr3", "6", str(942.0 * rep), str(rep)],
+        ]
+        map_f = lambda r: map_dict_to_vect_cols(in_cols, r)
+        message = BareMockMessageBuilderNoSerial.for_payload(
+            ["query_3323"],
+            ["t1"],
+            rows,map_f,
+        )
+
+        self.push_msg(in_middle, message, "TAG_MSG_1")
+        self.assertEqual(list(conn_mock.iter_acked()), []) # Ensure acked after processing message or so.
+
+
+        node = GroupbyNode(in_middle, MockMessage, type_exp, store_creator = self.creator_storage)
+
+        ## Check no state was loaded?
+        node.start()
+
+        ## Check state was loaded? Or just send message
+        self.assertEqual(len(result_grouper.msgs), 0) # No message was sent to result since no eof yet..
+
+        message = BareMockMessageBuilderNoSerial.for_payload(
+            ["query_3323"],
+            ["t1"],
+            rows,map_f,
+        )
+
+        self.push_msg(in_middle, message, "TAG_MSG_2")
+
+
+        self.assertEqual(list(conn_mock.iter_acked()), ["TAG_MSG_2"]) # Ensure acked after processing message or so.
+
+        # eof
+        eof_message = BareMockMessageBuilderNoSerial.for_payload(["query_3323"],["t1"],[], map_f) 
+        eof_message.set_as_eof(1)
+        self.push_msg(in_middle, eof_message, "TAG_MSG_EOF")
+
+        self.assertEqual(list(conn_mock.iter_acked()), tags[1:]) # Ensure acked after processing message or so.
         
 
         self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
