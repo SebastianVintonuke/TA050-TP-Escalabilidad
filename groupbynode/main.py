@@ -126,7 +126,7 @@ def main() -> None:
         node_topk = GroupbyNode(topk_middleware, MemoryMessage, types_config_topk, store_creator = creator_query_storage_in(topk_folder))
         node_topk.start()
 
-        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, store_creator = creator_query_storage_in(grp_folder))
+        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, store_creator = creator_query_storage_in(grp_folder), batch_size = 10)
         restart = RestartLogic()
 
         def close_handler(sig, frame):
