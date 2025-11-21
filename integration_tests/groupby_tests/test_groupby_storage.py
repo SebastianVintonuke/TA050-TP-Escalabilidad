@@ -292,3 +292,108 @@ class TestGroupbyStorage(unittest.TestCase):
 
 
 
+
+
+    def test_query_2_groupbynode_with_storage_no_recovery_batched(self):
+
+        # In order
+        in_cols = ["product_id", "month", "revenue"]
+        out_cols = ["product_id", "month", "revenue", "quantity_sold"]
+
+
+        result_grouper = self.get_res_middleware()
+        type_conf = GroupbyTypeConfiguration(result_grouper, BareMockMessageBuilderNoSerial, 
+                in_fields = in_cols, #EQUALS to out cols from select node main 
+                grouping_conf = [["product_id", "month"], [
+                    [SUM_ACTION,"revenue"],
+                    [COUNT_ACTION, "quantity_sold"],
+                ]],
+                out_conf={ROW_CONFIG_OUT_COLS: out_cols},
+        )
+
+
+        in_middle = self.get_groupby_middleware()
+        conn_mock = self.active_conns.get(rbmq_utils.RABBITMQ_HOST, None)
+        self.assertNotEqual(conn_mock, None)
+        self.assertEqual(len(self.active_conns) ,1)
+        tags = ["TAG_MSG_1","TAG_MSG_2", "TAG_MSG_EOF"]
+        conn_mock.register_tags(tags)
+
+
+        type_exp= {
+            "t1": type_conf
+        }
+
+
+
+        node = GroupbyNode(in_middle, MockMessage, type_exp, store_creator = self.creator_storage)
+        node.start()
+
+        rows = [
+            {"product_id": "pr1", "month": 7, "revenue": 88},
+            {"product_id": "pr1", "month": 7, "revenue": 88},
+            {"product_id": "pr1", "month": 8, "revenue": 10},
+            
+            {"product_id": "pr2", "month": 7, "revenue": 942},
+            {"product_id": "pr2", "month": 23, "revenue": 942},
+            
+            {"product_id": "pr3", "month": 6, "revenue": 942},
+        ]
+        expected = [
+            ["pr1", "7", str(176.0* 2), "4"],
+            ["pr1", "8", "20.0", "2"],
+            ["pr2", "7", str(942.0 * 2), "2"],
+            ["pr2", "23", str(942.0 * 2), "2"],
+            ["pr3", "6", str(942.0 * 2), "2"],
+        ]
+        map_f = lambda r: map_dict_to_vect_cols(in_cols, r)
+        message = BareMockMessageBuilderNoSerial.for_payload(
+            ["query_3323"],
+            ["t1"],
+            rows,map_f,
+        )
+
+        self.push_msg(in_middle, message, "TAG_MSG_1")
+        self.assertEqual(list(conn_mock.iter_acked()), []) # Ensure acked after processing message or so.
+
+
+        message = BareMockMessageBuilderNoSerial.for_payload(
+            ["query_3323"],
+            ["t1"],
+            rows,map_f,
+        )
+
+        self.push_msg(in_middle, message, "TAG_MSG_2")
+
+
+        self.assertEqual(list(conn_mock.iter_acked()), ["TAG_MSG_1","TAG_MfSG_2"]) # Ensure acked after processing message or so.
+
+        # eof
+        eof_message = BareMockMessageBuilderNoSerial.for_payload(["query_3323"],["t1"],[], map_f) 
+        eof_message.set_as_eof(1)
+        self.push_msg(in_middle, eof_message, "TAG_MSG_EOF")
+
+        self.assertEqual(list(conn_mock.iter_acked()), tags) # Ensure acked after processing message or so.
+        
+
+        self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
+
+        for ind, exp_out_headers in enumerate(message.headers.split()):
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_out_headers.to_dict())
+
+        #self.assertEqual(result_grouper.msgs[0].msg_from, message)
+
+        got_result = [x for x in result_grouper.msgs[0].payload]
+        self.assertEqual(len(got_result), len(expected))
+        ind = 0
+        for elem in expected:
+            self.assertEqual(got_result[ind], elem)
+            ind += 1
+
+
+
+
+
+
