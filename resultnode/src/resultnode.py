@@ -28,7 +28,14 @@ class ResultNode:
 		user_id = headers.ids[0]
 		query_type = headers.types[0]
 		msg = self.payload_deserializer(msg)
-		counter = self.get_counter(user_id)
+		
+
+		counter = self.results_message_counter.get(user_id, None)
+		if counter == None:
+			counter = UserCounter(user_id)
+			self.results_message_counter[user_id] = counter
+			
+			self.state_storage.register_query(user_id, counter)
 
 		handler = self.map_handlers.get(query_type, None)
 
