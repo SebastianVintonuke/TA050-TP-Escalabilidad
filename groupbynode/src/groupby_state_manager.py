@@ -14,7 +14,7 @@ class QueryAccumulator:
 		self.accum_id = accum_id
 		self.msg_builder = msg_builder
 		self.groups = {}
-		self.messages_tags = []
+		self.batch_msg_count = 0
 		self.messages_received=0
 		self.known_message_len= -1
 		self.rows_recv = 0
@@ -77,7 +77,7 @@ META_ACUM_ID = "accumulator_id"
 META_EXP_MSG_COUNT = "exp_msg_count" 
 META_MSG_COUNT = "msg_count" 
 
-META_MSGS_TAGS = "msg_tags"
+META_MSGS_BATCH = "msg_count_batch"
 
 
 ## Base to serialize in changes and in state
@@ -136,15 +136,15 @@ class GroupbyStateManager:
 
 		## Changes when serializing ... is ... in fact... also QueryAccumulator 
 		res = serial_acc(query_accum)
-		res[META_MSGS_TAGS] = query_accum.messages_tags
+		res[META_MSGS_BATCH] = query_accum.batch_msg_count
 
 		# print("------> GOT STATE TO SERIALIZE JSON! ", res)
 		return json.dumps(res).encode()
 
 	def deserialize_changes(self, changes_bytes):
 		res = json.loads(changes_bytes.decode())
-		tags = res.pop(META_MSGS_TAGS)
-		return res, tags
+		msg_count = res.pop(META_MSGS_BATCH)
+		return res, msg_count
 
 
 

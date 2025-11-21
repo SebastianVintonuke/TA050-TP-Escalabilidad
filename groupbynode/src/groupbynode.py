@@ -111,23 +111,23 @@ class GroupbyNode:
 				del self.accumulators[acc.accum_id]
 			else:
 
-				acc.messages_tags.append(headers.tag)
+				# acc.batch_msg_count+=1 
+				acc.batch_msg_count=1 # Add to msg batch count... for now 1 is the batch size so not difference. Just set it to 1
+
+				# acc.messages_tags.append(headers.tag)
 				# Packet id should be eq to acc.messages_received, since order does not matter as much?
 
 				self.state_storage.write_changes(acc.accum_id, acc.messages_received, acc) # Save state
 				self.state_storage.commit_changes(acc.accum_id)
-				self.state_storage.push_changes(acc.accum_id, acc.messages_received, acc, acc.messages_tags)
-
-				self.state_storage.ack_finished(self.middleware.ack_message)
-
-		return False # Do not auto ack
-
+				self.state_storage.push_changes(acc.accum_id, acc.messages_received, acc, acc.batch_msg_count)
 
 
 	def start(self):
-		self.state_storage.load_states()
+		# Even If there is no pending changes, load states of queries, to continue on memory and not load always from disk.
+		self.state_storage.load_states() 
 		self.state_storage.check_integrity()
-		self.state_storage.ack_finished(self.middleware.ack_message)
+		
+
 		self.middleware.start_consuming(self.handle_task)		
 
 	def close(self):
