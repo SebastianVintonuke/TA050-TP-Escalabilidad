@@ -1,6 +1,7 @@
 from common.middleware.tasks.result import ResultTask
 from common.results.query1 import QueryResult1
 from common import QueryId
+import logging
 
 
 class HandlerQuery1:

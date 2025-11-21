@@ -5,9 +5,10 @@ from common.results.query2bs import QueryResult2BestSelling
 
 from datetime import datetime, date
 
+import logging
 
 class HandlerQuery2BestSelling:
-    def handle_new_results(headers, msg, counter, user_id: str) -> ResultTask:
+    def handle_new_results(headers, msg, counter, user_id: str) -> bytes:
         if headers.is_eof():
 
             counter.expected_count_query_2_quantity = headers.msg_count
@@ -40,7 +41,7 @@ class HandlerQuery2BestSelling:
 
 
 class HandlerQuery2MostProfit:
-    def handle_new_results(headers, msg, counter, user_id: str) -> ResultTask:
+    def handle_new_results(headers, msg, counter, user_id: str) -> bytes:
         if headers.is_eof():
             counter.expected_count_query_2_profit = headers.msg_count
             logging.info(f"Received expected message count for query 2 profit, expect {counter.expected_count_query_2_profit} got: {counter.count_query_2_profit}")            
