@@ -20,6 +20,12 @@ from resultnode.src.handler_query3 import HandlerQuery3
 from resultnode.src.handler_query4 import HandlerQuery4
 
 
+from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
+from common.state_storage.query_state_storage import  QueryStateStorage
+def creator_query_storage_in(folder):
+    return lambda manager: QueryStateStorage(folder, manager)    
+
+    
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
 
@@ -76,12 +82,16 @@ def main(config_params) -> None:
     node_id = config_params["node_id"]
     logging_level = config_params["logging_level"]
 
+    node_folder= "/etc/node_state/resultnode"
+
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
         f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
     )
+
+    logging.debug(f"Using for resultnode state: {node_folder}")
 
     in_middle = ResultNodeMiddleware()
     out_middle = MessageMiddlewareQueue("middleware", "results")
@@ -94,7 +104,7 @@ def main(config_params) -> None:
         QUERY_4: HandlerQuery4
     }
 
-    result_node = ResultNode(in_middle, out_middle, payload_deserializer= CSVMessage, handlers = handlers)
+    result_node = ResultNode(in_middle, out_middle, payload_deserializer= CSVMessage, handlers = handlers, store_creator = creator_query_storage_in(node_folder))
 
     def close_handler(sig, frame):
         logging.info("Received close signal... gracefully finishing")

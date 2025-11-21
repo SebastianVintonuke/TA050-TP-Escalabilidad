@@ -1,43 +1,24 @@
 import logging
-
-class Counter:
-	def __init__(self):
-		self.count_query_1 = 0
-		self.count_query_2_profit = 0
-		self.count_query_2_quantity = 0
-		self.count_query_3 = 0
-		self.count_query_4 = 0
-		self.expected_count_query_1 = -1
-		self.expected_count_query_2_profit = -1
-		self.expected_count_query_2_quantity = -1
-		self.expected_count_query_3 = -1
-		self.expected_count_query_4 = -1
-
-	def is_eof_q1(self):
-		return self.expected_count_query_1 >=0 and self.count_query_1 >= self.expected_count_query_1
-	def is_eof_q2_profit(self):
-		return self.expected_count_query_2_profit >=0 and self.count_query_2_profit >= self.expected_count_query_2_profit
-	def is_eof_q2_quantity(self):
-		return self.expected_count_query_2_quantity >=0 and self.count_query_2_quantity >= self.expected_count_query_2_quantity
-	
-	def is_eof_q3(self):
-		return self.expected_count_query_3 >=0 and self.count_query_3 >= self.expected_count_query_3
-	def is_eof_q4(self):
-		return self.expected_count_query_4 >=0 and self.count_query_4 >= self.expected_count_query_4
+from .resultnode_state_handler import UserCounter, ResultNodeStateManager
+from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 
 class ResultNode:
-	def __init__(self, in_middle, out_middle, payload_deserializer, handlers):
+	def __init__(self, in_middle, out_middle, payload_deserializer, handlers, store_creator = NothingQueryStateStorage):
 		self.results_message_counter= {}
 		self.in_middle = in_middle
 		self.out_middle = out_middle
 		self.payload_deserializer = payload_deserializer
 		self.map_handlers = handlers
 
+		# This does not load anything yet.. at start we do.
+		self.state_storage = store_creator(ResultNodeStateManager(self.get_counter)) # Have it hardcoded for now
+
+
 	
 	def get_counter(self, user_id: str):
 		counter = self.results_message_counter.get(user_id, None)
 		if counter == None:
-			counter = Counter()
+			counter = UserCounter(user_id)
 			self.results_message_counter[user_id] = counter
 
 		return counter   
@@ -62,9 +43,18 @@ class ResultNode:
 			logging.info(f"NO EXISTE {headers.types}")
 			#raise ValueError(f"Unknown query type: {query_type}")
 
+		counter.pkt_id_counter +=1 # Add 1 to pckt id counter. Used as pkt id since order does not matter? yeah .. no should not count duplicates! TODO change to use pkt id when in headers!
+		self.state_storage.write_changes(user_id, counter.pkt_id_counter, counter) # Save state
+		self.state_storage.commit_changes(user_id)
+		self.state_storage.push_changes(user_id, counter.pkt_id_counter, counter, counter.batch_msg_count)
+
 
 
 	def start(self):
+		# Even If there is no pending changes, load states of queries, to continue on memory and not load always from disk.
+		self.state_storage.load_states() 
+		self.state_storage.check_integrity()
+
 		self.in_middle.start_consuming(self.handle_result)
 
 	def close(self):
