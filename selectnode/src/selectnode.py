@@ -11,7 +11,7 @@ class TypeHandler:
         self.type_conf.filter_map(row, self.msg_builder)
     
     def send_built(self):
-        #logging.info(f"----------> {self.msg_builder.headers.types} message sent len:{self.msg_builder.len_payload()}")
+        # logging.info(f"----------> {self.msg_builder.headers.types} message sent len:{self.msg_builder.len_payload()}")
         self.type_conf.send(self.msg_builder)
 
 
@@ -25,7 +25,7 @@ class SelectNode:
         if headers.is_eof():  # Empty msg is signal of EOF or error, depending on headers.
             logging.info(f"Select node propagating eof of {headers}")
             self.type_expander.propagate_signal_in(headers)
-            return False
+            return
             
         msg = self.payload_deserializer(msg)
         outputs = []
@@ -41,7 +41,7 @@ class SelectNode:
         for output in outputs:
             output.send_built()
 
-        return False
+        return
 
     def start(self):
         self.start_single()
