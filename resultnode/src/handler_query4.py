@@ -3,6 +3,7 @@ from common import QueryId
 
 from datetime import datetime, date
 from common.results.query4 import QueryResult4
+import logging
 
 
 class HandlerQuery4:

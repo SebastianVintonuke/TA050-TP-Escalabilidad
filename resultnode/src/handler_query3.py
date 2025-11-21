@@ -3,6 +3,8 @@ from common import QueryId
 
 from datetime import datetime, date
 from common.results.query3 import QueryResult3, HalfCreatedAt
+from typing import List, Tuple
+import logging
 
 
 
