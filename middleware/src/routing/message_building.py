@@ -35,6 +35,12 @@ class MessageBuilder:
     def get_headers(self):
         return self.headers.to_dict()
 
+
+    def split_headers(self):
+        for new_header in self.headers.split():
+            yield new_header.to_dict()
+            
+
     def set_as_eof(self, count: int = 0):
         self.should_be_eof = True
         self.headers.msg_count = count

@@ -31,9 +31,33 @@ class GroupbyTypeConfiguration:
 		msg_builder.add_row(self.mapper.project_out(base))
 
 
+
+
+
 	def send(self, builder):
-		logging.info(f"GROUPBY SENDING TO {builder.headers.types} {builder.headers.ids} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
-		return self.middleware.send(builder)
+		# print(f"GROUPBY SENDING TO {builder.headers.types} {builder.headers.ids} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
+		ori_headers = builder.headers
+		splitted_headers = list(ori_headers.split())
+		# print("SPLITTED", splitted)
+		for headers in ori_headers.split():
+			builder.headers = headers
+			# print(f"SEND TO GROUPBY MIDDLE SENDING SPLITTED {headers} TO {self.middleware}")			
+			self.middleware.send(builder)
+
+		builder.headers = ori_headers
 
 	def close(self):
 		self.middleware.close()
+
+
+"""
+	def send(self, hashed_message_builder): #: 
+		target = self.queue_name_base.format(IND= hashed_message_builder.hash_in(self.node_count))
+		payload = hashed_message_builder.serialize_payload()
+		
+		# Send separately each type..
+		for headers in hashed_message_builder.split_headers():
+			print(f"SEND TO GROUPBY MIDDLE SENDING SPLITTED {headers} TO {target}")
+
+			self._channel.send(target, headers,payload)
+"""

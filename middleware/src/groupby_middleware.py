@@ -12,8 +12,12 @@ GROUPBY_EXCHANGE = "groupby_exchange"
 
 class GroupbyTasksMiddleware(RabbitHashedExchangeMiddleware):
 	def new_rabbit_manager(self, host):
-		return RabbitMQManager(host)
+		return BatchedRabbitMQManager(host)
+		
+		# return RabbitMQManager(host)
 
 
 	def __init__(self, node_count,ind = 0, host = rbmq_consts.RABBITMQ_HOST):
 		super().__init__(GROUPBY_TASKS_QUEUE_BASE, GROUPBY_EXCHANGE, node_count, ind , host =host)
+
+

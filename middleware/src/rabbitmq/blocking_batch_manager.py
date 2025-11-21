@@ -37,9 +37,10 @@ class BatchedRabbitMQChannel(RabbitMQChannel):
 
 				elif accum_to_batch == None: # No return functions do by default auto ack messages.. return True to avoid auto acking i.e accumulate in a batch
 					
-					for tag in msgs_to_ack:						
+					for tag in msgs_to_ack:			
+
 						# If msg failed, requeue is desired else throw exception(for now?)
-						ch.basic_nack(delivery_tag=tag, requeue=True)
+						ch.basic_ack(delivery_tag=tag)
 					msgs_to_ack.clear()
 
 

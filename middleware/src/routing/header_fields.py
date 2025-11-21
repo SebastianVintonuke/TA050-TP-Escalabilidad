@@ -65,6 +65,10 @@ class BaseHeaders:
 
 	def sub_for(self, ind):
 		return BaseHeaders([self.ids[ind]], [self.types[ind]], self.msg_count)
+	
+	def first_query(self):
+		return BaseHeaders([self.ids[0]],[self.types[0]],self.msg_count)
+
 	def split(self):
 		for ide, type in zip(self.ids, self.types):
 			yield BaseHeaders([ide],[type],self.msg_count)
