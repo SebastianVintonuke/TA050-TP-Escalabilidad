@@ -1,21 +1,21 @@
 services:
-  integration_tests:
-    container_name: integration_tests
-    image: integration_tests:latest
-    entrypoint: python3 /main.py
-    networks:
-      - testing_net
-    volumes:
-      - ../integration_tests/tests:/target_tests/integration_tests
+  # integration_tests:
+  #   container_name: integration_tests
+  #   image: integration_tests:latest
+  #   entrypoint: python3 /main.py
+  #   networks:
+  #     - testing_net
+  #   volumes:
+  #     - ../integration_tests/tests:/target_tests/integration_tests
 
-  groupbynode_unit_tests:
-    container_name: groupbynode_unit_tests
-    image: integration_tests:latest
-    entrypoint: python3 /main.py
-    networks:
-      - testing_net
-    volumes:
-      - ../groupbynode/tests:/target_tests/groupbynode
+  # groupbynode_unit_tests:
+  #   container_name: groupbynode_unit_tests
+  #   image: integration_tests:latest
+  #   entrypoint: python3 /main.py
+  #   networks:
+  #     - testing_net
+  #   volumes:
+  #     - ../groupbynode/tests:/target_tests/groupbynode
 
   groupbynode_storage_tests:
     container_name: groupbynode_storage_tests

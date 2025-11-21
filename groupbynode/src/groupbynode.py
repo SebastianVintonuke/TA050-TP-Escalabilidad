@@ -111,7 +111,7 @@ class GroupbyNode:
 
 
 		# Not yet taking into account dups
-		acc.batch_msg_count=1 # Add to msg batch count... for now 1 is the batch size so not difference. Just set it to 1
+		acc.batch_msg_count+=1 # Add to msg batch count... for now 1 is the batch size so not difference. Just set it to 1
 
 		if acc.batch_msg_count >= self.batch_size:
 			# Only save/push on batch size count.

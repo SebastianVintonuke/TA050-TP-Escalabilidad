@@ -326,7 +326,7 @@ class TestGroupbyStorage(unittest.TestCase):
 
 
 
-        node = GroupbyNode(in_middle, MockMessage, type_exp, store_creator = self.creator_storage)
+        node = GroupbyNode(in_middle, MockMessage, type_exp, store_creator = self.creator_storage, batch_size = 2)
         node.start()
 
         rows = [
@@ -366,7 +366,7 @@ class TestGroupbyStorage(unittest.TestCase):
         self.push_msg(in_middle, message, "TAG_MSG_2")
 
 
-        self.assertEqual(list(conn_mock.iter_acked()), ["TAG_MSG_1","TAG_MfSG_2"]) # Ensure acked after processing message or so.
+        self.assertEqual(list(conn_mock.iter_acked()), ["TAG_MSG_1","TAG_MSG_2"]) # Ensure acked after processing message or so.
 
         # eof
         eof_message = BareMockMessageBuilderNoSerial.for_payload(["query_3323"],["t1"],[], map_f) 

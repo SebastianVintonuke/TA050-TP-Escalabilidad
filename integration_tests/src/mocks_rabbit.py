@@ -30,8 +30,8 @@ class MockChannel:
         self.consuming = False
         self.queues = {}
         self.host = host
-        self.acked_tags = set()
-        self.nacked_tags = set()
+        self.acked_tags = []#set()
+        self.nacked_tags = []#set()
         self.is_open = True
         self.get_tag_for_new_msg = lambda queue_obj: f"m_{len(queue_obj.msgs)}"
 
@@ -91,9 +91,10 @@ class MockChannel:
         )
 
     def basic_ack(self, delivery_tag):
-        self.acked_tags.add(delivery_tag)
+        self.acked_tags.append(delivery_tag)
+        # print("---------> ACKED", delivery_tag, "NOW", self.acked_tags)
     def basic_nack(self, delivery_tag, requeue = False):
-        self.nacked_tags.add((delivery_tag, requeue))
+        self.nacked_tags.append((delivery_tag, requeue))
 
 
 class MockConnection:
