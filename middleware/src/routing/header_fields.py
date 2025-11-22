@@ -1,11 +1,14 @@
 FIELD_QUERY_ID ="queries_id" 
 FIELD_QUERY_TYPE ="queries_type" 
 FIELD_PARTITION_IND ="partition_ind"
+FIELD_PACKET_ID ="packet_id"
+
 DEFAULT_PARTITION_VALUE =-1
 DEFAULT_QUERY_TYPE =""
 
 EOF_SIGNAL = -1
 DEFAULT_ERROR_SIGNAL= -2
+UNDEFINED_PACKET_ID= -1
 #FIELD_QUERY_FIELDS ="queries_" 
 
 class BaseHeaders:
@@ -17,29 +20,33 @@ class BaseHeaders:
 		return BaseHeaders(
 			headers.get(FIELD_QUERY_ID, []),
 			headers.get(FIELD_QUERY_TYPE, [DEFAULT_QUERY_TYPE]),
-			headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE)
+			headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE),
+			headers.get(FIELD_PACKET_ID, UNDEFINED_PACKET_ID)
 		)
 
 	def from_headers_typed(headers, q_type):
 		return BaseHeaders(
 			[headers.get(FIELD_QUERY_ID, None)],
 			[q_type],
-			headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE)
+			headers.get(FIELD_PARTITION_IND, DEFAULT_PARTITION_VALUE),
+			headers.get(FIELD_PACKET_ID, UNDEFINED_PACKET_ID)			
 		)
 
-	def __init__(self, ids, types = [DEFAULT_QUERY_TYPE], msg_count = DEFAULT_PARTITION_VALUE):
+	def __init__(self, ids, types = [DEFAULT_QUERY_TYPE], msg_count = DEFAULT_PARTITION_VALUE, packet_id = UNDEFINED_PACKET_ID):
 		self.ids = ids
 		self.types = types
 		self.msg_count = msg_count
+		self.packet_id = packet_id
 
 	def __repr__(self):
-		return f"ids:{self.ids}, types:{self.types}, msg_count:{self.msg_count}"
+		return f"ids:{self.ids}, types:{self.types}, msg_count:{self.msg_count} pck_id: {self.packet_id}"
 
 	def clone(self):
 		return BaseHeaders(
 			list(self.ids),
 			list(self.types),
-			self.msg_count
+			self.msg_count,
+			self.packet_id
 		)
 
 	def get_error_code(self):
@@ -64,14 +71,14 @@ class BaseHeaders:
 		return zip(self.ids, self.types)		
 
 	def sub_for(self, ind):
-		return BaseHeaders([self.ids[ind]], [self.types[ind]], self.msg_count)
+		return BaseHeaders([self.ids[ind]], [self.types[ind]], self.msg_count, self.packet_id)
 	
 	def first_query(self):
-		return BaseHeaders([self.ids[0]],[self.types[0]],self.msg_count)
+		return BaseHeaders([self.ids[0]],[self.types[0]],self.msg_count, self.packet_id)
 
 	def split(self):
 		for ide, type in zip(self.ids, self.types):
-			yield BaseHeaders([ide],[type],self.msg_count)
+			yield BaseHeaders([ide],[type],self.msg_count, self.packet_id)
 
 	def iter_type_headers(self):
 		if self.msg_count != DEFAULT_PARTITION_VALUE: #If eof add it, else ignore the header.		
@@ -90,6 +97,7 @@ class BaseHeaders:
 	def to_dict(self):
 		res = {
 			FIELD_QUERY_ID: self.ids,
+			FIELD_PACKET_ID: self.packet_id
 		}
 
 		if len(self.types) >0 and self.types[0] != DEFAULT_QUERY_TYPE:

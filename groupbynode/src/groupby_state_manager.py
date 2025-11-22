@@ -38,9 +38,13 @@ class QueryAccumulator:
 		for group, acc in self.groups.items():
 			self.type_conf.add_output(self.msg_builder, group, acc)
 
+		self.msg_builder.headers.packet_id = 0 # Reset packet id for next in line
+
 		logging.info(f"Grouper node sending EOF rows processed {self.rows_recv} msg sent 1")
+
 		self.type_conf.send(self.msg_builder)
 		eof_signal = self.msg_builder.clone()
+		eof_signal.packet_id = 1 # Set packet id.
 		eof_signal.set_as_eof(1)
 		self.type_conf.send(eof_signal)
 

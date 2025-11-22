@@ -16,8 +16,8 @@ class CSVMessage(Message):
 
 class CSVMessageBuilder(MessageBuilder):
 
-    def with_credentials(ids, types):
-        return CSVMessageBuilder(BaseHeaders(ids, types))
+    def with_credentials(ids, types, packet_id = UNDEFINED_PACKET_ID):
+        return CSVMessageBuilder(BaseHeaders(ids, types, packet_id = packet_id))
 
     def creator_with_type(new_type):
         def converter(headers):
@@ -50,8 +50,8 @@ class CSVMessageBuilder(MessageBuilder):
         return CSVMessageBuilder(self.headers.clone())
 
 class CSVHashedMessageBuilder(HashedMessageBuilder):
-    def with_credentials(ids, types, key_hash):
-        return CSVHashedMessageBuilder(BaseHeaders(ids, types), key_hash)
+    def with_credentials(ids, types, key_hash, packet_id = UNDEFINED_PACKET_ID):
+        return CSVHashedMessageBuilder(BaseHeaders(ids, types, packet_id = packet_id), key_hash)
 
     def creator_with_type(new_type):
         def converter(headers):

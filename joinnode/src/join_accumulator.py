@@ -7,6 +7,10 @@ class JoinAccumulator:
         self.msg_builder = msg_builder#type_conf.new_builder_for(msg, ind)
         self.msg_builder.reset_eof()# Ensure its not copying the eof flag from input sender
 
+        # Also reset packet id to 0... output packet id thing. If restored from state this starting id 
+        # is changed.
+        self.msg_builder.headers.packet_id = 0 
+
         self.left_rows = []
         self.right_rows = []
         self.left_finished = False
@@ -22,6 +26,13 @@ class JoinAccumulator:
         self.join_id = ide#ide+ self.type_conf.join_id
         self.batch_msg_count = 0
 
+    def get_curr_out_id(self):
+        return self.msg_builder.headers.packet_id
+
+    def set_curr_out_id(self, pck_id):
+        self.msg_builder.headers.packet_id = pck_id
+
+
     def len_left(self):
         return len(self.left_rows)
 
@@ -36,7 +47,9 @@ class JoinAccumulator:
         if self.msg_builder.len_payload() >= self.limit:
             self.type_conf.send(self.msg_builder)
             self.msg_builder.clear_payload()
-            self.msg_sent+=1
+
+            self.msg_builder.headers.packet_id += 1            
+            self.msg_sent+=1 # With pck id its replaced.
 
     def _trigger_eof_right(self):
         self.right_finished = True
@@ -158,6 +171,8 @@ class JoinAccumulator:
             self.describe_send()
             self.type_conf.send(self.msg_builder)
             self.msg_sent+=1
+            self.msg_builder.headers.packet_id+=1
+            
         eof_signal = self.msg_builder.clone()
         logging.info(f"EOF SIGNAL TO {eof_signal.headers.types} {eof_signal.headers.ids}")
         eof_signal.set_as_eof(self.msg_sent)

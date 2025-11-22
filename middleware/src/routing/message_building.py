@@ -58,6 +58,13 @@ class MessageBuilder:
     def clone(self):
         return MessageBuilder(self.headers.clone())
 
+    def reset_packet_id(self):
+        self.headers.packet_id = 0
+
+    def inc_packet_id(self):
+        self.headers.packet_id +=1
+
+
 
 # HashedMessage Builder, add key hash methods
 class HashedMessageBuilder(MessageBuilder):

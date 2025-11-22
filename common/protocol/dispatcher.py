@@ -95,54 +95,54 @@ class DispatcherProtocol:
 
     def __dispatch_batch(self, user_id: str, model: Model, batch: List[bytes], counter: Counter) -> None:
         if model is Transaction:
-            self.__send_task_to_select_transaction(user_id, model, batch)
+            self.__send_task_to_select_transaction(user_id, model, batch, counter.counter_transactions)
             counter.counter_transactions += 1
         elif model is TransactionItem:
-            self.__send_task_to_select_transaction_item(user_id, model, batch)
+            self.__send_task_to_select_transaction_item(user_id, model, batch, counter.counter_transaction_items)
             counter.counter_transaction_items += 1
         elif model is MenuItem:
-            self.__send_task_to_join_menu_item(user_id, model, batch)
+            self.__send_task_to_join_menu_item(user_id, model, batch, counter.counter_menu_items)
             counter.counter_menu_items += 1
         elif model is User:
-            self.__send_task_to_join_user(user_id, model, batch)
+            self.__send_task_to_join_user(user_id, model, batch, counter.counter_user)
             counter.counter_user += 1
         elif model is Store:
-            self.__send_task_to_join_store(user_id, model, batch)
+            self.__send_task_to_join_store(user_id, model, batch, counter.counter_store)
             counter.counter_store += 1
         else:
             raise Exception(f"Unknown model: {model}")
 
 
-    def __send_task_to_select_transaction(self, user_id: str, model: Transaction, batch: List[bytes]) -> None:
-        transaction_task = CSVMessageBuilder.with_credentials([user_id], ["transactions"])
+    def __send_task_to_select_transaction(self, user_id: str, model: Transaction, batch: List[bytes], pck_id: int) -> None:
+        transaction_task = CSVMessageBuilder.with_credentials([user_id], ["transactions"], pck_id)
         for line in batch:
             transaction_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.select_middleware.send(transaction_task)
 
 
-    def __send_task_to_select_transaction_item(self, user_id: str, model: TransactionItem, batch: List[bytes]) -> None:
-        transaction_item_task = CSVMessageBuilder.with_credentials([user_id], ["query_2"])
+    def __send_task_to_select_transaction_item(self, user_id: str, model: TransactionItem, batch: List[bytes], pck_id: int) -> None:
+        transaction_item_task = CSVMessageBuilder.with_credentials([user_id], ["query_2"], pck_id)
         for line in batch:
             transaction_item_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.select_middleware.send(transaction_item_task)
 
 
-    def __send_task_to_join_menu_item(self, user_id: str, model: MenuItem, batch: List[bytes]) -> None:
-        menu_item_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id)
+    def __send_task_to_join_menu_item(self, user_id: str, model: MenuItem, batch: List[bytes], pck_id: int) -> None:
+        menu_item_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id, pck_id)
         for line in batch:
             menu_item_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.join_middleware.send(menu_item_task)
 
 
-    def __send_task_to_join_user(self, user_id: str, model: User, batch: List[bytes]) -> None:
-        user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id)
+    def __send_task_to_join_user(self, user_id: str, model: User, batch: List[bytes], pck_id: int) -> None:
+        user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id, pck_id)
         for line in batch:
             user_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.join_middleware.send(user_task)
 
 
-    def __send_task_to_join_store(self, user_id: str, model: Store, batch: List[bytes]) -> None:
-        store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id)
+    def __send_task_to_join_store(self, user_id: str, model: Store, batch: List[bytes], pck_id: int) -> None:
+        store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id, pck_id)
         for line in batch:
             store_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.join_middleware.send(store_task)
@@ -151,31 +151,31 @@ class DispatcherProtocol:
     def __send_eof_for(self, user_id: str, model: Model, counter: Counter):
         if model is Transaction:
             logging.info(f"action: eof_transaction | result: success | count: {counter.counter_transactions}")
-            eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id], ["query_1", "query_3", "query_4"])
+            eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id], ["query_1", "query_3", "query_4"], counter.counter_transactions)
             eof_task.set_as_eof(count= counter.counter_transactions) # If set as 0 assumes all messages were sent. Since it checks if msg received < expected. If it is > then fine
             self.out_middleware.select_middleware.send(eof_task)
 
         elif model is TransactionItem:
             logging.info(f"action: eof_transaction_item | result: success | count: {counter.counter_transaction_items}")
-            eof_task = CSVMessageBuilder.with_credentials([user_id],["query_2"])
+            eof_task = CSVMessageBuilder.with_credentials([user_id],["query_2"],counter.counter_transaction_items)
             eof_task.set_as_eof(counter.counter_transaction_items)
             self.out_middleware.select_middleware.send(eof_task)
 
         elif model is MenuItem:
             logging.info(f"action: eof_menu_item | result: success | count: {counter.counter_menu_items}")
-            eof_product_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id)
+            eof_product_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id, counter.counter_menu_items)
             eof_product_task.set_as_eof(counter.counter_menu_items)
             self.out_middleware.join_middleware.send(eof_product_task)
     
         elif model is User:
             logging.info(f"action: eof_user | result: success | count: {counter.counter_user}")
-            eof_user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id)
+            eof_user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id, counter.counter_user)
             eof_user_task.set_as_eof(counter.counter_user)
             self.out_middleware.join_middleware.send(eof_user_task)
 
         elif model is Store:
             logging.info(f"action: eof_store | result: success | count: {counter.counter_store}")
-            eof_store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id)
+            eof_store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id, counter.counter_store)
             eof_store_task.set_as_eof(counter.counter_store)
             self.out_middleware.join_middleware.send(eof_store_task)
 

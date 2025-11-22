@@ -83,7 +83,7 @@ class TestTopKNode(unittest.TestCase):
 
 
         self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
-
+        message.headers.packet_id = 0 # Expected id = 0 for recv packet
         for ind, exp_out_headers in enumerate(message.headers.split()):
             self.assertEqual(
                 result_grouper.msgs[ind].headers.to_dict(), 
@@ -156,6 +156,7 @@ class TestTopKNode(unittest.TestCase):
 
         self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
 
+        message.headers.packet_id = 0 # Expected id = 0 for recv packet
         for ind, exp_out_headers in enumerate(message.headers.split()):
             self.assertEqual(
                 result_grouper.msgs[ind].headers.to_dict(), 
