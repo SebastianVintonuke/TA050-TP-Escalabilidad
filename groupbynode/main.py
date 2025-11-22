@@ -98,8 +98,8 @@ def main() -> None:
     
     loadtopk = config_params["load_topk"] != 0
     init_folder="/etc/node_state/"
-    grp_folder = init_folder+"groupby"
-    topk_folder = init_folder+"topk"
+    grp_folder = init_folder+f"groupby_{node_ind}"
+    topk_folder = init_folder+f"topk_{node_ind}"
 
     initialize_log(logging_level)
 

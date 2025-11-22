@@ -90,7 +90,7 @@ def main() -> None:
     join_node_ind = config_params["node_ind"]
 
     init_folder="/etc/node_state/"
-    join_folder = init_folder+"joinnode"
+    join_folder = init_folder+f"joinnode_{join_node_ind}"
 
     initialize_log(logging_level)
 
