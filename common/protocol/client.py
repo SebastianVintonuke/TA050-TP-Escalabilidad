@@ -63,13 +63,6 @@ class ClientProtocol:
                 except Exception as e:
                     close_file(reader)
                     raise e
-
-        #in_parallel = ["transaction_items", "users"]
-        #trans_items = input_dir.rglob(f"{in_parallel[0]}/*.csv")
-        #users = input_dir.rglob(f"{in_parallel[1]}/*.csv")
-
-
-
         self._batch_protocol.send_batch([])
 
         user_id = self._byte_protocol.wait_bytes().decode()
