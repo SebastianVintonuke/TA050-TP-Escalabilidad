@@ -27,28 +27,32 @@ class ResultNode:
 	def handle_result(self, headers, msg):
 		user_id = headers.ids[0]
 		query_type = headers.types[0]
-		msg = self.payload_deserializer(msg)
-		
+		handler = self.map_handlers.get(query_type, None)
 
+		if handler == None:
+			logging.info(f"NO EXISTE {headers.types}")
+			return
+
+		if headers.is_error():
+			logging.info(f"action: abort | result: in-progress | {headers}")
+			handler.send_abort(user_id, self.out_middle)
+			return
+
+		msg = self.payload_deserializer(msg)
 		counter = self.results_message_counter.get(user_id, None)
+
 		if counter == None:
 			counter = UserCounter(user_id)
 			self.results_message_counter[user_id] = counter
-			
+
 			self.state_storage.register_query(user_id, counter)
 
-		handler = self.map_handlers.get(query_type, None)
+		result_task= handler.handle_new_results(headers, msg, counter,  user_id)
+		if result_task != None:
+			self.out_middle.send(result_task)
 
-
-		if handler:
-			result_task= handler.handle_new_results(headers, msg, counter,  user_id)
-			if result_task != None:
-				self.out_middle.send(result_task)
-			
-			handler.check_send_eof(counter, user_id, self.out_middle)
-		else:
-			logging.info(f"NO EXISTE {headers.types}")
-			#raise ValueError(f"Unknown query type: {query_type}")
+		handler.check_send_eof(counter, user_id, self.out_middle)
+		#raise ValueError(f"Unknown query type: {query_type}")
 
 		counter.pkt_id_counter +=1 # Add 1 to pckt id counter. Used as pkt id since order does not matter? yeah .. no should not count duplicates! TODO change to use pkt id when in headers!
 		self.state_storage.write_changes(user_id, counter.pkt_id_counter, counter) # Save state

@@ -24,3 +24,6 @@ class HandlerQuery1:
         if counter.is_eof_q1():
             logging.info(f"Received last message for query 1 count: {counter.count_query_1} expected_count: {counter.expected_count_query_1}")
             middleware.send(ResultTask(user_id, QueryId.Query1, True, False, []).to_bytes())
+
+    def send_abort(user_id, middleware):
+        middleware.send(ResultTask(user_id, QueryId.Query1, True, True, []).to_bytes())

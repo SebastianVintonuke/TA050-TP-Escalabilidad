@@ -182,7 +182,26 @@ class DispatcherProtocol:
 
     def __send_abort_for(self, user_id: str) -> None:
         logging.info(f"action: abort | result: in-progress")
-        pass
+        eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id],["query_1", "query_3", "query_4"])
+        eof_task.set_error()
+        self.out_middleware.select_middleware.send(eof_task)
+
+        eof_task = CSVMessageBuilder.with_credentials([user_id], ["query_2"])
+        eof_task.set_error()
+        self.out_middleware.select_middleware.send(eof_task)
+
+        eof_product_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id)
+        eof_task.set_error()
+        self.out_middleware.join_middleware.send(eof_product_task)
+
+        eof_user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id)
+        eof_task.set_error()
+        self.out_middleware.join_middleware.send(eof_user_task)
+
+        eof_store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id)
+        eof_task.set_error()
+        self.out_middleware.join_middleware.send(eof_store_task)
+        logging.info(f"action: abort | result: success")
 
 
     def __add_request_register_to_local_storage(self, user_id: str) -> None:

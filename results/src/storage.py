@@ -17,6 +17,7 @@ class ResultStorage:
 
     def handle(self, result_task: ResultTask) -> None:
         if result_task.abort:
+            logging.info(f"action: abort | action: in-progress | result: {result_task.user_id} | {result_task.query_id}")
             self.__delete_results(result_task.user_id)
             return
 

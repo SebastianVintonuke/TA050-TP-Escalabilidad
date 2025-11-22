@@ -9,8 +9,8 @@ from typing import List, Optional, Tuple, Union
 
 from common.protocol.client import ClientProtocol
 
-MAX_ATTEMPTS = 3
-MAX_ATTEMPTS_DOWNLOAD_RESULTS = 15
+MAX_ATTEMPTS = 1
+MAX_ATTEMPTS_DOWNLOAD_RESULTS = 1
 DEFAULT_EXECUTIONS = 1
 
 

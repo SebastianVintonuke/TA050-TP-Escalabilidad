@@ -1,5 +1,7 @@
 # from .type_config import TypeConfiguration
 import logging
+
+from middleware.routing.header_fields import BaseHeaders
 from .join_accumulator import JoinAccumulator
 from .join_state_manager import JoinNodeStateManager
 
@@ -21,7 +23,7 @@ class JoinNode:
         self.batch_size = batch_size        
 
     def get_config_from_joiner_type_id(self, type_id):
-        for config in type_expander.type_configurations:
+        for config in self.type_expander.type_configurations:
             if config.join_id == type_id:
                 return config
 
@@ -33,9 +35,7 @@ class JoinNode:
 
             query_id, join_type_id = get_credentials(joiner_id)
 
-
-
-            logging.info(f"Get new Join accumulator initialization for id {joiner_id}, src type: {q_type} join type {join_type_id}")
+            logging.info(f"Get new Join accumulator initialization for id {joiner_id},  join type {join_type_id}")
             config = self.get_config_from_joiner_type_id(join_type_id)
 
             # Join config new builder for... ignores basically types field but requires a value
@@ -78,7 +78,7 @@ class JoinNode:
     def handle_task(self, headers, msg):
         if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
             if headers.is_error():
-                logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids}")
+                logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids} | type: {headers.types}")
                 self.type_expander.propagate_signal_in(headers)
                 return
 

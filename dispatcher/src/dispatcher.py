@@ -76,6 +76,7 @@ class DispatcherServer:
         Read message, process it and close the socket
         """
         protocol = DispatcherProtocol(client_socket, self._node_id, self._client_count)
+        self._client_count += 1
         try:
             protocol.handle_requests()
         except Exception as e:

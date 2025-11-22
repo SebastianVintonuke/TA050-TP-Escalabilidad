@@ -42,7 +42,7 @@ class GroupbyNode:
 	def propagate_signal(self, headers):
 		for prop_headers in headers.split():
 			conf = self.types_configurations[prop_headers.types[0]]
-			self.type_conf.send(
+			conf.send(
 				conf.new_builder_for(prop_headers) #Empty message that has same headers splitting to each destination.
 			)
 
@@ -65,7 +65,7 @@ class GroupbyNode:
 	def handle_task(self, headers, msg):
 		if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
 			if headers.is_error():
-				logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids}")
+				logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids} | type: {headers.types}")
 				self.propagate_signal(headers)
 				return # This does auto ack since for now its stateless.. should remove state though
 
