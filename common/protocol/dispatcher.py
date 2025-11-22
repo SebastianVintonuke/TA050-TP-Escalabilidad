@@ -1,7 +1,6 @@
 import logging
 import socket
-import threading
-from typing import Callable, List, Union, Optional
+from typing import Callable, List, Optional
 
 from common.models.menuitem import MenuItem
 from common.models.model import Model
@@ -18,7 +17,8 @@ from middleware.src.join_tasks_middleware import JoinTasksMiddleware
 from middleware.src.routing.csv_message import CSVMessageBuilder, CSVHashedMessageBuilder
 from middleware.src.select_tasks_middleware import SelectTasksMiddleware
 
-from common.utils import new_uuid, QueryId
+from common.utils import new_uuid
+
 
 class OutMiddleware:
     def __init__(self):
@@ -29,7 +29,6 @@ class OutMiddleware:
 class Counter:
     def __init__(self):
         self.counter_transactions = 0
-        self.counter_transactions_rows = 0
         self.counter_transaction_items = 0
         self.counter_menu_items = 0
         self.counter_user = 0
@@ -41,14 +40,8 @@ class DispatcherProtocol:
         self._byte_protocol = ByteProtocol(a_socket)
         self._signal_protocol = SignalProtocol(a_socket)
         self._batch_protocol = BatchProtocol(a_socket)
-
-        self._pending_threads = {
-            Transaction: [],
-            TransactionItem: [],
-        }
-
-        self._select_lock = threading.Lock()
         self.out_middleware = OutMiddleware()
+
 
     def close_with(self, closure_to_close: Callable[[socket.socket], None]) -> None:
         """
@@ -56,72 +49,70 @@ class DispatcherProtocol:
         """
         self._byte_protocol.close_with(closure_to_close)
 
-    def _join_pending_threads(self, model: Optional[Model]) -> None:
-        if model in (Transaction, TransactionItem):
-            threads = self._pending_threads.get(model, [])
-            for t in threads:
-                t.join()
-            threads.clear()
-
 
     def handle_requests(self) -> None:
         user_id = new_uuid()
+        logging.info(f"action: handle_request | result: in-progress | user_id: {user_id}")
+        try:
+            self.__add_request_register_to_local_storage(user_id)
+            self.__receive_files(user_id)
+            self._byte_protocol.send_bytes(user_id.encode())
+        except Exception as e:
+            logging.error(f"action: handle_request | result: fail | error: {e}")
+            self.__send_abort_for(user_id)
+        finally:
+            self.__remove_request_register_from_local_storage(user_id)
+            logging.info(f"action: handle_request | result: success")
 
 
-        #select_middleware = SelectTasksMiddleware()
-        #join_middleware = JoinTasksMiddleware(1)
+    def __receive_files(self, user_id: str) -> None:
         counter = Counter()
-        batch = self._batch_protocol.wait_batch()
         last_model: Optional[Model] = None
-        
-        while batch: # While files
-            header = batch.pop(0)
+        file = self._batch_protocol.wait_batch()
+        while len(file) != 0:
+            header = file.pop(0)
             model = Model.model_for(header)
-
             if last_model is None:
-                last_model = model # Initialize it
+                last_model = model
+                logging.info(f"action: receive_files | result: in_progress | data_type: {model.__name__}")
             elif model != last_model:
-                self._join_pending_threads(last_model)
-                self.__send_EOF_for(user_id, last_model, counter)
-                last_model = model # Only change it If it is new.
+                self.__send_eof_for(user_id, last_model, counter)
+                last_model = model
+                logging.info(f"action: receive_files | result: in_progress | data_type: {model.__name__}")
+            self.__receive_batches(user_id, model, file, counter)
+            file = self._batch_protocol.wait_batch()
+        if last_model is not None:
+            self.__send_eof_for(user_id, last_model, counter)
 
-            logging.info(f"action: receive_file | result: in_progress | data_type: {model.__name__}")
 
-            while batch: # While batch of file
-                if model is Transaction:
-                    #self.__send_task_to_select_transaction(user_id, model, batch)
+    def __receive_batches(self, user_id: str, model: Model, batch: List[bytes], counter: Counter) -> None:
+        while len(batch) != 0:
+            self.__dispatch_batch(user_id, model, batch, counter)
+            batch = self._batch_protocol.wait_batch()
 
-                    self.__send_task_to_select_transaction(user_id, model, batch)
-                    counter.counter_transactions_rows += len(batch)
-                    counter.counter_transactions+=1
-                elif model is TransactionItem:
-                    #self.__send_task_to_select_transaction_item(user_id, model, batch)
-                    self.__send_task_to_select_transaction_item(user_id, model, batch)
-                    counter.counter_transaction_items+=1
-                elif model is MenuItem:
-                    self.__send_task_to_join_menu_item(user_id, model, batch)
-                    counter.counter_menu_items += 1
-                elif model is User:
-                    self.__send_task_to_join_user(user_id, model, batch)
-                    counter.counter_user += 1
-                elif model is Store:
-                    self.__send_task_to_join_store(user_id, model, batch)
-                    counter.counter_store += 1
-                else:
-                    raise Exception(f"Unknown model: {model}")
 
-                batch = self._batch_protocol.wait_batch() # End of batch
-            batch = self._batch_protocol.wait_batch() # End of file
+    def __dispatch_batch(self, user_id: str, model: Model, batch: List[bytes], counter: Counter) -> None:
+        if model is Transaction:
+            self.__send_task_to_select_transaction(user_id, model, batch)
+            counter.counter_transactions += 1
+        elif model is TransactionItem:
+            self.__send_task_to_select_transaction_item(user_id, model, batch)
+            counter.counter_transaction_items += 1
+        elif model is MenuItem:
+            self.__send_task_to_join_menu_item(user_id, model, batch)
+            counter.counter_menu_items += 1
+        elif model is User:
+            self.__send_task_to_join_user(user_id, model, batch)
+            counter.counter_user += 1
+        elif model is Store:
+            self.__send_task_to_join_store(user_id, model, batch)
+            counter.counter_store += 1
+        else:
+            raise Exception(f"Unknown model: {model}")
 
-        self._join_pending_threads(last_model)
-        # Allegedly not sent eof for very last model. 
-        self.__send_EOF_for(user_id, last_model, counter)
-
-        self._byte_protocol.send_bytes(user_id.encode())
 
     def __send_task_to_select_transaction(self, user_id: str, model: Transaction, batch: List[bytes]) -> None:
         transaction_task = CSVMessageBuilder.with_credentials([user_id], ["transactions"])
-
         for line in batch:
             transaction_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.select_middleware.send(transaction_task)
@@ -131,63 +122,72 @@ class DispatcherProtocol:
         transaction_item_task = CSVMessageBuilder.with_credentials([user_id], ["query_2"])
         for line in batch:
             transaction_item_task.add_row_bytes(model.parse_row(line))
-
-        #logging.info(f"-->Sending len transaction item {transaction_item_task.len_payload()}")
         self.out_middleware.select_middleware.send(transaction_item_task)
 
-    
+
     def __send_task_to_join_menu_item(self, user_id: str, model: MenuItem, batch: List[bytes]) -> None:
         menu_item_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id)
         for line in batch:
             menu_item_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.join_middleware.send(menu_item_task)
 
-    
-    def __send_task_to_join_user(self, user_id: str, model: User,
-                                  batch: List[bytes]) -> None:
+
+    def __send_task_to_join_user(self, user_id: str, model: User, batch: List[bytes]) -> None:
         user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id)
         for line in batch:
             user_task.add_row_bytes(model.parse_row(line))
-            
         self.out_middleware.join_middleware.send(user_task)
 
-    
+
     def __send_task_to_join_store(self, user_id: str, model: Store, batch: List[bytes]) -> None:
         store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id)
         for line in batch:
-            store: Store = model.from_bytes_and_project(line)
             store_task.add_row_bytes(model.parse_row(line))
         self.out_middleware.join_middleware.send(store_task)
 
-    
-    def __send_EOF_for(self, user_id: str, model: Model, counter: Counter):
+
+    def __send_eof_for(self, user_id: str, model: Model, counter: Counter):
         if model is Transaction:
-            logging.info(f"EOF FOR TRANSACTIONS sent message count {counter.counter_transactions}  rows sent: {counter.counter_transactions_rows}")
-            eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id],
-                                         ["query_1", "query_3", "query_4"])
+            logging.info(f"action: eof_transaction | result: success | count: {counter.counter_transactions}")
+            eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id], ["query_1", "query_3", "query_4"])
             eof_task.set_as_eof(count= counter.counter_transactions) # If set as 0 assumes all messages were sent. Since it checks if msg received < expected. If it is > then fine
             self.out_middleware.select_middleware.send(eof_task)
+
         elif model is TransactionItem:
-            logging.info(f"EOF FOR TRANSACTIONS_ITEMS sent message count {counter.counter_transaction_items}")
-            eof_task = CSVMessageBuilder.with_credentials([user_id],
-                                         ["query_2"])
+            logging.info(f"action: eof_transaction_item | result: success | count: {counter.counter_transaction_items}")
+            eof_task = CSVMessageBuilder.with_credentials([user_id],["query_2"])
             eof_task.set_as_eof(counter.counter_transaction_items)
             self.out_middleware.select_middleware.send(eof_task)
 
         elif model is MenuItem:
-            logging.info(f"EOF FOR MENU_ITEMS message count {counter.counter_menu_items}")
+            logging.info(f"action: eof_menu_item | result: success | count: {counter.counter_menu_items}")
             eof_product_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id)
             eof_product_task.set_as_eof(counter.counter_menu_items)
             self.out_middleware.join_middleware.send(eof_product_task)
     
         elif model is User:
-            logging.info(f"EOF FOR USER message count {counter.counter_user}")
+            logging.info(f"action: eof_user | result: success | count: {counter.counter_user}")
             eof_user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id)
             eof_user_task.set_as_eof(counter.counter_user)
             self.out_middleware.join_middleware.send(eof_user_task)
 
         elif model is Store:
-            logging.info(f"EOF FOR STORES message count {counter.counter_store}")
+            logging.info(f"action: eof_store | result: success | count: {counter.counter_store}")
             eof_store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id)
             eof_store_task.set_as_eof(counter.counter_store)
             self.out_middleware.join_middleware.send(eof_store_task)
+
+
+    def __send_abort_for(self, user_id: str) -> None:
+        logging.info(f"action: abort | result: in-progress")
+        pass
+
+
+    def __add_request_register_to_local_storage(self, user_id: str) -> None:
+        logging.info(f"action: add_request_register | result: in-progress")
+        pass
+
+
+    def __remove_request_register_from_local_storage(self, user_id: str) -> None:
+        logging.info(f"action: remove_request_register | result: in-progress")
+        pass
