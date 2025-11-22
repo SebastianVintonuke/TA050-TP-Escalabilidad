@@ -56,6 +56,12 @@ class GroupbyNode:
 
 		return total
 
+	def backup_acc(self, acc):
+		self.state_storage.write_changes(acc.accum_id, acc.messages_received, acc) # Save state
+		self.state_storage.commit_changes(acc.accum_id)
+		self.state_storage.push_changes(acc.accum_id, acc.messages_received, acc, acc.batch_msg_count)
+
+
 	def handle_task(self, headers, msg):
 		if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
 			if headers.is_error():
@@ -81,6 +87,7 @@ class GroupbyNode:
 					self.state_storage.register_query(accum_id, acc)
 
 				if acc.check_eof(headers.msg_count):
+					self.backup_acc(acc)
 					acc.send_built()
 					del self.accumulators[accum_id] # Remove it
 
@@ -106,6 +113,9 @@ class GroupbyNode:
 
 		if acc.add_msg_count():
 			logging.info(f"query: {query_headers.ids[0]} type: {q_type}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Start sending.")
+			
+			self.backup_acc(acc)
+			
 			acc.send_built()
 			del self.accumulators[acc.accum_id]
 			return # Ack batch 
@@ -116,6 +126,7 @@ class GroupbyNode:
 
 		if acc.batch_msg_count >= self.batch_size:
 			# Only save/push on batch size count.
+			
 			self.state_storage.write_changes(acc.accum_id, acc.messages_received, acc) # Save state
 			self.state_storage.commit_changes(acc.accum_id)
 			self.state_storage.push_changes(acc.accum_id, acc.messages_received, acc, acc.batch_msg_count)

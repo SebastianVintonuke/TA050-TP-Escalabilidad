@@ -68,6 +68,12 @@ class JoinNode:
         return total
 
 
+    def backup_joiner(self, joiner):
+        mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
+        self.state_storage.write_changes(joiner.join_id, mock_pkt_id, joiner) # Save state
+        self.state_storage.commit_changes(joiner.join_id)
+        self.state_storage.push_changes(joiner.join_id, mock_pkt_id, joiner, joiner.batch_msg_count)
+
 
     def handle_task(self, headers, msg):
         if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
@@ -93,10 +99,13 @@ class JoinNode:
                 
                 if config.left_type == type:
                     if joiner.handle_eof_left(headers.msg_count): #check wether count msgs is all for left or eof reached before.
-                        logging.info(f"Freeing {ide_curr}, handling done.")
+                        self.backup_joiner(joiner)
+                        logging.info(f"Freeing {ide_curr}, handling done. EOF was last message")
                         del self.joiners[ide_curr]
                 elif joiner.handle_eof_right(headers.msg_count): #Finished
-                        logging.info(f"Freeing {ide_curr}, handling done.")
+                        self.backup_joiner(joiner)
+                        logging.info(f"Freeing {ide_curr}, handling done. EOF was last message")
+
                         del self.joiners[ide_curr]
             
             return
@@ -129,6 +138,9 @@ class JoinNode:
         will_ack = False
         for joiner in checkers:
             if joiner.add_check_msg_for_type(type):
+                
+                self.backup_joiner(joiner)
+                
                 logging.info(f"Freeing {joiner.join_id}, handling done.")
                 del self.joiners[joiner.join_id]
                 will_ack = True
@@ -143,6 +155,7 @@ class JoinNode:
 
             for joiner in checkers:
                 mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
+
                 self.state_storage.write_changes(joiner.join_id, mock_pkt_id, joiner) # Save state
                 self.state_storage.commit_changes(joiner.join_id)
                 self.state_storage.push_changes(joiner.join_id, mock_pkt_id, joiner, joiner.batch_msg_count)
