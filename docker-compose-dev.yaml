@@ -85,6 +85,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=12347
+      - NODE_ID=1
     networks:
       - testing_net
     depends_on:
@@ -99,6 +100,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=12348
+      - NODE_ID=2
     networks:
       - testing_net
     depends_on:

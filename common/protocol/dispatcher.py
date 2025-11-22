@@ -36,10 +36,12 @@ class Counter:
 
 
 class DispatcherProtocol:
-    def __init__(self, a_socket: socket.socket):
+    def __init__(self, a_socket: socket.socket, node_id: int, client_count: int):
         self._byte_protocol = ByteProtocol(a_socket)
         self._signal_protocol = SignalProtocol(a_socket)
         self._batch_protocol = BatchProtocol(a_socket)
+        self._node_id = node_id
+        self._client_count = client_count
         self.out_middleware = OutMiddleware()
 
 
@@ -51,7 +53,7 @@ class DispatcherProtocol:
 
 
     def handle_requests(self) -> None:
-        user_id = new_uuid()
+        user_id = f"{new_uuid()}_{self._node_id + self._client_count}"
         logging.info(f"action: handle_request | result: in-progress | user_id: {user_id}")
         try:
             self.__add_request_register_to_local_storage(user_id)

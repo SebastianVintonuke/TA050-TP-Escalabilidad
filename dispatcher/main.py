@@ -32,6 +32,7 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
+        config_params["node_id"] = int(os.getenv("NODE_ID", config["DEFAULT"]["NODE_ID"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting dispatcher".format(e))
     except ValueError as e:
@@ -61,15 +62,16 @@ def main() -> None:
     port = config_params["port"]
     listen_backlog = config_params["listen_backlog"]
     logging_level = config_params["logging_level"]
+    node_id = config_params["node_id"]
 
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | logging_level: {logging_level} | node_id: {node_id}"
     )
 
-    dispatcher_server = DispatcherServer(port, listen_backlog)
+    dispatcher_server = DispatcherServer(port, listen_backlog, node_id)
     signal.signal(signal.SIGTERM, dispatcher_server.graceful_shutdown)
 
     dispatcher_server.run()
