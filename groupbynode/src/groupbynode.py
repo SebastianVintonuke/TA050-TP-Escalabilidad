@@ -68,28 +68,30 @@ class GroupbyNode:
 				logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids} | type: {headers.types}")
 				self.propagate_signal(headers)
 				return # This does auto ack since for now its stateless.. should remove state though
-
+			
 			logging.info(f"Received final eof OF {headers.ids} types: {headers.types}, should have been {headers.msg_count} messages")
-			for new_headers in headers.split():
-				q_type = new_headers.types[0]
-				accum_id = new_headers.ids[0]+"_"+q_type
+			
+			query_headers = headers.first_query() # Should only be one for groupby/topk
 
-				acc = self.accumulators.get(accum_id, None)
-				if acc == None:
-					logging.info(f"For type {q_type}, eof was the first message to be received")
-					
-					config = self.types_configurations[q_type]
-					acc = QueryAccumulator(accum_id, config, config.new_builder_for(new_headers))
+			q_type = query_headers.types[0]
+			accum_id = query_headers.ids[0]+"_"+q_type
 
-					self.accumulators[accum_id] = acc
+			acc = self.accumulators.get(accum_id, None)
+			if acc == None:
+				logging.info(f"For type {q_type}, eof was the first message to be received")
+				
+				config = self.types_configurations[q_type]
+				acc = QueryAccumulator(accum_id, config, config.new_builder_for(query_headers))
 
-					# May not always be needed but for debugging and descriptability.
-					self.state_storage.register_query(accum_id, acc)
+				self.accumulators[accum_id] = acc
 
-				if acc.check_eof(headers.msg_count):
-					self.backup_acc(acc)
-					acc.send_built()
-					del self.accumulators[accum_id] # Remove it
+				# May not always be needed but for debugging and descriptability.
+				self.state_storage.register_query(accum_id, acc)
+
+			if acc.check_eof(headers.msg_count):
+				self.backup_acc(acc)
+				acc.send_built()
+				del self.accumulators[accum_id] # Remove it
 
 			return # This does auto ack since for now its stateless..
 			

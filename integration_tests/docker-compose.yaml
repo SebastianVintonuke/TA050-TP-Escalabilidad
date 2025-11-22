@@ -17,14 +17,23 @@ services:
   #   volumes:
   #     - ../groupbynode/tests:/target_tests/groupbynode
 
-  groupbynode_storage_tests:
-    container_name: groupbynode_storage_tests
+  # groupbynode_storage_tests:
+  #   container_name: groupbynode_storage_tests
+  #   image: integration_tests:latest
+  #   entrypoint: python3 /main.py
+  #   networks:
+  #     - testing_net
+  #   volumes:
+  #     - ../integration_tests/groupby_tests:/target_tests/groupby_tests
+
+  common_tests:
+    container_name: common_tests
     image: integration_tests:latest
     entrypoint: python3 /main.py
     networks:
       - testing_net
     volumes:
-      - ../integration_tests/groupby_tests:/target_tests/groupby_tests
+      - ../integration_tests/common_tests:/target_tests/common_tests
 
 networks:
   testing_net:
