@@ -28,10 +28,12 @@ class DispatcherServer:
                     f"action: close_{socket_name_to_log} | result: fail | error: {e}"
                 )
 
-    def __init__(self, port: int, listen_backlog: int) -> None:
+    def __init__(self, port: int, listen_backlog: int, node_id: int) -> None:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(("", port))
         self._server_socket.listen(listen_backlog)
+        self._node_id = node_id
+        self._client_count = 0
         self._was_stopped = False
         self._clients: List[Tuple[threading.Thread, socket.socket]] = []
 
@@ -73,7 +75,8 @@ class DispatcherServer:
 
         Read message, process it and close the socket
         """
-        protocol = DispatcherProtocol(client_socket)
+        protocol = DispatcherProtocol(client_socket, self._node_id, self._client_count)
+        self._client_count += 1
         try:
             protocol.handle_requests()
         except Exception as e:

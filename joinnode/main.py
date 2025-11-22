@@ -19,6 +19,10 @@ from middleware.memory_middleware import *
 from middleware.routing.csv_message import CSVMessage
 from common.node_utils import RestartLogic
 
+from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
+from common.state_storage.query_state_storage import  QueryStateStorage
+def creator_query_storage_in(folder):
+    return lambda manager: QueryStateStorage(folder, manager)    
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -86,12 +90,17 @@ def main(config_params) -> None:
     join_node_count = config_params["node_count"]
     join_node_ind = config_params["node_ind"]
     is_profiling = config_params["profile_node"]
+
+    init_folder="/etc/node_state/"
+    join_folder = init_folder+f"joinnode_{join_node_ind}"
+
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
         f"action: config | result: success | profiling: {is_profiling} | port: {port} | node_id: {node_id} | logging_level: {logging_level} | join_node_count: {join_node_count}"
     )
+    logging.debug(f"Using for joinnode state: {join_folder}")
 
     try:
 
@@ -103,7 +112,7 @@ def main(config_params) -> None:
 
         add_joinnode_config(types_expander, result_middleware, nested_joins_middleware)
 
-        node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), CSVMessage, types_expander)
+        node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), CSVMessage, types_expander, store_creator = creator_query_storage_in(join_folder), batch_size = 10)
 
 
         restarter = RestartLogic(MessageMiddlewareMessageError)

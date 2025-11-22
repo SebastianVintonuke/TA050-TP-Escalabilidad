@@ -30,9 +30,10 @@ class MockChannel:
         self.consuming = False
         self.queues = {}
         self.host = host
-        self.acked_tags = set()
-        self.nacked_tags = set()
+        self.acked_tags = []#set()
+        self.nacked_tags = []#set()
         self.is_open = True
+        self.get_tag_for_new_msg = lambda queue_obj: f"m_{len(queue_obj.msgs)}"
 
     def close(self):
         self.is_open = False 
@@ -74,10 +75,13 @@ class MockChannel:
         #print(f"PUBLISH AT key {routing_key} exchange:{exchange} {properties.headers}")
 
         queue_obj=self.queues[routing_key]
+
+        tag = self.get_tag_for_new_msg(queue_obj)
+
         #ch, method, properties, body
         queue_obj.send_kwargs(
             ch = self,
-            method= MethodClass(f"m_{len(queue_obj.msgs)}"),
+            method= MethodClass(tag),
             properties=properties,
             body=body)
 
@@ -87,9 +91,10 @@ class MockChannel:
         )
 
     def basic_ack(self, delivery_tag):
-        self.acked_tags.add(delivery_tag)
+        self.acked_tags.append(delivery_tag)
+        # print("---------> ACKED", delivery_tag, "NOW", self.acked_tags)
     def basic_nack(self, delivery_tag, requeue = False):
-        self.nacked_tags.add((delivery_tag, requeue))
+        self.nacked_tags.append((delivery_tag, requeue))
 
 
 class MockConnection:
@@ -97,13 +102,39 @@ class MockConnection:
         self.host = host
         self.channels = []
         self.is_open = True
+        self.registered_tags = []
+        self.ind_in_tags = 0
+
+    def register_tags(self, tags):
+        self.registered_tags = tags
+        self.ind_in_tags = 0
+
+    def reset_register_acks_ind(self):
+        self.ind_in_tags = 0
+
+
+    def iter_acked(self):
+        for chann in self.channels:
+            for tag in chann.acked_tags:
+                yield tag
+
+    def get_tag_for_msg(self, queue_obj):
+        ind = self.ind_in_tags
+        self.ind_in_tags+=1
+        
+        if ind < len(self.registered_tags):
+            return self.registered_tags[ind]
+
+        return f"conn_chann_m_{len(queue_obj.msgs)}"
+
 
     def channel(self):
         chann = MockChannel(self.host)
-
+        chann.get_tag_for_new_msg = self.get_tag_for_msg
         self.channels.append(chann)
 
         return chann
+
     def close(self):
         self.is_open = False
 

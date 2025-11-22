@@ -98,8 +98,8 @@ def main(config_params) -> None:
     loadtopk = config_params["load_topk"] != 0
     is_profiling = config_params["profile_node"]
     init_folder="/etc/node_state/"
-    grp_folder = init_folder+"groupby"
-    topk_folder = init_folder+"topk"
+    grp_folder = init_folder+f"groupby_{node_ind}"
+    topk_folder = init_folder+f"topk_{node_ind}"
 
     initialize_log(logging_level)
 
@@ -126,7 +126,7 @@ def main(config_params) -> None:
         node_topk = GroupbyNode(topk_middleware, MemoryMessage, types_config_topk, store_creator = creator_query_storage_in(topk_folder))
         node_topk.start()
 
-        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, store_creator = creator_query_storage_in(grp_folder))
+        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, store_creator = creator_query_storage_in(grp_folder), batch_size = 10)
         restarter = RestartLogic(MessageMiddlewareMessageError)
 
         def close_handler(sig, frame):

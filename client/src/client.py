@@ -1,6 +1,5 @@
 import errno
 import logging
-import os
 import socket
 import time
 from io import BufferedReader, BufferedWriter
@@ -10,26 +9,29 @@ from typing import List, Optional, Tuple, Union
 
 from common.protocol.client import ClientProtocol
 
-MAX_ATTEMPTS = 3
-NO_ATTEMPTS = 0
+MAX_ATTEMPTS = 1
+MAX_ATTEMPTS_DOWNLOAD_RESULTS = 1
 DEFAULT_EXECUTIONS = 1
 
 
 class Client:
     @staticmethod
     def decode(address: str) -> Tuple[str, int]:
-        host, port_str = address.split(":")
+        host, port_str = address.rsplit(":", 1)
         port = int(port_str)
         return host, port
 
     @staticmethod
-    def __try_close(a_socket: socket.socket, socket_name_to_log: str) -> None:
+    def __try_close(a_socket: Optional[socket.socket], socket_name_to_log: str) -> None:
         """
         Attempt to gracefully close a given socket and log the result
 
         If the socket was already closed, for example by a signal, it will be silently ignored
         Any other errors will be logged
         """
+        if a_socket is None:
+            return
+
         try:
             a_socket.close()
             logging.info(f"action: close_{socket_name_to_log} | result: success")
@@ -43,22 +45,14 @@ class Client:
 
     def __init__(self, server_address: str, input_dir: str, output_dir: str) -> None:
         self._server_address = server_address
-        self._client_socket_to_server: Optional[socket.socket]
-        self._client_socket_to_dispatcher: Optional[socket.socket]
-        self._client_socket_to_results_storage: Optional[socket.socket]
+        self._client_socket_to_server: Optional[socket.socket] = None
+        self._client_socket_to_dispatcher: Optional[socket.socket] = None
+        self._client_socket_to_results_storage: Optional[socket.socket] = None
         self._input_dir = Path(input_dir)
         self._output_dir = Path(output_dir)
         self._file_descriptors: List[Union[BufferedWriter, BufferedReader]] = []
 
-    @staticmethod
-    def open_file(file_path: Path) -> Optional[int]:
-        try:
-            return os.open(file_path, os.O_RDONLY)
-        except Exception as e:
-            logging.critical(f"action: open_file | result: fail | error: {e}")
-            raise
-
-    def create_client_socket(self, address: str) -> Optional[socket.socket]:
+    def create_client_socket(self, address: str) -> socket.socket:
         try:
             server_host, server_port = self.decode(address)
             return socket.create_connection((server_host, server_port))
@@ -66,100 +60,144 @@ class Client:
             logging.critical(
                 f"action: connect | result: fail | address: {address} | error: {e}"
             )
-            return None
+            raise
 
     def start(self, executions: int = DEFAULT_EXECUTIONS) -> None:
-        for number_of_execution in range(executions):
+        for current_execution in range(executions):
             logging.info(
-                f"action: start_execution | execution: {number_of_execution + 1}/{executions}"
+                f"action: execution | result: in-progress | n°: {current_execution + 1}/{executions}"
             )
-
-            # Flujo del cliente
             self.exec()
-
-            # Pausa entre ejecuciones
-            if number_of_execution < executions - 1:
-                time.sleep(1)
-
         logging.info(
             f"action: all_executions_completed | total_executions: {executions}"
         )
 
     def exec(self) -> None:
-        # 1. Obtengo del servidor la dirección de un dispatcher
-        self._client_socket_to_server = self.create_client_socket(self._server_address)
-        if not self._client_socket_to_server:
-            return
-        client_protocol_to_server = ClientProtocol(self._client_socket_to_server)
-        dispatcher_address = client_protocol_to_server.request_dispatcher_address()
-        self._client_socket_to_server.close()
-        logging.info(
-            f"action: request_dispatcher | result: success | dispatcher: {dispatcher_address}"
-        )
-
-        # 2. Subo los datos al dispatcher y obtengo mi id
-        self._client_socket_to_dispatcher = self.create_client_socket(
-            dispatcher_address
-        )
-        if not self._client_socket_to_dispatcher:
-            return
-        client_protocol_to_dispatcher = ClientProtocol(
-            self._client_socket_to_dispatcher
-        )
-        client_id = client_protocol_to_dispatcher.upload_files(
-            self._input_dir, self.__open_input_file, self.__close_file
-        )
-        self._client_socket_to_dispatcher.close()
-        logging.info(f"action: data_upload | result: success | client_id: {client_id}")
-
-        time.sleep(10)  # TODO sacar
-
-        # 3. Obtengo del servidor la dirección de un results storage
-        self._client_socket_to_server = self.create_client_socket(self._server_address)
-        if not self._client_socket_to_server:
-            return
-        client_protocol_to_server = ClientProtocol(self._client_socket_to_server)
-        results_storage_address = (
-            client_protocol_to_server.request_results_storage_address(client_id)
-        )
-        self._client_socket_to_server.close()
-        logging.info(
-            f"action: request_results_storage | result: success | results_storage: {results_storage_address}"
-        )
-
-        # 4. Descargo los resultados del results storage
-        self._client_socket_to_results_storage = self.create_client_socket(
-            results_storage_address
-        )
-        if not self._client_socket_to_results_storage:
-            return
-        client_protocol_to_results_storage = ClientProtocol(
-            self._client_socket_to_results_storage
-        )
-        logging.info("action: data_download | result: in-progress")
-
-        attempts = MAX_ATTEMPTS
-        while attempts > NO_ATTEMPTS:
+        attempt = 0
+        while attempt < MAX_ATTEMPTS:
             try:
+                dispatcher_address = self._request_dispatcher_address()
+                client_id = self._upload_data_to_dispatcher(dispatcher_address)
+                results_storage_address = self._request_results_storage_address(client_id)
+                self._download_results_with_retries(results_storage_address, client_id)
+                logging.info("action: client_execution | result: success")
+                return
+            except Exception as e:
+                logging.info(f"action: client_execution | result: fail | attempt n° {attempt + 1} | error: {e}")
+                attempt += 1
+                time.sleep(attempt * 1)
+        logging.error("action: client_execution | result: fail | error: failed all attempts")
+
+    def _request_dispatcher_address(self) -> str:
+        """
+            Se obtiene del servidor la dirección de un dispatcher
+        """
+        logging.info(f"action: request_dispatcher | result: in-progress")
+        self._client_socket_to_server = self.create_client_socket(self._server_address)
+
+        try:
+            client_protocol_to_server = ClientProtocol(self._client_socket_to_server)
+            dispatcher_address = client_protocol_to_server.request_dispatcher_address()
+            self.__try_close(self._client_socket_to_server, 'socket_to_server')
+            self._client_socket_to_server = None
+            logging.info(
+                f"action: request_dispatcher | result: success | dispatcher: {dispatcher_address}"
+            )
+            return dispatcher_address
+        except Exception as e:
+            logging.error(
+                f"action: request_dispatcher | result: fail | error: {e}"
+            )
+            self.__try_close(self._client_socket_to_server, 'socket_to_server')
+            self._client_socket_to_server = None
+            raise
+
+    def _upload_data_to_dispatcher(self, dispatcher_address: str) -> str:
+        """
+            Se suben los datos locales al dispatcher y este devuelve el ID asociado a la consulta
+        """
+        logging.info(f"action: upload_data | result: in-progress")
+        self._client_socket_to_dispatcher = self.create_client_socket(dispatcher_address)
+
+        try:
+            client_protocol_to_dispatcher = ClientProtocol(self._client_socket_to_dispatcher)
+            client_id = client_protocol_to_dispatcher.upload_files(
+                self._input_dir, self.__open_input_file, self.__close_file
+            )
+            self.__try_close(self._client_socket_to_dispatcher, 'socket_to_dispatcher')
+            self._client_socket_to_dispatcher = None
+            logging.info(f"action: upload_data | result: success | client_id: {client_id}")
+            return client_id
+        except Exception as e:
+            logging.error(
+                f"action: upload_data | result: fail | error: {e}"
+            )
+            self.__try_close(self._client_socket_to_dispatcher, 'socket_to_dispatcher')
+            self._client_socket_to_dispatcher = None
+            raise
+
+    def _request_results_storage_address(self, client_id: str) -> str:
+        """
+            Se obtiene del servidor la dirección de un results storage
+        """
+        logging.info(f"action: request_results_storage | result: in-progress")
+        self._client_socket_to_server = self.create_client_socket(self._server_address)
+
+        try:
+            client_protocol_to_server = ClientProtocol(self._client_socket_to_server)
+            results_storage_address = client_protocol_to_server.request_results_storage_address(client_id)
+            self.__try_close(self._client_socket_to_server, 'socket_to_server')
+            self._client_socket_to_server = None
+            logging.info(
+                f"action: request_results_storage | result: success | results_storage: {results_storage_address}"
+            )
+            return results_storage_address
+        except Exception as e:
+            logging.error(
+                f"action: request_results_storage | result: fail | error: {e}"
+            )
+            self.__try_close(self._client_socket_to_server, 'socket_to_server')
+            self._client_socket_to_server = None
+            raise
+
+    def _download_results_with_retries(self, results_storage_address: str, client_id: str) -> None:
+        """
+            Descargo los resultados del results storage
+
+            Como los datos fueron subidos al servidor sin errores y este garantiza que estarán disponibles,
+            si ocurre un error de red en la transferencia se reintenta hasta MAX_ATTEMPTS
+            para evitar que el error se propague y el usuario tenga que comenzar la operacion desde el comienzo
+        """
+        logging.info("action: download_results | result: in-progress")
+        attempt = 0
+        last_error: Optional[Exception] = None
+        while attempt < MAX_ATTEMPTS_DOWNLOAD_RESULTS:
+            try:
+                self._client_socket_to_results_storage = self.create_client_socket(results_storage_address)
+
+                client_protocol_to_results_storage = ClientProtocol(self._client_socket_to_results_storage)
                 client_protocol_to_results_storage.download_results(
                     self._output_dir,
                     client_id,
                     self.__open_output_file,
                     self.__close_file,
                 )
-                logging.info("action: data_download | result: success")
-                break
+                self.__try_close(self._client_socket_to_results_storage, 'socket_to_results_storage')
+                self._client_socket_to_results_storage = None
+                logging.info("action: download_results | result: success")
+                return
             except Exception as e:
-                attempts -= 1
+                last_error = e
                 logging.error(
-                    f"action: data_download | result: failure | error: {e} | attempts left: {attempts}"
+                    f"action: download_results | result: fail | attempt n°: {attempt + 1} | error: {e}"
                 )
-                time.sleep(1)
+                attempt += 1
+                time.sleep(attempt * 1)
+                self.__try_close(self._client_socket_to_results_storage, 'socket_to_results_storage')
+                self._client_socket_to_results_storage = None
 
-        self._client_socket_to_results_storage.close()
-
-        if attempts <= NO_ATTEMPTS:
-            logging.info("action: data_download | result: failed all attempts")
+        logging.error("action: download_results | result: fail | error: failed all attempts")
+        raise last_error
 
     def graceful_shutdown(
         self, _signal_number: int, _current_stack_frame: Optional[FrameType]
@@ -169,15 +207,19 @@ class Client:
 
         Closes the client socket and close the file descriptors
         """
-        if self._client_socket_to_server:
-            self._client_socket_to_server.close()
-        if self._client_socket_to_dispatcher:
-            self._client_socket_to_dispatcher.close()
-        if self._client_socket_to_results_storage:
-            self._client_socket_to_results_storage.close()
+        self.__try_close(self._client_socket_to_server, 'socket_to_server')
+        self._client_socket_to_server = None
+        self.__try_close(self._client_socket_to_dispatcher, 'socket_to_dispatcher')
+        self._client_socket_to_dispatcher = None
+        self.__try_close(self._client_socket_to_results_storage, 'socket_to_results_storage')
+        self._client_socket_to_results_storage = None
 
-        for file_descriptor in self._file_descriptors:
-            file_descriptor.close()
+        for file_descriptor in list(self._file_descriptors):
+            try:
+                file_descriptor.close()
+            except Exception:
+                pass
+        self._file_descriptors.clear()
 
         logging.info("action: exit | result: success")
 

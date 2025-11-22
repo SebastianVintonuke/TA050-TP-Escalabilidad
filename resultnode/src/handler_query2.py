@@ -35,6 +35,9 @@ class HandlerQuery2BestSelling:
             result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
             middleware.send(result_task)
 
+    def send_abort(user_id, middleware):
+        middleware.send(ResultTask(user_id, QueryId.Query2BestSelling, True, True, []).to_bytes())
+
 
 
 
@@ -66,4 +69,7 @@ class HandlerQuery2MostProfit:
             logging.info(f"Received last message for query 2 profit count: {counter.count_query_2_profit} expected_count: {counter.expected_count_query_2_profit}")
             result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
             middleware.send(result_task)
+
+    def send_abort(user_id, middleware):
+        middleware.send(ResultTask(user_id, QueryId.Query2MostProfit, True, True, []).to_bytes())
 

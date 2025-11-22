@@ -2,7 +2,7 @@
 import logging
 DEFAULT_LIMIT= 10000
 class JoinAccumulator:
-    def __init__(self, type_conf, msg_builder, limit = DEFAULT_LIMIT):
+    def __init__(self, type_conf, msg_builder, limit = DEFAULT_LIMIT, ide= ""):
         self.type_conf = type_conf
         self.msg_builder = msg_builder#type_conf.new_builder_for(msg, ind)
         self.msg_builder.reset_eof()# Ensure its not copying the eof flag from input sender
@@ -19,6 +19,8 @@ class JoinAccumulator:
 
         self.msg_count_left = 0
         self.msg_count_right = 0
+        self.join_id = ide#ide+ self.type_conf.join_id
+        self.batch_msg_count = 0
 
     def len_left(self):
         return len(self.left_rows)

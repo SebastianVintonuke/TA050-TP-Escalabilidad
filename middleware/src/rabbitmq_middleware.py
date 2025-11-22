@@ -7,9 +7,13 @@ from .rabbitmq import utils as rbmq_utils
 from .rabbitmq.blocking_manager import *
 
 class BaseRabbitMiddleware(MessageMiddleware):
+
+	def new_rabbit_manager(self, host):
+		return RabbitMQManager(host)
+
 	def __init__(self, host):
 		try:
-			self._rabbit_manager = RabbitMQManager(host)
+			self._rabbit_manager = self.new_rabbit_manager(host)
 			self._channel = self._rabbit_manager.open_channel()
 		except Exception as e:
 			raise MessageMiddlewareConnectError(f"RabbitMQ connect failed: {e}") from e
@@ -63,10 +67,12 @@ class RabbitQueueMiddleware(BaseRabbitMiddleware):
 			self.channel.queue_delete(self.queue_name)
 
 
-class RabbitExchangeMiddleware(RabbitQueueMiddleware):
+class RabbitExchangeMiddleware(BaseRabbitMiddleware):
 	def __init__(self, queue_name, exchange_name = DEFAULT_EXCHANGE, host = rbmq_utils.RABBITMQ_HOST):
-		super().__init__(queue_name, host)
-
+		super().__init__(host)
+		self.queue_name = queue_name
+		self._channel.declare_queues(queue_name)
+		
 		self.exch_name = exchange_name
 		self._channel.exchange_declare(self.exch_name, self._get_exchange_type())
 	def _get_exchange_type(self):
@@ -84,15 +90,14 @@ class RabbitExchangeMiddleware(RabbitQueueMiddleware):
 
 		self._channel.start_consume()
 
+	def send(self, message_builder: CSVMessageBuilder):
+		payload = message_builder.serialize_payload()
+		headers = message_builder.get_headers()
+		self._channel.send(self.queue_name, headers,payload)
 
-class RabbitExchangeMiddlewareTypeNamed(RabbitExchangeMiddleware):
-	def __init__(self, queue_name, exchange_name = DEFAULT_EXCHANGE, host = rbmq_utils.RABBITMQ_HOST):
-		self.exch_type = exchange_name
-		super().__init__(queue_name, exchange_name, host)
-
-	def _get_exchange_type(self):
-		return self.exch_type
-
+	def _delete(self):
+		if self.channel and self.channel.is_open:
+			self.channel.queue_delete(self.queue_name)
 
 
 class RabbitHashedExchangeMiddleware(RabbitExchangeMiddleware):
@@ -110,6 +115,17 @@ class RabbitHashedExchangeMiddleware(RabbitExchangeMiddleware):
 
 
 
+
+
+
+
+class RabbitExchangeMiddlewareTypeNamed(RabbitExchangeMiddleware):
+	def __init__(self, queue_name, exchange_name = DEFAULT_EXCHANGE, host = rbmq_utils.RABBITMQ_HOST):
+		self.exch_type = exchange_name
+		super().__init__(queue_name, exchange_name, host)
+
+	def _get_exchange_type(self):
+		return self.exch_type
 
 
 

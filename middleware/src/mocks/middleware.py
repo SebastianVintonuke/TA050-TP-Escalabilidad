@@ -139,6 +139,35 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
 
 
+
+class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
+    def default():
+        return BareMockMessageBuilderNoSerial(BaseHeaders.default())
+
+    def creator_with_type(new_type):
+        def converter(headers):
+            headers.types[0] =new_type
+            return BareMockMessageBuilderNoSerial(headers)
+
+        return converter    
+
+    def for_payload(ids, types, rows, mapper):
+        res = BareMockMessageBuilderNoSerial(BaseHeaders(ids, types))
+        
+        for row in rows:
+            res.add_row(mapper(row))
+
+        return res
+
+    def __init__(self, headers):
+        super().__init__(headers)
+
+    def serialize_payload(self):
+        return self.payload
+    def clone(self):
+        return BareMockMessageBuilderNoSerial(self.headers.clone())
+
+
 def identity(itm):
     return itm
 

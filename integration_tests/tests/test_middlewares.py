@@ -194,11 +194,12 @@ class TestMiddlewares(unittest.TestCase):
 
         conn = self.active_conns.get(HOST, None)
         self.assertTrue(conn != None)
+        conn.register_tags(["test_msg_1"])
 
         self.assertTrue(len(conn.channels) == 1)
         channel = conn.channels[0]
         out_msgs = []
-        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload)) or True) # return true... Requeue/nack
+        middleware.start_consuming(lambda headers, payload: out_msgs.append(MessageHolder(headers, payload))) # return None.... that is for auto ack! i.e batch ack
 
         declared_queues = list(channel.declared_queues())
 
@@ -231,10 +232,88 @@ class TestMiddlewares(unittest.TestCase):
         msg = out_msgs[0]
         self.assertEqual(msg.headers.to_dict(), exp_headers.to_dict())
         self.assertEqual(msg.payload, exp_payload)
+        
+        print("------> ACKED TAGS?", channel.acked_tags)
 
-        self.assertNotIn("test_msg_1", channel.acked_tags)
+        self.assertIn("test_msg_1", channel.acked_tags)
         self.assertNotIn(("test_msg_1", False), channel.nacked_tags)
-        self.assertIn(("test_msg_1", True), channel.nacked_tags)
+        self.assertNotIn(("test_msg_1", True), channel.nacked_tags)
+
+
+
+
+    def test_simple_batched_ack(self):
+        HOST = "test_hashed_send"
+        NODE_IND = 2
+        QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND)
+
+        COUNT_NODES = 12
+        middleware = GroupbyTasksMiddleware(COUNT_NODES, ind=NODE_IND, host=HOST)
+
+        conn = self.active_conns.get(HOST, None)
+        self.assertTrue(conn != None)
+        conn.register_tags(["test_msg_1","test_msg_2"])
+
+        self.assertTrue(len(conn.channels) == 1)
+        channel = conn.channels[0]
+        out_msgs = []
+
+        def batch_handle(headers, payload):
+            out_msgs.append(MessageHolder(headers, payload))
+
+            if len(out_msgs) < 2:
+                return True # Do not ack!
+
+        middleware.start_consuming(batch_handle) # return None.... that is for auto ack! i.e batch ack
+
+        declared_queues = list(channel.declared_queues())
+
+        self.assertEqual(len(declared_queues), 1)
+        self.assertTrue(declared_queues[0] == QUEUE_NAME)
+
+        self.assertEqual(
+            channel.queues[QUEUE_NAME].binds.get(GROUPBY_EXCHANGE, None), QUEUE_NAME
+        )
+
+        self.assertTrue(channel.consuming)
+        self.assertEqual(len(channel.queues[QUEUE_NAME].listeners), 1)
+
+        push_method = channel.queues[QUEUE_NAME].listeners.get(HOST, None)
+        self.assertTrue(push_method != None)
+
+        # Should push ch, method, properties, body
+
+        exp_headers = BaseHeaders(ids = ["q1"], types= "t_1")
+        exp_payload = b"123,23,345"
+
+        push_method(
+            channel,
+            MethodClass("test_msg_1"),
+            rbmq_utils.build_headers(exp_headers.to_dict()),
+            exp_payload,
+        )
+
+        push_method(
+            channel,
+            MethodClass("test_msg_2"),
+            rbmq_utils.build_headers(exp_headers.to_dict()),
+            exp_payload,
+        )        
+
+        self.assertEqual(len(out_msgs), 2)
+        msg = out_msgs[0]
+        self.assertEqual(msg.headers.to_dict(), exp_headers.to_dict())
+        self.assertEqual(msg.payload, exp_payload)
+
+        msg = out_msgs[1]
+        self.assertEqual(msg.headers.to_dict(), exp_headers.to_dict())
+        self.assertEqual(msg.payload, exp_payload)
+        
+        print("------> ACKED TAGS?", channel.acked_tags)
+
+        self.assertIn("test_msg_1", channel.acked_tags)
+        self.assertNotIn(("test_msg_1", False), channel.nacked_tags)
+        self.assertNotIn(("test_msg_1", True), channel.nacked_tags)
 
 
     def test_memory_middleware_delegates_builder_and_sends_msg(self):

@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import time
+import logging
 from pathlib import Path
 
 PathType =Path # In tests it would be replaced by a mock one
@@ -254,8 +255,6 @@ class QueryStateStorage:
         # Estado anterior
         prev_state_file = self.states / f"{query_id}_{packet_id - count_msgs}"
 
-        if not prev_state_file.exists():
-            raise InvalidStateError("Not supported concurrent changes.. prev state did not exist!")
         # # Deserializar estado anterior
         # prev_state = None
         # with open_file(prev_state_file, "r") as f:
@@ -269,7 +268,11 @@ class QueryStateStorage:
         new_file.replace(self.states / f"{query_id}_{packet_id}")
 
         ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
-        prev_state_file.unlink()
+        if prev_state_file.exists():
+            prev_state_file.unlink()
+        else:
+            logging.warning(f"Warning.. at push changes {packet_id} prev state file did not exist {prev_state_file}")
+            #raise InvalidStateError("Not supported concurrent changes.. prev state did not exist!")
 
 
         # No need to tag or do something to know wether to ack an already handled packet or not

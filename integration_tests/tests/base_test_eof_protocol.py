@@ -320,7 +320,8 @@ class BaseEOFProtocolTest(ABC):
         self.assertEqual(len(groupby_middle.msgs), 2)
 
         # Grouped message was sent to topk together with EOF
-        self.assertEqual(len(nodes_setup.topk_middleware.msgs), 2)
+        # self.assertEqual(len(nodes_setup.topk_middleware.msgs), 2)
+        self.assertEqual(len(nodes_setup.topk_middleware.msgs), 4) # For query 2 it sends messages twice... once per query type, in query 2 its splitted.
         self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
         self.assertEqual(len(nodes_setup.join_middleware.msgs), 0)
 
@@ -339,7 +340,7 @@ class BaseEOFProtocolTest(ABC):
         for i in range(len(exp_rows_q2_groupby)):
             self.assertEqual(q2_res_rows[i] , exp_rows_q2_groupby[i])
 
-        headers_msg = nodes_setup.topk_middleware.msgs[1].headers
+        headers_msg = nodes_setup.topk_middleware.msgs[2].headers
         self.assertTrue(headers_msg.is_eof());
         self.assertEqual(headers_msg.msg_count, 1);
 
@@ -443,7 +444,9 @@ class BaseEOFProtocolTest(ABC):
         self.assertEqual(len(groupby_middle.msgs), 2)
 
         # Grouped message was sent to topk together with EOF
-        self.assertEqual(len(nodes_setup.topk_middleware.msgs), 2)
+        # self.assertEqual(len(nodes_setup.topk_middleware.msgs), 2)
+        self.assertEqual(len(nodes_setup.topk_middleware.msgs), 4) # For query 2 it sends messages twice... once per query type, in query 2 its splitted.
+        
         self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
 
         # Topk also sent message and EOF, its divided in two types so 2 message per type == 4 messages

@@ -24,7 +24,6 @@ class HandlerQuery3:
         if headers.is_eof():
             counter.expected_count_query_3 = headers.msg_count
             logging.info(f"Received expected message count for query 3, expect {counter.expected_count_query_3} got: {counter.count_query_3}")
-
             return
         counter.count_query_3 += 1
 
@@ -42,3 +41,6 @@ class HandlerQuery3:
             logging.info(f"Received last message for query 3 count: {counter.count_query_3} expected_count: {counter.expected_count_query_3}")
             result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
             middleware.send(result_task)
+
+    def send_abort(user_id, middleware):
+        middleware.send(ResultTask(user_id, QueryId.Query3, True, True, []).to_bytes())
