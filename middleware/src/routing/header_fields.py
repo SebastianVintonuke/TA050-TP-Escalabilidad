@@ -58,7 +58,7 @@ class BaseHeaders:
 		return self.msg_count != DEFAULT_PARTITION_VALUE
 
 	def is_error(self):
-		return self.msg_count < 0 # Negative partition means error
+		return self.msg_count < 0 and self.msg_count != DEFAULT_PARTITION_VALUE # Negative partition means error
 
 	def iter_credentials(self):
 		return zip(self.ids, self.types)		
