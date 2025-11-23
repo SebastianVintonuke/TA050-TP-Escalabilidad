@@ -2,10 +2,18 @@
 import logging
 from .groupby_state_manager import GroupbyStateManager, QueryAccumulator
 
+
+
+
+
+
 from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 # from common.state_storage.query_state_storage import  QueryStateStorage
 # DEF_STORE_PATH = "/etc/node_state"
 from middleware.routing.header_fields import BaseHeaders
+from middleware.routing.batch_ack_actions import batch_actions
+
+
 def get_credentials(accum_id):
 	parts = accum_id.split("_")
 
@@ -56,29 +64,38 @@ class GroupbyNode:
 
 		return total
 
-	def backup_acc(self, acc):
-		self.state_storage.write_changes(acc.accum_id, acc.messages_received, acc) # Save state
-		self.state_storage.commit_changes(acc.accum_id)
-		self.state_storage.push_changes(acc.accum_id, acc.messages_received, acc, acc.batch_msg_count)
-
+	##
+	### Handle task for: Batched Blocking Manager on rabbitmq channel version.. requires either return None to just ack this msg and no grouping/batch logic
+	### Or to return (ack_group, ack_act) .. as specified on middleware/routing/batch_ack_actions.py
+	##
 
 	def handle_task(self, headers, msg):
+		query_headers = headers.first_query() # Should only be one for groupby/topk
+		q_type = query_headers.types[0]
+		accum_id = query_headers.ids[0]+"_"+q_type
+
 		if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
+
 			if headers.is_error():
-				logging.info(f"Received ERROR code: {headers.get_error_code()} IN {headers.ids} | type: {headers.types}")
 				self.propagate_signal(headers)
-				return # This does auto ack since for now its stateless.. should remove state though
-			
-			logging.info(f"Received final eof OF {headers.ids} types: {headers.types}, should have been {headers.msg_count} messages")
-			
-			query_headers = headers.first_query() # Should only be one for groupby/topk
+				acc = self.accumulators.pop(accum_id, None)
+				
+				if acc == None:
+					logging.info(f"Query {accum_id} type: {q_type}, Error: {headers.get_error_code()}, cancelled query, was not present on state.")
+					return None # This does auto ack for this msg only... since no acc found, then its impossible
 
-			q_type = query_headers.types[0]
-			accum_id = query_headers.ids[0]+"_"+q_type
+				logging.info(f"Query {accum_id} type: {q_type}, Error: {headers.get_error_code()}, cancelled query, freeing current state.")
 
+				# Clean up state!
+				self.state_storage.backup_query(accum_id, acc) # For debugging/final reviewing purposes
+				self.state_storage.unregister_query(accum_id)
+
+				return (accum_id, batch_actions.FINISH_ACTION)
+	
 			acc = self.accumulators.get(accum_id, None)
+
 			if acc == None:
-				logging.info(f"For type {q_type}, eof was the first message to be received")
+				logging.info(f"Query {accum_id} type: {q_type}, EOF received, EOF was the first message to be received")
 				
 				config = self.types_configurations[q_type]
 				acc = QueryAccumulator(accum_id, config, config.new_builder_for(query_headers))
@@ -89,21 +106,34 @@ class GroupbyNode:
 				self.state_storage.register_query(accum_id, acc)
 
 			if acc.check_eof(headers.msg_count):
-				self.backup_acc(acc)
 				acc.send_built()
+				self.state_storage.backup_query(accum_id, acc)
+
+				logging.info(f"Query {accum_id} type: {q_type}, EOF received, query finished {accum_id}, freeing state")
+
+				self.state_storage.unregister_query(accum_id)
 				del self.accumulators[accum_id] # Remove it
 
-			return # This does auto ack since for now its stateless..
+
+				return (accum_id, batch_actions.FINISH_ACTION) # IF this was actually the EOF finish
+
+			#Else just commit batch even If not on batch count and ACK
+			# acc.batch_msg_count+=1  # Not needed to sum ? since ack message is last and is saved as exp ? 
+			self.state_storage.write_changes(accum_id, acc.messages_received, acc) # Save state
+			self.state_storage.commit_changes(accum_id)
+			self.state_storage.push_changes(accum_id, acc.messages_received, acc, acc.batch_msg_count)
+			acc.batch_msg_count = 0
+
+			return (accum_id, batch_actions.ACK_ACTION) # Ack batch messages
+
 			
-		msg = self.payload_deserializer(msg)
-		query_headers = headers.first_query() # Should only be one for groupby/topk
-
-		q_type = query_headers.types[0]
-		accum_id = query_headers.ids[0]+"_"+q_type
-
 		acc = self.accumulators.get(accum_id, None)
+		# Check IF dupped.
+		
+		msg = self.payload_deserializer(msg)
+
 		if acc == None:
-			logging.info(f"New accumulator initialization for {query_headers.ids[0]}, type {q_type}")
+			logging.info(f"Query {accum_id} type: {q_type}, Accumulator initialization")
 			config = self.types_configurations[q_type]
 			acc = QueryAccumulator(accum_id, config, config.new_builder_for(query_headers))
 
@@ -114,13 +144,14 @@ class GroupbyNode:
 			acc.check(row)
 
 		if acc.add_msg_count():
-			logging.info(f"query: {query_headers.ids[0]} type: {q_type}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Start sending.")
-			
-			self.backup_acc(acc)
-			
+			logging.info(f"Query {accum_id} type: {q_type}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Finishing.")
 			acc.send_built()
-			del self.accumulators[acc.accum_id]
-			return # Ack batch 
+
+			self.state_storage.backup_query(accum_id, acc)
+			self.state_storage.unregister_query(accum_id)
+
+			del self.accumulators[accum_id]
+			return (accum_id, batch_actions.FINISH_ACTION)
 
 
 		# Not yet taking into account dups
@@ -129,14 +160,14 @@ class GroupbyNode:
 		if acc.batch_msg_count >= self.batch_size:
 			# Only save/push on batch size count.
 			
-			self.state_storage.write_changes(acc.accum_id, acc.messages_received, acc) # Save state
-			self.state_storage.commit_changes(acc.accum_id)
-			self.state_storage.push_changes(acc.accum_id, acc.messages_received, acc, acc.batch_msg_count)
+			self.state_storage.write_changes(accum_id, acc.messages_received, acc) # Save state
+			self.state_storage.commit_changes(accum_id)
+			self.state_storage.push_changes(accum_id, acc.messages_received, acc, acc.batch_msg_count)
 			acc.batch_msg_count = 0
 
-			return # Ack batch messages
+			return (accum_id, batch_actions.ACK_ACTION) # Ack batch messages
 
-		return True # Return true to accumulate in batch.
+		return (accum_id, batch_actions.ACCUMULATE_ACTION)
 
 
 	def start(self):
