@@ -39,12 +39,7 @@ class DispatcherServer:
         self._was_stopped = False
         self._clients: List[Tuple[threading.Thread, socket.socket]] = []
         self._query_state_storage = QueryStateStorage(f'./etc/node_state/dispatcher-{node_id}', DispatcherNodeStateManager())
-
-        state = self._query_state_storage.load_states()
-        out_middleware = OutMiddleware()
-        for user_id in state.keys():
-            out_middleware.send_abort_for(user_id)
-            self._query_state_storage.unregister_packet(user_id)
+        self.__clean_local_storage()
 
     def run(self) -> None:
         """
@@ -130,3 +125,11 @@ class DispatcherServer:
             else:
                 thread.join()
         self._clients = alive_clients
+
+    def __clean_local_storage(self):
+        state = self._query_state_storage.load_states()
+        out_middleware = OutMiddleware()
+        for user_id in state.keys():
+            out_middleware.send_abort_for(user_id)
+            self._query_state_storage.unregister_packet(user_id)
+        logging.info(f"action: clean_local_storage | result: success")

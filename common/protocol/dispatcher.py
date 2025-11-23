@@ -28,7 +28,6 @@ class OutMiddleware:
         self.join_middleware = JoinTasksMiddleware(2)
 
     def send_abort_for(self, user_id: str) -> None:
-        logging.info(f"action: abort | result: in-progress | user_id: {user_id}")
         eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id],["query_1", "query_3", "query_4"])
         eof_task.set_error()
         self.select_middleware.send(eof_task)
@@ -207,10 +206,10 @@ class DispatcherProtocol:
 
 
     def __add_request_register_to_local_storage(self, user_id: str) -> None:
-        logging.info(f"action: add_request_register | result: in-progress")
         self._state_storage.register_query(user_id, "")
+        logging.info(f"action: add_request_register | result: success")
 
 
     def __remove_request_register_from_local_storage(self, user_id: str) -> None:
-        logging.info(f"action: remove_request_register | result: in-progress")
         self._state_storage.unregister_packet(user_id)
+        logging.info(f"action: remove_request_register | result: success")
