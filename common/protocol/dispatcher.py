@@ -12,6 +12,8 @@ from common.models.user import User
 from common.protocol.byte import ByteProtocol
 from common.protocol.signal import SignalProtocol
 from common.protocol.batch import BatchProtocol
+from common.state_storage.query_state_storage import QueryStateStorage
+from dispatcher.src.dispatcher_state_handler import DispatcherNodeStateManager
 
 from middleware.src.join_tasks_middleware import JoinTasksMiddleware
 from middleware.src.routing.csv_message import CSVMessageBuilder, CSVHashedMessageBuilder
@@ -25,6 +27,28 @@ class OutMiddleware:
         self.select_middleware = SelectTasksMiddleware()
         self.join_middleware = JoinTasksMiddleware(2)
 
+    def send_abort_for(self, user_id: str) -> None:
+        eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id],["query_1", "query_3", "query_4"])
+        eof_task.set_error()
+        self.select_middleware.send(eof_task)
+
+        eof_task = CSVMessageBuilder.with_credentials([user_id], ["query_2"])
+        eof_task.set_error()
+        self.select_middleware.send(eof_task)
+
+        eof_product_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id)
+        eof_task.set_error()
+        self.join_middleware.send(eof_product_task)
+
+        eof_user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id)
+        eof_task.set_error()
+        self.join_middleware.send(eof_user_task)
+
+        eof_store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id)
+        eof_task.set_error()
+        self.join_middleware.send(eof_store_task)
+        logging.info(f"action: abort | result: success | user_id: {user_id}")
+
 
 class Counter:
     def __init__(self):
@@ -36,13 +60,14 @@ class Counter:
 
 
 class DispatcherProtocol:
-    def __init__(self, a_socket: socket.socket, node_id: int, client_count: int):
+    def __init__(self, a_socket: socket.socket, node_id: int, client_count: int, state_storage: QueryStateStorage):
         self._byte_protocol = ByteProtocol(a_socket)
         self._signal_protocol = SignalProtocol(a_socket)
         self._batch_protocol = BatchProtocol(a_socket)
         self._node_id = node_id
         self._client_count = client_count
         self.out_middleware = OutMiddleware()
+        self._state_storage = state_storage
 
 
     def close_with(self, closure_to_close: Callable[[socket.socket], None]) -> None:
@@ -61,7 +86,7 @@ class DispatcherProtocol:
             self._byte_protocol.send_bytes(user_id.encode())
         except Exception as e:
             logging.error(f"action: handle_request | result: fail | error: {e}")
-            self.__send_abort_for(user_id)
+            self.out_middleware.send_abort_for(user_id)
         finally:
             self.__remove_request_register_from_local_storage(user_id)
             logging.info(f"action: handle_request | result: success")
@@ -180,35 +205,11 @@ class DispatcherProtocol:
             self.out_middleware.join_middleware.send(eof_store_task)
 
 
-    def __send_abort_for(self, user_id: str) -> None:
-        logging.info(f"action: abort | result: in-progress")
-        eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id],["query_1", "query_3", "query_4"])
-        eof_task.set_error()
-        self.out_middleware.select_middleware.send(eof_task)
-
-        eof_task = CSVMessageBuilder.with_credentials([user_id], ["query_2"])
-        eof_task.set_error()
-        self.out_middleware.select_middleware.send(eof_task)
-
-        eof_product_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id)
-        eof_task.set_error()
-        self.out_middleware.join_middleware.send(eof_product_task)
-
-        eof_user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id)
-        eof_task.set_error()
-        self.out_middleware.join_middleware.send(eof_user_task)
-
-        eof_store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id)
-        eof_task.set_error()
-        self.out_middleware.join_middleware.send(eof_store_task)
-        logging.info(f"action: abort | result: success")
-
-
     def __add_request_register_to_local_storage(self, user_id: str) -> None:
-        logging.info(f"action: add_request_register | result: in-progress")
-        pass
+        self._state_storage.register_query(user_id, "")
+        logging.info(f"action: add_request_register | result: success")
 
 
     def __remove_request_register_from_local_storage(self, user_id: str) -> None:
-        logging.info(f"action: remove_request_register | result: in-progress")
-        pass
+        self._state_storage.unregister_packet(user_id)
+        logging.info(f"action: remove_request_register | result: success")
