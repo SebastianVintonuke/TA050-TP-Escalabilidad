@@ -5,7 +5,9 @@ import threading
 from types import FrameType
 from typing import List, Optional, Tuple
 
-from common.protocol.dispatcher import DispatcherProtocol
+from common.protocol.dispatcher import DispatcherProtocol, OutMiddleware
+from common.state_storage.query_state_storage import QueryStateStorage
+from dispatcher.src.dispatcher_state_handler import DispatcherNodeStateManager
 
 
 class DispatcherServer:
@@ -36,6 +38,8 @@ class DispatcherServer:
         self._client_count = 0
         self._was_stopped = False
         self._clients: List[Tuple[threading.Thread, socket.socket]] = []
+        self._query_state_storage = QueryStateStorage(f'./etc/node_state/dispatcher-{node_id}', DispatcherNodeStateManager())
+        self.__clean_local_storage()
 
     def run(self) -> None:
         """
@@ -75,7 +79,7 @@ class DispatcherServer:
 
         Read message, process it and close the socket
         """
-        protocol = DispatcherProtocol(client_socket, self._node_id, self._client_count)
+        protocol = DispatcherProtocol(client_socket, self._node_id, self._client_count, self._query_state_storage)
         self._client_count += 1
         try:
             protocol.handle_requests()
@@ -121,3 +125,11 @@ class DispatcherServer:
             else:
                 thread.join()
         self._clients = alive_clients
+
+    def __clean_local_storage(self):
+        state = self._query_state_storage.load_states()
+        out_middleware = OutMiddleware()
+        for user_id in state.keys():
+            out_middleware.send_abort_for(user_id)
+            self._query_state_storage.unregister_packet(user_id)
+        logging.info(f"action: clean_local_storage | result: success")

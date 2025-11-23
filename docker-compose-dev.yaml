@@ -92,6 +92,7 @@ services:
       - middleware
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
 
   dispatcher2:
     container_name: dispatcher2
@@ -107,6 +108,7 @@ services:
       - middleware
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
 
   resultnode1:
     container_name: resultnode1
