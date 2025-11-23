@@ -308,7 +308,7 @@ class QueryStateStorage:
         change_file.unlink()
 
     # -------------------------------------------------------------
-    # 5. unregister_packet ... with no tag/ack saving not needed. 
+    # 5. unregister_query ...
     # -------------------------------------------------------------
-    def unregister_packet(self, tag):
+    def unregister_query(self, query_id):
         pass

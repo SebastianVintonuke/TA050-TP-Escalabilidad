@@ -49,7 +49,7 @@ class NothingQueryStateStorage:
 		self.acks = ack_tags
 
 	# -------------------------------------------------------------
-	# 5. unregister_packet
+	# 5. unregister_query
 	# -------------------------------------------------------------
 	def ack_finished(self, ack_func):
 		for ack in self.acks:
@@ -58,3 +58,7 @@ class NothingQueryStateStorage:
 
 	def unregister_packet(self, tag):
 		pass
+		
+	def unregister_query(self, query_id):
+		pass
+
