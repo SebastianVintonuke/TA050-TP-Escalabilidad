@@ -211,5 +211,5 @@ class DispatcherProtocol:
 
 
     def __remove_request_register_from_local_storage(self, user_id: str) -> None:
-        self._state_storage.unregister_packet(user_id)
+        self._state_storage.unregister_query(user_id)
         logging.info(f"action: remove_request_register | result: success")

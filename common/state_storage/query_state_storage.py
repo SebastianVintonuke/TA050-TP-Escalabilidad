@@ -7,6 +7,7 @@ from pathlib import Path
 
 PathType =Path # In tests it would be replaced by a mock one
 open_file = open # Also replaced on mocks
+copy_file = shutil.copy # Also replaced on mocks
 
 def clear_directory(directory: Path):
     # Deletes file by file and then the directoy... pc could shutdown in the middle
@@ -37,6 +38,8 @@ class QueryStateStorage:
         
         # directorios fijos
         self.metadata = self.base / "metadata"
+        self.cancelled_queries = self.metadata / "cancelled"
+
         self.states = self.base / "states"
         self.packets = self.base / "packets"
 
@@ -51,7 +54,7 @@ class QueryStateStorage:
         for d in [
             self.metadata, self.states, self.packets,
             self.not_finished, self.not_applied,
-            self.applied
+            self.applied, self.cancelled_queries, (self.base / "backups")
         ]:
             d.mkdir(parents=True, exist_ok=True)
 
@@ -83,19 +86,6 @@ class QueryStateStorage:
     def _update_commit_timestamp(self, query_id):
         f = self._commit_file(query_id)
         f.touch() # Touch usa syscall utime o similes... que es atomica a nivel syscall.
-
-
-    def _load_query_state(self, query_id, packet_id):
-        state_file = self.states / f"{query_id}_{packet_id}"
-        if state_file.exists():
-            return (
-                self._get_commit_timestamp(query_id),
-                self.manager.deserialize_state(state_file.read_bytes())
-                )
-
-        ## IF packet_id state does not exist return (None, None)
-        return (None, None)
-
 
     ## This loads the states and removes all except highest query_state
     def load_states(self):
@@ -138,20 +128,21 @@ class QueryStateStorage:
             items = query_changes.setdefault(query_id, [])
             items.append((packet_id, file))
 
-        # print("-----------> CHECK WITH")
-        # print(query_changes)
-        # print("----------->")
         for query_id, changes in query_changes.items():
             changes.sort(key=lambda x: x[0]) #Inplace
             first_pck = changes[0][0]
 
-            commit_ts, state = self._load_query_state(query_id,first_pck-1) # Load prev state.
-            if state == None:
-                #If not state means packet_id -1 was not the current state ... was there concurrent changes? not supported for now
-                print(f"Not supported concurrent changes at check integrity ? {self._state_file(query_id, first_pck-1)} state did not exist!")
+
+            state_file = self.states / f"{query_id}_{first_pck-1}"
+            
+            if not state_file.exists():
+                print(f"Not supported concurrent changes at check integrity ? {state_file} state did not exist!")
                 for _, file in changes: # Discard them
-                    file.unlink()
+                    file.unlink()                
                 continue
+
+            commit_ts= self._get_commit_timestamp(query_id),
+            state = self.manager.deserialize_state(state_file.read_bytes())
 
             i = 0
             while i < len(changes) and changes[i][1].stat().st_mtime <= commit_ts:
@@ -164,11 +155,7 @@ class QueryStateStorage:
                 new_file = self.not_finished / f"{query_id}_{packet_id}"
                 new_file.write_bytes(self.manager.serialize_state(state)) # Manager.serialize? or just str?
 
-                # with open_file(new_file, "w") as f:
-                #   f.write(str(state)) # Manager.serialize? or just str?
-
                 ## Atomic replace/move of file 
-                # print("SHOULD REPLACE? by ", self.states / f"{query_id}_{packet_id}")
                 new_file.replace(self.states / f"{query_id}_{packet_id}")
 
                 ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
@@ -195,7 +182,7 @@ class QueryStateStorage:
 
 
     # -------------------------------------------------------------
-    # 1. register_query
+    # 1. register_query and management
     # -------------------------------------------------------------
 
     def register_query(self, query_id, metadata, initial_packet_id = 0):
@@ -213,6 +200,47 @@ class QueryStateStorage:
 
             # Now create commit one
             file.touch()
+
+    def is_query_registered(self, query_id):
+        return self._commit_file(query_id).exists()
+
+    # -------------------------------------------------------------
+    # 5. unregister_query ... 
+    # -------------------------------------------------------------
+    def unregister_query(self, query_id):
+        for file in self.states.glob(f"{query_id}_*"):
+            file.unlink() # Delete all states saved
+
+        # Since it could crash in the middle of register query we want to do the states deleting always just in case. Commit file might not exist
+        file = self._commit_file()
+        if file.exists():
+            file.unlink()
+
+
+    #
+    # 6. Check Cancelled query ids, since we need to persist them to avoid saving unnecesary messages.
+    #
+    def cancel_query(self, query_id):
+        file = self.cancelled_queries / query_id
+        file.touch()
+
+    def is_cancelled_query(self, query_id):
+        file = self.cancelled_queries / query_id
+        return file.exists()
+
+    ## For debugging purposes and so on
+    def backup_query(self, query_id):
+        newest_state = None
+        for query_id, packet_id, file in map(get_file_credentials, self.states.glob(f"{query_id}_*")):
+            if newest_state == None or newest_state[0] < packet_id:
+                newest_state= [packet_id, file]
+
+        if newest_state == None:
+            return
+
+        copy_file(new_state[1], self.base/ f"backups/{new_state[1].name}")
+
+
 
 
     # -------------------------------------------------------------
@@ -281,8 +309,3 @@ class QueryStateStorage:
         # delete file! not_applied... should always exist since not concurrent
         change_file.unlink()
 
-    # -------------------------------------------------------------
-    # 5. unregister_query ... 
-    # -------------------------------------------------------------
-    def unregister_query(self, query_id):
-        pass
