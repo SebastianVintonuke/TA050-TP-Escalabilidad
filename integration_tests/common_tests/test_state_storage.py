@@ -1,5 +1,5 @@
 import unittest
-from common.state_storage import ack_query_state_storage as q_state
+from common.state_storage import query_state_storage as q_state
 from common.state_storage.base_state_manager import BaseStateManager
 from integration_tests.src.mocks_fs import *
 

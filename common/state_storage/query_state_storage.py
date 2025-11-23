@@ -18,7 +18,7 @@ def clear_directory(directory: Path):
 
 def get_file_credentials(file):
     parts = file.name.split("_")
-    # Query id is all but last part, then second value is packet id
+    # Query id is all but last part, then second value is version id
     return ("_".join(parts[:-1]), int(parts[-1]), file)
 
 
@@ -59,24 +59,11 @@ class QueryStateStorage:
             d.mkdir(parents=True, exist_ok=True)
 
     # -------------------------------------------------------------
-    #                 Filenames parsers
+    #                 Commit timestamp management
     # -------------------------------------------------------------
-
-    def _metadata_file(self, query_id):
-        return self.metadata / query_id
-
     def _commit_file(self, query_id):
         return self.metadata / f"{query_id}_commit"
 
-    def _packet_file(self, folder, query_id, packet_id):
-        return folder / f"{query_id}_{packet_id}"
-
-    def _state_file(self, query_id, packet_id):
-        return self.states / f"{query_id}_{packet_id}"
-
-    # -------------------------------------------------------------
-    #                 Commit timestamp management
-    # -------------------------------------------------------------
     def _get_commit_timestamp(self, query_id):
         f = self._commit_file(query_id)
         if not f.exists():
@@ -87,21 +74,23 @@ class QueryStateStorage:
         f = self._commit_file(query_id)
         f.touch() # Touch usa syscall utime o similes... que es atomica a nivel syscall.
 
+
+
     ## This loads the states and removes all except highest query_state
     def load_states(self):
         query_states = {} # result so that caller can do some extra logic If needed
 
-        for query_id, packet_id, file in map(get_file_credentials, self.states.glob(f"*_*")):
+        for query_id, version_id, file in map(get_file_credentials, self.states.glob(f"*_*")):
             newest_state = query_states.setdefault(query_id, None)
 
             if newest_state == None:
-                query_states[query_id] = [packet_id, file]
-            elif newest_state[0] < packet_id: # Current state is newer
+                query_states[query_id] = [version_id, file]
+            elif newest_state[0] < version_id: # Current state is newer
 
                 # Delete prev newest since its an old version.. and for now there is handling for those.
                 newest_state[1].unlink()
                 # Replace newest state
-                query_states[query_id] = [packet_id, file]
+                query_states[query_id] = [version_id, file]
             else: # Current state is older so del
                 file.unlink()
 
@@ -124,43 +113,52 @@ class QueryStateStorage:
         query_changes = {} # Internal cached data for changes to apply
         query_states = {} # result so that caller can do some extra logic If needed
 
-        for query_id, packet_id, file in map(get_file_credentials, self.not_applied.glob(f"*_*")):
+        for query_id, version_id, file in map(get_file_credentials, self.not_applied.glob(f"*_*")):
             items = query_changes.setdefault(query_id, [])
-            items.append((packet_id, file))
+            items.append((version_id, file))
 
         for query_id, changes in query_changes.items():
             changes.sort(key=lambda x: x[0]) #Inplace
             first_pck = changes[0][0]
 
 
-            state_file = self.states / f"{query_id}_{first_pck-1}"
+            base_version = first_pck-1
+            base_state_file = self.states / f"{query_id}_{base_version}"
             
-            if not state_file.exists():
-                print(f"Not supported concurrent changes at check integrity ? {state_file} state did not exist!")
+
+            if not base_state_file.exists():
+                print(f"Not supported concurrent changes at check integrity ? {base_state_file} state did not exist!")
                 for _, file in changes: # Discard them
                     file.unlink()                
                 continue
 
             commit_ts= self._get_commit_timestamp(query_id),
-            state = self.manager.deserialize_state(state_file.read_bytes())
+            state = self.manager.deserialize_state(base_state_file.read_bytes())
 
             i = 0
+
             while i < len(changes) and changes[i][1].stat().st_mtime <= commit_ts:
-                # Apply changes on file
-                changes_to_apply, _ = self.manager.deserialize_changes(changes[i][1].read_bytes())
+
+                # Apply changes on file/version
+                version_id = changes[i][0]
+                changes_to_apply, count_versions = self.manager.deserialize_changes(changes[i][1].read_bytes())
+
+                if base_version < version_id- count_versions: # There is a gap, new version cannot be merged at least we assume so and abort/discard.
+                    changes[i][1].unlink()
+                    i+=1
+                    continue
+
                 state = self.manager.apply_changes(state, changes_to_apply)
 
                 # Create temp file with new state.. check for conflicts? future stuff!
-                packet_id = changes[i][0]
-                new_file = self.not_finished / f"{query_id}_{packet_id}"
+                new_file = self.not_finished / f"{query_id}_{version_id}"
                 new_file.write_bytes(self.manager.serialize_state(state)) # Manager.serialize? or just str?
 
                 ## Atomic replace/move of file 
-                new_file.replace(self.states / f"{query_id}_{packet_id}")
+                new_file.replace(self.states / f"{query_id}_{version_id}")
 
-                ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
-                (self.states / f"{query_id}_{packet_id-1}").unlink()
-
+                ## Del previous one/ base version! guaranteed to exist .. else would not be here.. else it should throw an error
+                (self.states / f"{query_id}_{base_version}").unlink()
 
                 # No need to tag or do something to know wether to ack an already handled packet or not
                 # packet id is sequential. So If a new packet has one that is less thats it, already acked.
@@ -168,6 +166,7 @@ class QueryStateStorage:
                 # delete file! not_applied
                 changes[i][1].unlink()
 
+                base_version = version_id #For next change/version this should be the base version.
                 i+=1
 
             while i < len(changes): #unlink any remaining change since its  modify time after commit...
@@ -185,7 +184,7 @@ class QueryStateStorage:
     # 1. register_query and management
     # -------------------------------------------------------------
 
-    def register_query(self, query_id, metadata, initial_packet_id = 0):
+    def register_query(self, query_id, metadata, initial_version_id = 0):
         """
         Check if query id state/ commit time and so on exists.
         """
@@ -193,7 +192,7 @@ class QueryStateStorage:
         if not file.exists(): # Only do touch if it does not exist.. else would modify timestamp
             # First add state file that also is missing If commit time one is.. so that 
             # If it crashes before creating commit file then at most you would create again or so these ones
-            file_state = self.states / f"{query_id}_{initial_packet_id}" # First/initial state
+            file_state = self.states / f"{query_id}_{initial_version_id}" # First/initial state
             file_state.touch()
             # Since commit file not created no issues with having it corrupted. If it crashes here.
             file_state.write_bytes(self.manager.serialize_initial_state(metadata))
@@ -231,9 +230,9 @@ class QueryStateStorage:
     ## For debugging purposes and so on
     def backup_query(self, query_id):
         newest_state = None
-        for query_id, packet_id, file in map(get_file_credentials, self.states.glob(f"{query_id}_*")):
-            if newest_state == None or newest_state[0] < packet_id:
-                newest_state= [packet_id, file]
+        for query_id, version_id, file in map(get_file_credentials, self.states.glob(f"{query_id}_*")):
+            if newest_state == None or newest_state[0] < version_id:
+                newest_state= [version_id, file]
 
         if newest_state == None:
             return
@@ -247,13 +246,13 @@ class QueryStateStorage:
     # 2. add_changes
     # -------------------------------------------------------------
 
-    def write_changes(self, query_id, packet_id, changes):
+    def write_changes(self, query_id, version_id, changes):
         """
         Se escribe el archivo en not_finished y se mueve a not_applied.
         """
-        nf = self._packet_file(self.not_finished, query_id, packet_id)
+        nf = self.not_finished / f"{query_id}_{version_id}"
         nf.write_bytes(self.manager.serialize_changes(changes)) 
-        nf.replace(self.not_applied / f"{query_id}_{packet_id}")  # operación atómica
+        nf.replace(self.not_applied / f"{query_id}_{version_id}")  # operación atómica
 
     # -------------------------------------------------------------
     # 3. commit_changes
@@ -263,45 +262,48 @@ class QueryStateStorage:
         self._update_commit_timestamp(query_id)
 
 
-    def get_new_state(self, prev_state, changes):
-        return self.manager.apply_changes(prev_state, changes)
+
+    def calculate_new_state(self, base_state, changes):
+        return self.manager.apply_changes(base_state, changes)
+
+    # From base version in storage.
+    def get_new_state(self, query_id, version_id, changes, count_versions):
+        base_state_file = self.states / f"{query_id}_{version_id - count_versions}"
+
+        if not base_state_file.exists():
+            raise InvalidStateError(f"Base version for new state {base_state_file} does not exist, storage allows only for sequential/exact version calculation.")
+
+        base_state = None
+        with open_file(base_state_file, "r") as f:
+           base_state = self.manager.deserialize_state(f)
+
+        return self.manager.apply_changes(base_state, changes)
 
     # -------------------------------------------------------------
     # 4. push_changes
     ## Lets assume caller has the changes saved on change_file... change file is just for backup in case of a crash.
-    ## And also has prev state since we assume non concurrent modifying 
+    ## And also has prev state/ base version/state since we assume non concurrent modifying 
     ## SOO essentially received the new state calculated from get new state
     # -------------------------------------------------------------
-    def push_changes(self, query_id, packet_id, new_state, count_msgs): ## Lets 
-        change_file = self.not_applied / f"{query_id}_{packet_id}"
+    def push_changes(self, query_id, version_id, new_state, count_versions): ## Lets 
+        change_file = self.not_applied / f"{query_id}_{version_id}"
         if not change_file.exists():
-            raise InvalidStateError(f"Not supported concurrent changes.. saved changes '{change_file}' did not exist!")
-        #changes = None
-        # with open_file(change_file, "r") as f:
-        #    changes = self.manager.deserialize_changes(f)
+            raise InvalidStateError(f"Not supported concurrent changes.. saved changes/version '{change_file}' did not exist!")
 
-        # Estado anterior
-        prev_state_file = self.states / f"{query_id}_{packet_id - count_msgs}"
-
-        # # Deserializar estado anterior
-        # prev_state = None
-        # with open_file(prev_state_file, "r") as f:
-        #    prev_state = self.manager.deserialize_state(f)
-
-
-        new_file = self.not_finished / f"{query_id}_{packet_id}"
+        new_file = self.not_finished / f"{query_id}_{version_id}"
         new_file.write_bytes(self.manager.serialize_state(new_state)) # Manager.serialize? or just str?
 
         ## Atomic replace/move of file 
-        new_file.replace(self.states / f"{query_id}_{packet_id}")
+        new_file.replace(self.states / f"{query_id}_{version_id}")
 
-        ## Del previous one! guaranteed to exist .. else would not be here.. else it should throw an error
-        if prev_state_file.exists():
-            prev_state_file.unlink()
+
+        base_state_file = self.states / f"{query_id}_{version_id - count_versions}"
+
+        ## Del previous/base state! For now allow it to not exist... checks for consistency should be at get_new_state or so.
+        if base_state_file.exists():
+            base_state_file.unlink()
         else:
-            logging.warning(f"Warning.. at push changes {packet_id} prev state file did not exist {prev_state_file}")
-            #raise InvalidStateError("Not supported concurrent changes.. prev state did not exist!")
-
+            logging.warning(f"Warning.. at push changes version: {version_id} base state file did not exist {base_state_file}")
 
         # No need to tag or do something to know wether to ack an already handled packet or not
         # packet id is sequential. So If a new packet has one that is less thats it, already acked.
