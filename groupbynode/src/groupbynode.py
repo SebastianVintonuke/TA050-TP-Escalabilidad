@@ -135,10 +135,6 @@ class GroupbyNode:
 
 			
 		acc = self.accumulators.get(accum_id, None)
-		# Check IF dupped.
-		
-		msg = self.payload_deserializer(msg)
-
 		if acc == None:
 			log_info(f"Query '{accum_id}' type: {q_type}, Accumulator initialization")
 			config = self.types_configurations[q_type]
@@ -147,6 +143,13 @@ class GroupbyNode:
 			self.accumulators[accum_id] = acc
 
 			self.state_storage.register_query(accum_id, acc)
+
+		if acc.is_duplicated(query_headers.packet_id):
+			log_info(f"Query: '{accum_id}' found duplicated {query_headers.packet_id}")
+			return # Return None just ack this message as stand alone
+
+
+		msg = self.payload_deserializer(msg)
 
 		for row in msg.stream_rows():
 			acc.check(row)
@@ -160,10 +163,6 @@ class GroupbyNode:
 
 			del self.accumulators[accum_id]
 			return (accum_id, batch_actions.FINISH_ACTION)
-
-
-		# Not yet taking into account dups
-		acc.batch_ver_count+=1 
 
 		if acc.batch_ver_count >= self.batch_size:
 			# Only save/push on batch size count.

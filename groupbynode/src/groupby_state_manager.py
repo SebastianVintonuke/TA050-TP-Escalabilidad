@@ -24,6 +24,8 @@ class QueryAccumulator:
 		self.rows_recv = 0
 		self.msg_builder.reset_eof() # Ensure its not copying the eof flag from input sender
 
+	def is_duplicated(self, packet_id):
+		return self.packet_tracker.is_duplicate(packet_id)
 	def check(self, row):
 		self.rows_recv+=1
 		row = self.type_conf.map_input_row(row)
@@ -71,12 +73,20 @@ class QueryAccumulator:
 
 	def add_msg(self, packet_id):
 		self.version_id += 1 # Inc version by one each msg
+		self.batch_ver_count+=1 
+
 		self.packet_tracker.check_new_packet(packet_id)
 
 		return self.last_packet_id>=0 and self.packet_tracker.handled_all_up_to(self.last_packet_id)
 
 	def check_eof(self, eof_packet_id):
+		
+		if self.last_packet_id >=0: # Already received EOF ... so its a duplicated.
+			return self.packet_tracker.handled_all_up_to(eof_packet_id)
+			
 		self.version_id += 1 # Inc version by one each msg .. even EOF msg
+		self.batch_ver_count+=1 
+
 		self.last_packet_id = eof_packet_id
 
 		self.packet_tracker.check_new_packet(eof_packet_id)
