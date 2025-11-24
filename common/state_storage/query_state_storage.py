@@ -41,18 +41,18 @@ class QueryStateStorage:
         self.cancelled_queries = self.metadata / "cancelled"
 
         self.states = self.base / "states"
-        self.packets = self.base / "packets"
+        self.versions = self.base / "versions"
 
-        # subcarpetas de packets
-        self.not_finished = self.packets / "not_finished"
-        self.not_applied = self.packets / "not_applied"
-        self.applied = self.packets / "applied"
+        # subcarpetas de versions
+        self.not_finished = self.versions / "not_finished"
+        self.not_applied = self.versions / "not_applied"
+        self.applied = self.versions / "applied"
 
         self._ensure_dirs()
 
     def _ensure_dirs(self):
         for d in [
-            self.metadata, self.states, self.packets,
+            self.metadata, self.states, self.versions,
             self.not_finished, self.not_applied,
             self.applied, self.cancelled_queries, (self.base / "backups")
         ]:
@@ -132,7 +132,7 @@ class QueryStateStorage:
                     file.unlink()                
                 continue
 
-            commit_ts= self._get_commit_timestamp(query_id),
+            commit_ts= self._get_commit_timestamp(query_id)
             state = self.manager.deserialize_state(base_state_file.read_bytes())
 
             i = 0
@@ -160,9 +160,6 @@ class QueryStateStorage:
                 ## Del previous one/ base version! guaranteed to exist .. else would not be here.. else it should throw an error
                 (self.states / f"{query_id}_{base_version}").unlink()
 
-                # No need to tag or do something to know wether to ack an already handled packet or not
-                # packet id is sequential. So If a new packet has one that is less thats it, already acked.
-
                 # delete file! not_applied
                 changes[i][1].unlink()
 
@@ -170,7 +167,6 @@ class QueryStateStorage:
                 i+=1
 
             while i < len(changes): #unlink any remaining change since its  modify time after commit...
-                #Assumed higher packet id was handled after! i.e sequential handling .. send nack?
                 changes[i][1].unlink()
                 i+=1
 
@@ -211,7 +207,7 @@ class QueryStateStorage:
             file.unlink() # Delete all states saved
 
         # Since it could crash in the middle of register query we want to do the states deleting always just in case. Commit file might not exist
-        file = self._commit_file()
+        file = self._commit_file(query_id)
         if file.exists():
             file.unlink()
 
@@ -267,15 +263,16 @@ class QueryStateStorage:
         return self.manager.apply_changes(base_state, changes)
 
     # From base version in storage.
-    def get_new_state(self, query_id, version_id, changes, count_versions):
+    def get_new_state(self, query_id, version_id, changes, count_versions = 1):
         base_state_file = self.states / f"{query_id}_{version_id - count_versions}"
 
         if not base_state_file.exists():
             raise InvalidStateError(f"Base version for new state {base_state_file} does not exist, storage allows only for sequential/exact version calculation.")
 
-        base_state = None
-        with open_file(base_state_file, "r") as f:
-           base_state = self.manager.deserialize_state(f)
+        # base_state = None
+        # with open_file(base_state_file, "r") as f:
+
+        base_state = self.manager.deserialize_state(base_state_file.read_bytes())
 
         return self.manager.apply_changes(base_state, changes)
 
@@ -285,7 +282,7 @@ class QueryStateStorage:
     ## And also has prev state/ base version/state since we assume non concurrent modifying 
     ## SOO essentially received the new state calculated from get new state
     # -------------------------------------------------------------
-    def push_changes(self, query_id, version_id, new_state, count_versions): ## Lets 
+    def push_changes(self, query_id, version_id, new_state, count_versions = 1): ## Lets 
         change_file = self.not_applied / f"{query_id}_{version_id}"
         if not change_file.exists():
             raise InvalidStateError(f"Not supported concurrent changes.. saved changes/version '{change_file}' did not exist!")
@@ -305,8 +302,6 @@ class QueryStateStorage:
         else:
             logging.warning(f"Warning.. at push changes version: {version_id} base state file did not exist {base_state_file}")
 
-        # No need to tag or do something to know wether to ack an already handled packet or not
-        # packet id is sequential. So If a new packet has one that is less thats it, already acked.
 
         # delete file! not_applied... should always exist since not concurrent
         change_file.unlink()
