@@ -24,8 +24,8 @@ class NothingQueryStateStorage:
 	def register_query(self, query_id, metadata, initial_packet_id = 0):
 		pass
 
-    def is_query_registered(self, query_id):
-        return True
+	def is_query_registered(self, query_id):
+		return True
 	# -------------------------------------------------------------
 	# 5. unregister_query
 	# -------------------------------------------------------------
@@ -34,16 +34,19 @@ class NothingQueryStateStorage:
 		pass
 
 
-    def cancel_query(self, query_id):
-    	pass
+	def cancel_query(self, query_id):
+		pass
 
-    def is_cancelled_query(self, query_id):
-        return False
+	def is_cancelled_query(self, query_id):
+		return False
 
 
-    ## For debugging purposes and so on
-    def backup_query(self, query_id):
-    	pass
+	## For debugging purposes and so on
+	def backup_query(self, query_id): # Backup last state saved
+		pass
+
+	def backup_query_final(self, query_id, version_id, state):# Backup final state just before del, from memory?
+		pass
 
 
 	# -------------------------------------------------------------

@@ -112,60 +112,61 @@ class MockMessageBuilder(HashedMessageBuilder):
 
 class BareMockMessageBuilder(HashedMessageBuilder):
     def default():
-        return BareMockMessageBuilder(BaseHeaders.default())
+        return BareMockMessageBuilder(BaseHeaders.default(), "")
 
     def creator_with_type(new_type):
         def converter(headers):
             headers.types[0] =new_type
-            return BareMockMessageBuilder(headers)
+            return BareMockMessageBuilder(headers, headers.ids[0])
 
         return converter    
 
-    def for_payload(ids, types, rows, mapper):
-        res = BareMockMessageBuilder(BaseHeaders(ids, types))
+    def for_payload(ids, types, rows, mapper, packet_id = -1):
+        res = BareMockMessageBuilder(BaseHeaders(ids, types, packet_id = packet_id), ids[0])
         
         for row in rows:
             res.add_row(mapper(row))
 
         return res
 
-    def __init__(self, headers):
-        super().__init__(headers, "")
+    def __init__(self, headers, key_hash):
+        super().__init__(headers, key_hash)
     def add_row(self, row):
         self.payload.append(row)
 
     def clone(self):
-        return BareMockMessageBuilder(self.headers.clone())
+        return BareMockMessageBuilder(self.headers.clone(), self.key_hash)
 
 
 
 
 class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
     def default():
-        return BareMockMessageBuilderNoSerial(BaseHeaders.default())
+        return BareMockMessageBuilderNoSerial(BaseHeaders.default(), "")
 
     def creator_with_type(new_type):
         def converter(headers):
             headers.types[0] =new_type
-            return BareMockMessageBuilderNoSerial(headers)
+            return BareMockMessageBuilderNoSerial(headers, headers.ids[0])
 
         return converter    
 
-    def for_payload(ids, types, rows, mapper):
-        res = BareMockMessageBuilderNoSerial(BaseHeaders(ids, types))
+    def for_payload(ids, types, rows, mapper, packet_id = -1):
+        res = BareMockMessageBuilderNoSerial(BaseHeaders(ids, types, packet_id = packet_id), ids[0])
         
         for row in rows:
             res.add_row(mapper(row))
 
         return res
 
-    def __init__(self, headers):
-        super().__init__(headers)
+    def __init__(self, headers, key_hash):
+        super().__init__(headers,key_hash)
 
     def serialize_payload(self):
         return self.payload
+
     def clone(self):
-        return BareMockMessageBuilderNoSerial(self.headers.clone())
+        return BareMockMessageBuilderNoSerial(self.headers.clone(), self.key_hash)
 
 
 def identity(itm):

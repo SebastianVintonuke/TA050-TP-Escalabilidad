@@ -2,6 +2,8 @@
 import logging
 from .groupby_state_manager import GroupbyStateManager, QueryAccumulator
 
+# log_info = logging.info
+log_info = print
 
 
 
@@ -11,7 +13,7 @@ from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 # from common.state_storage.query_state_storage import  QueryStateStorage
 # DEF_STORE_PATH = "/etc/node_state"
 from middleware.routing.header_fields import BaseHeaders
-from middleware.routing.batch_ack_actions import batch_actions
+from middleware.routing import batch_ack_actions as batch_actions
 
 
 def get_credentials(accum_id):
@@ -38,7 +40,7 @@ class GroupbyNode:
 
 			query_id, q_type = get_credentials(accum_id)
 			new_headers = BaseHeaders(ids = [query_id], types= [q_type])
-			logging.info(f"Get new accumulator initialization for id {accum_id}, src type {q_type}")
+			log_info(f"Get new accumulator initialization for id {accum_id}, src type {q_type}")
 
 
 			config = self.types_configurations[q_type]
@@ -81,13 +83,13 @@ class GroupbyNode:
 				acc = self.accumulators.pop(accum_id, None)
 				
 				if acc == None:
-					logging.info(f"Query {accum_id} type: {q_type}, Error: {headers.get_error_code()}, cancelled query, was not present on state.")
+					log_info(f"Query '{accum_id}' type: {q_type}, Error: {headers.get_error_code()}, cancelled query, was not present on state.")
 					return None # This does auto ack for this msg only... since no acc found, then its impossible
 
-				logging.info(f"Query {accum_id} type: {q_type}, Error: {headers.get_error_code()}, cancelled query, freeing current state.")
+				log_info(f"Query '{accum_id}' type: {q_type}, Error: {headers.get_error_code()}, cancelled query, freeing current state.")
 
 				# Clean up state!
-				self.state_storage.backup_query(accum_id, acc) # For debugging/final reviewing purposes
+				self.state_storage.backup_query_final(accum_id, acc.messages_received , acc) # For debugging/final reviewing purposes
 				self.state_storage.unregister_query(accum_id)
 
 				return (accum_id, batch_actions.FINISH_ACTION)
@@ -95,7 +97,7 @@ class GroupbyNode:
 			acc = self.accumulators.get(accum_id, None)
 
 			if acc == None:
-				logging.info(f"Query {accum_id} type: {q_type}, EOF received, EOF was the first message to be received")
+				log_info(f"Query '{accum_id}' type: {q_type}, EOF received, EOF was the first message to be received")
 				
 				config = self.types_configurations[q_type]
 				acc = QueryAccumulator(accum_id, config, config.new_builder_for(query_headers))
@@ -107,9 +109,9 @@ class GroupbyNode:
 
 			if acc.check_eof(headers.msg_count):
 				acc.send_built()
-				self.state_storage.backup_query(accum_id, acc)
+				self.state_storage.backup_query_final(accum_id, acc.messages_received , acc)
 
-				logging.info(f"Query {accum_id} type: {q_type}, EOF received, query finished {accum_id}, freeing state")
+				log_info(f"Query '{accum_id}' type: {q_type}, EOF received, query finished {accum_id}, freeing state")
 
 				self.state_storage.unregister_query(accum_id)
 				del self.accumulators[accum_id] # Remove it
@@ -133,21 +135,22 @@ class GroupbyNode:
 		msg = self.payload_deserializer(msg)
 
 		if acc == None:
-			logging.info(f"Query {accum_id} type: {q_type}, Accumulator initialization")
+			log_info(f"Query '{accum_id}' type: {q_type}, Accumulator initialization")
 			config = self.types_configurations[q_type]
 			acc = QueryAccumulator(accum_id, config, config.new_builder_for(query_headers))
 
 			self.accumulators[accum_id] = acc
+
 			self.state_storage.register_query(accum_id, acc)
 
 		for row in msg.stream_rows():
 			acc.check(row)
 
 		if acc.add_msg_count():
-			logging.info(f"Query {accum_id} type: {q_type}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Finishing.")
+			log_info(f"Query '{accum_id}' type: {q_type}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Finishing.")
 			acc.send_built()
 
-			self.state_storage.backup_query(accum_id, acc)
+			self.state_storage.backup_query_final(accum_id, acc.messages_received , acc)
 			self.state_storage.unregister_query(accum_id)
 
 			del self.accumulators[accum_id]

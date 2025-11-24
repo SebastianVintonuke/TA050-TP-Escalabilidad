@@ -8,6 +8,8 @@ from ..routing.batch_ack_actions import BatchingACKManager
 
 from .blocking_manager import RabbitMQManager,RabbitMQChannel
 
+# import traceback
+
 DEFAULT_EXCHANGE = ''
 CONNECTIONS_ATTMPS = 10
 
@@ -40,6 +42,7 @@ class BatchedRabbitMQChannel(RabbitMQChannel):
 				logging.error(f"msg method: {method} prop: {properties}")
 				logging.error(f"payload: {body[:min(50,len(body))]} error: {e}")
 				ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)	
+				# traceback.print_exc()
 
 
 		return real_callback

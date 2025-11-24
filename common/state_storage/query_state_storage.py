@@ -235,6 +235,11 @@ class QueryStateStorage:
 
         copy_file(new_state[1], self.base/ f"backups/{new_state[1].name}")
 
+    def backup_query_final(self, query_id, version_id, state):
+        out_file = self.base/ f"backups/{query_id}_{version_id}_final"
+        out_file.touch()
+
+        out_file.write_bytes(self.manager.serialize_state(state))
 
 
 

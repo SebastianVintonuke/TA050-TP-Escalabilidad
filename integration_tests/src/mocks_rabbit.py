@@ -2,6 +2,10 @@
 class MethodClass:
     def __init__(self, tag):
         self.delivery_tag = tag
+
+    def __repr__(self):
+        return f"method tag: '{self.delivery_tag}'"
+
 class MessageHolder:
     def __init__(self, headers, payload):
         self.headers = headers
@@ -142,6 +146,9 @@ class MockConnection:
 class PropHeaders:
     def __init__(self, headers):
         self.headers = headers
+
+    def __repr__(self):
+        return f"prop headers: {self.headers}"
 
 def wait_middleware_init_nothing():
     pass
