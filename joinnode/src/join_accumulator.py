@@ -23,8 +23,10 @@ class JoinAccumulator:
 
         self.msg_count_left = 0
         self.msg_count_right = 0
-        self.join_id = ide#ide+ self.type_conf.join_id
+        self.joiner_id = ide#ide+ self.type_conf.join_id
+
         self.batch_msg_count = 0
+        self.version_id = 0
 
     def get_curr_out_id(self):
         return self.msg_builder.headers.packet_id

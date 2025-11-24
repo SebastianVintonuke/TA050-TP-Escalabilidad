@@ -156,7 +156,7 @@ class TestMiddlewares(unittest.TestCase):
         msg_build = CSVHashedMessageBuilder(
             BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"],
             ["query_1"]),
-            "hash_base",
+            "hash_base_1",
         )
 
         hashed_id = msg_build.hash_in(COUNT_NODES)

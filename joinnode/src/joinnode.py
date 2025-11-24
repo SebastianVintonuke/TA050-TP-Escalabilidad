@@ -6,6 +6,9 @@ from .join_accumulator import JoinAccumulator
 from .join_state_manager import JoinNodeStateManager
 
 from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
+
+from middleware.routing import batch_ack_actions as batch_actions
+
 def get_credentials(accum_id):
     parts = accum_id.split("_")
 
@@ -70,9 +73,9 @@ class JoinNode:
 
     def backup_joiner(self, joiner):
         mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
-        self.state_storage.write_changes(joiner.join_id, mock_pkt_id, joiner) # Save state
-        self.state_storage.commit_changes(joiner.join_id)
-        self.state_storage.push_changes(joiner.join_id, mock_pkt_id, joiner, joiner.batch_msg_count)
+        self.state_storage.write_changes(joiner.joiner_id, mock_pkt_id, joiner) # Save state
+        self.state_storage.commit_changes(joiner.joiner_id)
+        self.state_storage.push_changes(joiner.joiner_id, mock_pkt_id, joiner, joiner.batch_msg_count)
 
 
     def handle_task(self, headers, msg):
@@ -91,7 +94,7 @@ class JoinNode:
                     joiner_id = f"{ide}_{config.join_id}"
                     joiner = self.joiners.pop(joiner_id, None)
                     if joiner: # Cleanup
-                        self.state_storage.backup_query(joiner_id, joiner) # For debugging/final reviewing purposes
+                        self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
                         self.state_storage.unregister_query(joiner_id)
                     else:
                         logging.info(f"Join acc {joiner_id}, cancelled but had no state.")
@@ -113,14 +116,14 @@ class JoinNode:
                 
                 if config.left_type == type:
                     if joiner.handle_eof_left(query_headers.msg_count): 
-                        self.state_storage.backup_query(joiner_id, joiner) # For debugging/final reviewing purposes
+                        self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
                         logging.info(f"Join acc {joiner_id}, handling done, freeing. EOF Left was last message")
                         del self.joiners[joiner_id]
                         self.state_storage.unregister_query(joiner_id)                        
 
                 elif joiner.handle_eof_right(query_headers.msg_count): # type == right_type, and eof 
-                        self.state_storage.backup_query(joiner_id, joiner) # For debugging/final reviewing purposes
+                        self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
                         logging.info(f"Join acc {joiner_id}, handling done, freeing. EOF Right was last message")
                         del self.joiners[joiner_id]
@@ -184,7 +187,7 @@ class JoinNode:
             for joiner in outputs:
                 if joiner.add_check_msg_for_type(type):
                     joiner_id = joiner.joiner_id
-                    self.state_storage.backup_query(joiner_id, joiner) # For debugging/final reviewing purposes
+                    self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
                     logging.info(f"Join acc {joiner_id}, handling done, freeing. Final was payload msg")
                     del self.joiners[joiner_id]
@@ -194,9 +197,9 @@ class JoinNode:
                     # Save changes.                    
                     mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
 
-                    self.state_storage.write_changes(joiner.join_id, mock_pkt_id, joiner) # Save state
-                    self.state_storage.commit_changes(joiner.join_id)
-                    self.state_storage.push_changes(joiner.join_id, mock_pkt_id, joiner, joiner.batch_msg_count)
+                    self.state_storage.write_changes(joiner.joiner_id, mock_pkt_id, joiner) # Save state
+                    self.state_storage.commit_changes(joiner.joiner_id)
+                    self.state_storage.push_changes(joiner.joiner_id, mock_pkt_id, joiner, joiner.batch_msg_count)
                     joiner.batch_msg_count = 0
 
             return # No batch ack logic.. as stand alone
@@ -207,7 +210,7 @@ class JoinNode:
         joiner_id = joiner.joiner_id
 
         if joiner.add_check_msg_for_type(type):
-            self.state_storage.backup_query(joiner_id, joiner) # For debugging/final reviewing purposes
+            self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
             logging.info(f"Join acc {joiner_id}, handling done, freeing. Final was payload msg")
             del self.joiners[joiner_id]
             self.state_storage.unregister_query(joiner_id)
@@ -219,9 +222,9 @@ class JoinNode:
         if joiner.batch_msg_count >= self.batch_size:
             mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
 
-            self.state_storage.write_changes(joiner.join_id, mock_pkt_id, joiner) # Save state
-            self.state_storage.commit_changes(joiner.join_id)
-            self.state_storage.push_changes(joiner.join_id, mock_pkt_id, joiner, joiner.batch_msg_count)
+            self.state_storage.write_changes(joiner.joiner_id, mock_pkt_id, joiner) # Save state
+            self.state_storage.commit_changes(joiner.joiner_id)
+            self.state_storage.push_changes(joiner.joiner_id, mock_pkt_id, joiner, joiner.batch_msg_count)
             joiner.batch_msg_count = 0
 
             return (joiner_id, batch_actions.ACK_ACTION)

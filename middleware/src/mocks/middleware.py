@@ -96,7 +96,7 @@ class MockMessageBuilder(HashedMessageBuilder):
     def default():
         return MockMessageBuilder(None, -1)
     def __init__(self, msg, ind):
-        super().__init__(BaseHeaders.default(), "")
+        super().__init__(BaseHeaders.default(), "_1")
         self.msg_from = msg
         self.ind = ind
 
@@ -106,13 +106,14 @@ class MockMessageBuilder(HashedMessageBuilder):
 
     def clone(self):
         msg = MockMessageBuilder(self.msg_from, self.ind)
+        msg.key_hash = self.key_hash
         msg.headers = self.headers.clone()
         return msg
 
 
 class BareMockMessageBuilder(HashedMessageBuilder):
     def default():
-        return BareMockMessageBuilder(BaseHeaders.default(), "")
+        return BareMockMessageBuilder(BaseHeaders(["id_1"], []), "")
 
     def creator_with_type(new_type):
         def converter(headers):
@@ -142,7 +143,7 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
 class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
     def default():
-        return BareMockMessageBuilderNoSerial(BaseHeaders.default(), "")
+        return BareMockMessageBuilderNoSerial(BaseHeaders(["id_1"], []), "")
 
     def creator_with_type(new_type):
         def converter(headers):

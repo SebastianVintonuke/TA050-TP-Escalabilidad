@@ -615,7 +615,7 @@ class BaseEOFProtocolTest(ABC):
         self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
 
         #Message for join is hashed
-        msg = CSVHashedMessageBuilder.with_credentials(["q_id_1"], [QUERY_PRODUCT_NAMES], "key_hash_q_id")
+        msg = CSVHashedMessageBuilder.with_credentials(["q_id_1"], [QUERY_PRODUCT_NAMES], "key_hash_q_id_1")
 
         # ["pr_1", "1", "100.0"], FRom topk
         # ["pr_top_q", "1", "5.0"],
