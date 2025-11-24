@@ -28,6 +28,11 @@ class JoinNode:
         self.batch_size = batch_size        
         self.msg_rows_limit= limit
 
+    def describe(self):
+        for ide, acc in self.joiners.items():
+            log_info(f"--------> {ide}")
+            acc.describe()
+
     def get_acc_id(self, query_id, joiner_id):
         return f"{query_id}_{joiner_id}"
 
@@ -80,13 +85,6 @@ class JoinNode:
         return total
 
 
-    def backup_joiner(self, joiner):
-        mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
-        self.state_storage.write_changes(joiner.joiner_id, mock_pkt_id, joiner) # Save state
-        self.state_storage.commit_changes(joiner.joiner_id)
-        self.state_storage.push_changes(joiner.joiner_id, mock_pkt_id, joiner, joiner.batch_msg_count)
-
-
     def handle_task(self, headers, msg):
 
         query_headers = headers.first_query() # Should only be one for groupby/topk
@@ -124,25 +122,31 @@ class JoinNode:
                     self.state_storage.register_query(joiner_id, joiner)
                 
                 if config.left_type == type:
-                    if joiner.handle_eof_left(query_headers.msg_count): 
+                    if joiner.handle_eof_left(query_headers.packet_id): 
                         self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
-
                         log_info(f"Join acc {joiner_id}, handling done, freeing. EOF Left was last message")
                         del self.joiners[joiner_id]
                         self.state_storage.unregister_query(joiner_id)                        
+                    else:
+                        joiner.batch_ver_count += 1
+                        self.state_storage.write_changes(joiner_id, joiner.version_id, joiner) # Save state
+                        self.state_storage.commit_changes(joiner_id)
+                        self.state_storage.push_changes(joiner_id, joiner.version_id, joiner, joiner.batch_ver_count)                    
+                        joiner.batch_ver_count = 0
 
-                elif joiner.handle_eof_right(query_headers.msg_count): # type == right_type, and eof 
-                        self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
+                elif joiner.handle_eof_right(query_headers.packet_id): # type == right_type, and eof 
+                    self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
-                        log_info(f"Join acc {joiner_id}, handling done, freeing. EOF Right was last message")
-                        del self.joiners[joiner_id]
-                        self.state_storage.unregister_query(joiner_id)
+                    log_info(f"Join acc {joiner_id}, handling done, freeing. EOF Right was last message")
+                    del self.joiners[joiner_id]
+                    self.state_storage.unregister_query(joiner_id)
+
                 else: # EOF handled but not actual EOF so just save the state for the config even If not on batch
-                    mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
-                    self.state_storage.write_changes(joiner_id, mock_pkt_id, joiner) # Save state
+                    joiner.batch_ver_count += 1
+                    self.state_storage.write_changes(joiner_id, joiner.version_id, joiner) # Save state
                     self.state_storage.commit_changes(joiner_id)
-                    self.state_storage.push_changes(joiner_id, mock_pkt_id, joiner, joiner.batch_msg_count)                    
-                    joiner.batch_msg_count = 0
+                    self.state_storage.push_changes(joiner_id, joiner.version_id, joiner, joiner.batch_ver_count)                    
+                    joiner.batch_ver_count = 0
             
             if len(configs) > 1: # For multi config one do not batch logic for now. Since only ones with that are of 1 message len.
                 return None
@@ -194,7 +198,7 @@ class JoinNode:
         # Now If multi... do not batch logic
         if len(configs) > 1: # We still need to check config len not outputs, since dup logic could distort things
             for joiner in outputs:
-                if joiner.add_check_msg_for_type(type):
+                if joiner.add_check_msg_for_type(type, query_headers.packet_id):
                     joiner_id = joiner.joiner_id
                     self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
@@ -203,13 +207,12 @@ class JoinNode:
                     self.state_storage.unregister_query(joiner_id)                        
                 
                 else: 
+                    joiner.batch_ver_count += 1
                     # Save changes.                    
-                    mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
-
-                    self.state_storage.write_changes(joiner.joiner_id, mock_pkt_id, joiner) # Save state
+                    self.state_storage.write_changes(joiner.joiner_id, joiner.version_id, joiner) # Save state
                     self.state_storage.commit_changes(joiner.joiner_id)
-                    self.state_storage.push_changes(joiner.joiner_id, mock_pkt_id, joiner, joiner.batch_msg_count)
-                    joiner.batch_msg_count = 0
+                    self.state_storage.push_changes(joiner.joiner_id, joiner.version_id, joiner, joiner.batch_ver_count)
+                    joiner.batch_ver_count = 0
 
             return # No batch ack logic.. as stand alone
 
@@ -218,23 +221,22 @@ class JoinNode:
         joiner = outputs[0] # Not needed really since python saves the joiner on for but well.
         joiner_id = joiner.joiner_id
 
-        if joiner.add_check_msg_for_type(type):
+        if joiner.add_check_msg_for_type(type, query_headers.packet_id):
             self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
             log_info(f"Join acc {joiner_id}, handling done, freeing. Final was payload msg")
             del self.joiners[joiner_id]
             self.state_storage.unregister_query(joiner_id)
             return (joiner_id, batch_actions.FINISH_ACTION)
 
-        joiner.batch_msg_count+=1 
+        joiner.batch_ver_count+=1 
 
         # Only save/push on batch size count...
-        if joiner.batch_msg_count >= self.batch_size:
-            mock_pkt_id = joiner.msg_count_left + joiner.msg_count_right
-
-            self.state_storage.write_changes(joiner.joiner_id, mock_pkt_id, joiner) # Save state
+        if joiner.batch_ver_count >= self.batch_size:
+            # log_info(f"Join acc {joiner_id}, batch save... count versions {joiner.batch_ver_count} .. version_id:{joiner.version_id}")
+            self.state_storage.write_changes(joiner.joiner_id, joiner.version_id, joiner) # Save state
             self.state_storage.commit_changes(joiner.joiner_id)
-            self.state_storage.push_changes(joiner.joiner_id, mock_pkt_id, joiner, joiner.batch_msg_count)
-            joiner.batch_msg_count = 0
+            self.state_storage.push_changes(joiner.joiner_id, joiner.version_id, joiner, joiner.batch_ver_count)
+            joiner.batch_ver_count = 0
 
             return (joiner_id, batch_actions.ACK_ACTION)
 

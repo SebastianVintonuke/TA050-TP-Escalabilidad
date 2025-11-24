@@ -494,7 +494,6 @@ class TestJoinNodeStorage(unittest.TestCase):
 
 
     def test_query_2_joinode_with_storage_recovery_and_batch_size_ack(self):
-
         # In order
         count_messages_left = 5
         count_messages_right = 5
@@ -570,6 +569,8 @@ class TestJoinNodeStorage(unittest.TestCase):
         self.push_msg(in_middle, eof_message_left)
         self.push_msg(in_middle, eof_message_right)
 
+        # node.describe()
+
         # Eof makes ack of remaining.. 
         for tag_id in range(last_start, count_messages+1):
             tags_acked.append(self.get_def_tag(tag_id)) # Ack is by batches of ... 1.. so each message should add last ack
@@ -577,7 +578,6 @@ class TestJoinNodeStorage(unittest.TestCase):
         self.assertEqual(list(conn_mock.iter_acked()), tags_acked)
 
         # self.assertEqual(len(result_grouper.msgs), count_messages +1) # Include eof
-        self.assertEqual(len(result_grouper.msgs), len(expected_out_msgs) +1) # +1 cuz of eofs
 
         for ind, (exp_headers, exp_content) in enumerate(expected_out_msgs):
             self.assertEqual(
@@ -587,6 +587,7 @@ class TestJoinNodeStorage(unittest.TestCase):
             got_result = [x for x in result_grouper.msgs[ind].payload]
             self.assertEqual(got_result, exp_content, f"At msg {ind}")
 
+        self.assertEqual(len(result_grouper.msgs), len(expected_out_msgs) +1) # +1 cuz of eofs
 
     def test_query_2_joinode_with_no_recovery_but_batch_size_store_of_states(self):
 
@@ -635,7 +636,7 @@ class TestJoinNodeStorage(unittest.TestCase):
             self.push_msg(in_middle, message)
             exp_outs = exp_outs + outputs_after_right[i] # Append extra res/joined
 
-            if (i) % batch_size == 0: #Saves state after batch size msgs
+            if (i+1) % batch_size == 0: #Saves state after batch size msgs
                 saved_states = retrieve_storage.load_states()
 
                 self.assertEqual(len(saved_states), 1) # Just this query!
@@ -646,7 +647,7 @@ class TestJoinNodeStorage(unittest.TestCase):
                 q2_version, q2_state = saved_states[acc_id]
 
 
-                exp_ver = int((left_end_i+i)/batch_size)# Count of full batch sizes cycles
+                exp_ver = int((left_end_i+i+1)/batch_size)# Count of full batch sizes cycles
 
                 exp_ver= exp_ver * batch_size # For now version includes/is not normalized by batch size
                 

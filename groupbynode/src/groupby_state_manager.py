@@ -76,6 +76,7 @@ class QueryAccumulator:
 		return self.last_packet_id>=0 and self.packet_tracker.handled_all_up_to(self.last_packet_id)
 
 	def check_eof(self, eof_packet_id):
+		self.version_id += 1 # Inc version by one each msg .. even EOF msg
 		self.last_packet_id = eof_packet_id
 
 		self.packet_tracker.check_new_packet(eof_packet_id)

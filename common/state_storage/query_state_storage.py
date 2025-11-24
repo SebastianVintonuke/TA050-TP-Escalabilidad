@@ -296,6 +296,7 @@ class QueryStateStorage:
         new_file.write_bytes(self.manager.serialize_state(new_state)) # Manager.serialize? or just str?
 
         ## Atomic replace/move of file 
+        # print(f"Saving new version! '{query_id}_{version_id}' base ver is allegedly {version_id-count_versions}")
         new_file.replace(self.states / f"{query_id}_{version_id}")
 
 
@@ -305,6 +306,7 @@ class QueryStateStorage:
         if base_state_file.exists():
             base_state_file.unlink()
         else:
+            # raise InvalidStateError(f"Warning.. at push changes version: {version_id} base state file did not exist {base_state_file}")
             logging.warning(f"Warning.. at push changes version: {version_id} base state file did not exist {base_state_file}")
 
 
