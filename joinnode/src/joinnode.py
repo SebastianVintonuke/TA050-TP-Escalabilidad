@@ -99,12 +99,16 @@ class JoinNode:
 
                 for config in configs:
                     joiner_id = f"{ide}_{config.join_id}"
+
                     joiner = self.joiners.pop(joiner_id, None)
                     if joiner: # Cleanup
                         self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
                         self.state_storage.unregister_query(joiner_id)
                     else:
                         log_info(f"Join acc {joiner_id}, cancelled but had no state.")
+
+                    # Do it at the end the cancel so that If it crashes in the middle it wont ignore the need to free space.
+                    self.state_storage.cancel_query(joiner_id)
 
                 # For multi config one do not batch logic for now. Since only ones with that are of 1 message len.
                 return (joiner_id, batch_actions.FINISH_ACTION) if len(configs) == 1 else None
@@ -113,6 +117,11 @@ class JoinNode:
 
             for config in configs:
                 joiner_id = f"{ide}_{config.join_id}"
+
+                if self.state_storage.is_cancelled_query(joiner_id):
+                    log_info(f"Query '{join_id}' was cancelled so ignore message")
+                    continue
+
                 joiner = self.joiners.get(joiner_id, None)
 
                 if joiner == None:
@@ -166,6 +175,10 @@ class JoinNode:
 
         for config in configs:
             joiner_id=f"{ide}_{config.join_id}"
+            if self.state_storage.is_cancelled_query(joiner_id):
+                log_info(f"Query '{join_id}' was cancelled so ignore message")
+                continue
+
             joiner = self.joiners.get(joiner_id, None)
 
             if joiner == None:
@@ -186,7 +199,7 @@ class JoinNode:
 
 
         if len(outputs) == 0: 
-            log_info(f"Query {ide} type: {type} config len:{len(configs)}, duplicate message on all configs.")
+            log_info(f"Query {ide} type: {type} config len:{len(configs)}, duplicated message, or cancelled query on all configs.")
             return # ack this message as stand alone
 
         msg = self.payload_deserializer(msg) 

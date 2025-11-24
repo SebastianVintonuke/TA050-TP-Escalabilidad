@@ -50,6 +50,8 @@ class QueryStateStorage:
 
         self._ensure_dirs()
 
+        self.cached_cancelled = self.cancelled_queries.glob("*") # Load every cancelled query
+
     def _ensure_dirs(self):
         for d in [
             self.metadata, self.states, self.versions,
@@ -214,14 +216,16 @@ class QueryStateStorage:
 
     #
     # 6. Check Cancelled query ids, since we need to persist them to avoid saving unnecesary messages.
-    #
+    ### Since not concurrent yet we can do a simple cache...
     def cancel_query(self, query_id):
         file = self.cancelled_queries / query_id
+        self.cached_cancelled.add(file)        
         file.touch()
 
-    def is_cancelled_query(self, query_id):
+    def is_cancelled_query(self, query_id):        
         file = self.cancelled_queries / query_id
-        return file.exists()
+        return file in self.cached_cancelled
+        # return  file.exists()
 
     ## For debugging purposes and so on
     def backup_query(self, query_id):

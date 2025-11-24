@@ -81,6 +81,11 @@ class GroupbyNode:
 		q_type = query_headers.types[0]
 		accum_id = query_headers.ids[0]+"_"+q_type
 
+		if self.state_storage.is_cancelled_query(accum_id):
+			log_info(f"Query '{accum_id}' type: {q_type}, was cancelled so ignore message")
+			return
+
+
 		if headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
 
 			if headers.is_error():
@@ -89,6 +94,7 @@ class GroupbyNode:
 				
 				if acc == None:
 					log_info(f"Query '{accum_id}' type: {q_type}, Error: {headers.get_error_code()}, cancelled query, was not present on state.")
+					self.state_storage.cancel_query(accum_id)
 					return None # This does auto ack for this msg only... since no acc found, then its impossible
 
 				log_info(f"Query '{accum_id}' type: {q_type}, Error: {headers.get_error_code()}, cancelled query, freeing current state.")
@@ -96,6 +102,9 @@ class GroupbyNode:
 				# Clean up state!
 				self.state_storage.backup_query_final(accum_id, acc.version_id , acc) # For debugging/final reviewing purposes
 				self.state_storage.unregister_query(accum_id)
+				
+				# Do it at the end the cancel so that If it crashes in the middle it wont ignore the need to free space.
+				self.state_storage.cancel_query(accum_id)
 
 				return (accum_id, batch_actions.FINISH_ACTION)
 	
