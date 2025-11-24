@@ -94,7 +94,7 @@ class GroupbyNode:
 				log_info(f"Query '{accum_id}' type: {q_type}, Error: {headers.get_error_code()}, cancelled query, freeing current state.")
 
 				# Clean up state!
-				self.state_storage.backup_query_final(accum_id, acc.messages_received , acc) # For debugging/final reviewing purposes
+				self.state_storage.backup_query_final(accum_id, acc.version_id , acc) # For debugging/final reviewing purposes
 				self.state_storage.unregister_query(accum_id)
 
 				return (accum_id, batch_actions.FINISH_ACTION)
@@ -112,9 +112,9 @@ class GroupbyNode:
 				# May not always be needed but for debugging and descriptability.
 				self.state_storage.register_query(accum_id, acc)
 
-			if acc.check_eof(headers.msg_count):
+			if acc.check_eof(headers.packet_id):
 				acc.send_built()
-				self.state_storage.backup_query_final(accum_id, acc.messages_received , acc)
+				self.state_storage.backup_query_final(accum_id, acc.version_id , acc)
 
 				log_info(f"Query '{accum_id}' type: {q_type}, EOF received, query finished {accum_id}, freeing state")
 
@@ -125,11 +125,11 @@ class GroupbyNode:
 				return (accum_id, batch_actions.FINISH_ACTION) # IF this was actually the EOF finish
 
 			#Else just commit batch even If not on batch count and ACK
-			# acc.batch_msg_count+=1  # Not needed to sum ? since ack message is last and is saved as exp ? 
-			self.state_storage.write_changes(accum_id, acc.messages_received, acc) # Save state
+			# acc.batch_ver_count+=1  # Not needed to sum ? since ack message is last and is saved as exp ? 
+			self.state_storage.write_changes(accum_id, acc.version_id, acc) # Save state
 			self.state_storage.commit_changes(accum_id)
-			self.state_storage.push_changes(accum_id, acc.messages_received, acc, acc.batch_msg_count)
-			acc.batch_msg_count = 0
+			self.state_storage.push_changes(accum_id, acc.version_id, acc, acc.batch_ver_count)
+			acc.batch_ver_count = 0
 
 			return (accum_id, batch_actions.ACK_ACTION) # Ack batch messages
 
@@ -151,11 +151,11 @@ class GroupbyNode:
 		for row in msg.stream_rows():
 			acc.check(row)
 
-		if acc.add_msg_count():
-			log_info(f"Query '{accum_id}' type: {q_type}, received last messasge {acc.messages_received} >= {acc.known_message_len}. Finishing.")
+		if acc.add_msg(query_headers.packet_id):
+			log_info(f"Query '{accum_id}' type: {q_type}, received last version {acc.version_id}. Finishing.")
 			acc.send_built()
 
-			self.state_storage.backup_query_final(accum_id, acc.messages_received , acc)
+			self.state_storage.backup_query_final(accum_id, acc.version_id , acc)
 			self.state_storage.unregister_query(accum_id)
 
 			del self.accumulators[accum_id]
@@ -163,15 +163,15 @@ class GroupbyNode:
 
 
 		# Not yet taking into account dups
-		acc.batch_msg_count+=1 
+		acc.batch_ver_count+=1 
 
-		if acc.batch_msg_count >= self.batch_size:
+		if acc.batch_ver_count >= self.batch_size:
 			# Only save/push on batch size count.
 			
-			self.state_storage.write_changes(accum_id, acc.messages_received, acc) # Save state
+			self.state_storage.write_changes(accum_id, acc.version_id, acc) # Save state
 			self.state_storage.commit_changes(accum_id)
-			self.state_storage.push_changes(accum_id, acc.messages_received, acc, acc.batch_msg_count)
-			acc.batch_msg_count = 0
+			self.state_storage.push_changes(accum_id, acc.version_id, acc, acc.batch_ver_count)
+			acc.batch_ver_count = 0
 
 			return (accum_id, batch_actions.ACK_ACTION) # Ack batch messages
 
