@@ -50,7 +50,7 @@ class QueryStateStorage:
 
         self._ensure_dirs()
 
-        self.cached_cancelled = self.cancelled_queries.glob("*") # Load every cancelled query
+        self.cached_cancelled = set(self.cancelled_queries.glob("*")) # Load every cancelled query
 
     def _ensure_dirs(self):
         for d in [

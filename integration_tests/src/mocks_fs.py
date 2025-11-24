@@ -18,6 +18,11 @@ class MockPath:
         self.content = b""
         self.name = self.fs.get_name(self)
 
+    def __hash__(self):
+        return hash(self.path)
+    def __eq__(self, other):
+        return self.path == other.path
+
     def clone_to(self, path):
         res = MockPath(self.fs, path)
         res.content = self.content
