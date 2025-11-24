@@ -35,13 +35,12 @@ class GroupbyTypeConfiguration:
 
 
 	def send(self, builder):
-		# print(f"GROUPBY SENDING TO {builder.headers.types} {builder.headers.ids} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
 		ori_headers = builder.headers
 		splitted_headers = list(ori_headers.split())
-		# print("SPLITTED", splitted)
+		
 		for headers in ori_headers.split():
 			builder.headers = headers
-			# print(f"SEND TO GROUPBY MIDDLE SENDING SPLITTED {headers} TO {self.middleware}")			
+			logging.info(f"GROUPBY SENDING {builder.headers} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
 			self.middleware.send(builder)
 
 		builder.headers = ori_headers

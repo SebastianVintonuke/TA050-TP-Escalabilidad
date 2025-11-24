@@ -8,7 +8,7 @@ DEFAULT_LIMIT= 10000
 class JoinAccumulator:
     def __init__(self, type_conf, msg_builder, limit = DEFAULT_LIMIT, ide= ""):
         self.type_conf = type_conf
-        self.msg_builder = msg_builder#type_conf.new_builder_for(msg, ind)
+        self.msg_builder = msg_builder #type_conf.new_builder_for(msg, ind)
         self.msg_builder.reset_eof()# Ensure its not copying the eof flag from input sender
 
         # Also reset packet id to 0... output packet id thing. If restored from state this starting id 
@@ -235,7 +235,7 @@ class JoinAccumulator:
 
     def send_eof(self): # What happens If the groupbynode fails here/shutdowns here?
         if self.msg_builder.has_payload(): # if it has payload send it
-            self.describe_send()
+            # self.describe_send()
             self.type_conf.send(self.msg_builder)
             
         eof_signal = self.msg_builder.clone()
@@ -243,11 +243,12 @@ class JoinAccumulator:
         eof_signal.set_as_eof()
 
         log_info(f"{self.joiner_id} Send EOF {eof_signal.headers}")
+
         
         self.type_conf.send(eof_signal)
 
     def describe_send(self):
-        log_info(f"SENDING TO {self.msg_builder.headers.types} {self.msg_builder.headers.ids}")
+        log_info(f"{self.joiner_id} send remaining: {self.msg_builder.headers}")
         self.describe()
         #for itm in self.msg_builder.payload:
         #    log_info(f"ROW {itm}")

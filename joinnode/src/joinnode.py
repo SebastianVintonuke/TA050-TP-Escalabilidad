@@ -169,8 +169,8 @@ class JoinNode:
             joiner = self.joiners.get(joiner_id, None)
 
             if joiner == None:
-                log_info(f"Join acc {joiner_id}, Initing accumulator")
                 joiner = JoinAccumulator(config, config.new_builder_for(query_headers), ide = joiner_id, limit = self.msg_rows_limit)
+                log_info(f"Join acc {joiner_id}, Initing accumulator, out types: {joiner.msg_builder.headers}")
                 self.joiners[joiner_id] = joiner
                 self.state_storage.register_query(joiner_id, joiner)
 

@@ -118,8 +118,7 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] =new_type
-            return BareMockMessageBuilder(headers, headers.ids[0])
+            return BareMockMessageBuilder(headers.with_types([new_type]), headers.ids[0])
 
         return converter    
 
@@ -148,8 +147,7 @@ class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
 
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] =new_type
-            return BareMockMessageBuilderNoSerial(headers, headers.ids[0])
+            return BareMockMessageBuilderNoSerial(headers.with_types([new_type]), headers.ids[0])
 
         return converter    
 

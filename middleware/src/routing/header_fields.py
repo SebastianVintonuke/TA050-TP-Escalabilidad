@@ -41,6 +41,24 @@ class BaseHeaders:
 	def __repr__(self):
 		return f"ids:{self.ids}, types:{self.types}, msg_count:{self.msg_count} pck_id: {self.packet_id}"
 
+	def with_types_pad(self, types):
+		ids = list(self.ids) + (len(types) - len(self.ids)) * [self.ids[-1]]
+		
+		return BaseHeaders(
+			ids,
+			types,
+			self.msg_count,
+			self.packet_id
+		)
+
+
+	def with_types(self, types):
+		return BaseHeaders(
+			list(self.ids),
+			types,
+			self.msg_count,
+			self.packet_id
+		)
 	def clone(self):
 		return BaseHeaders(
 			list(self.ids),
