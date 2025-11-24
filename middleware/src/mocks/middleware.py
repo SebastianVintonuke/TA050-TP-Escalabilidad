@@ -129,8 +129,8 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
         return res
 
-    def __init__(self, headers, key_hash):
-        super().__init__(headers, key_hash)
+    def __init__(self, headers, key_hash = None):
+        super().__init__(headers, key_hash if key_hash else headers.ids[0])
     def add_row(self, row):
         self.payload.append(row)
 
@@ -159,8 +159,8 @@ class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
 
         return res
 
-    def __init__(self, headers, key_hash):
-        super().__init__(headers,key_hash)
+    def __init__(self, headers, key_hash = None):
+        super().__init__(headers,key_hash if key_hash else headers.ids[0])
 
     def serialize_payload(self):
         return self.payload
