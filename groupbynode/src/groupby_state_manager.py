@@ -56,8 +56,8 @@ class QueryAccumulator:
 
 		self.type_conf.send(self.msg_builder)
 		eof_signal = self.msg_builder.clone()
-		eof_signal.packet_id = 1 # Set packet id.
-		eof_signal.set_as_eof(1)
+		eof_signal.headers.packet_id = 1 # Set packet id.
+		eof_signal.set_as_eof()
 		self.type_conf.send(eof_signal)
 
 	def len_grouped(self):
@@ -71,13 +71,13 @@ class QueryAccumulator:
 
 	def add_msg(self, packet_id):
 		self.version_id += 1 # Inc version by one each msg
-
 		self.packet_tracker.check_new_packet(packet_id)
 
 		return self.last_packet_id>=0 and self.packet_tracker.handled_all_up_to(self.last_packet_id)
 
 	def check_eof(self, eof_packet_id):
 		self.last_packet_id = eof_packet_id
+
 		self.packet_tracker.check_new_packet(eof_packet_id)
 		return self.packet_tracker.handled_all_up_to(eof_packet_id)
 

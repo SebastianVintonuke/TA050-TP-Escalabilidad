@@ -133,8 +133,8 @@ class TestGroupbyNode(unittest.TestCase):
         in_middle.push_msg(message)
 
         # eof
-        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f) 
-        eof_message.set_as_eof(1)
+        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f, packet_id = 1) 
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)
         
 
@@ -214,8 +214,8 @@ class TestGroupbyNode(unittest.TestCase):
         self.assertEqual(node.len_total_groups(), 5)
 
         #FINAL EOF
-        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f) 
-        eof_message.set_as_eof(1)
+        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f, packet_id = 1) 
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)
 
         self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type

@@ -160,7 +160,7 @@ class TestGroupbyStorage(unittest.TestCase):
 
 
         eof_message = BareMockMessageBuilderNoSerial.for_payload([query_id],["q2"],[], map_f, packet_id = count) 
-        eof_message.set_as_eof(count)
+        eof_message.set_as_eof()
 
         return messages, outputs_mess, eof_message
 

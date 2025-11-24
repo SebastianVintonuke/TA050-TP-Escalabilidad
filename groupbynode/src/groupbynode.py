@@ -2,8 +2,8 @@
 import logging
 from .groupby_state_manager import GroupbyStateManager, QueryAccumulator
 
-# log_info = logging.info
-log_info = print
+log_info = logging.info
+# log_info = print
 
 
 

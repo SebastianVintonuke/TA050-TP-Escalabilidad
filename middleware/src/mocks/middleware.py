@@ -112,8 +112,8 @@ class MockMessageBuilder(HashedMessageBuilder):
 
 
 class BareMockMessageBuilder(HashedMessageBuilder):
-    def default():
-        return BareMockMessageBuilder(BaseHeaders(["id_1"], []), "")
+    def default(packet_id = 0):
+        return BareMockMessageBuilder(BaseHeaders(["id_1"], [], packet_id = packet_id), "")
 
     def creator_with_type(new_type):
         def converter(headers):
@@ -122,7 +122,7 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
         return converter    
 
-    def for_payload(ids, types, rows, mapper, packet_id = -1):
+    def for_payload(ids, types, rows, mapper, packet_id = 0):
         res = BareMockMessageBuilder(BaseHeaders(ids, types, packet_id = packet_id), ids[0])
         
         for row in rows:
@@ -142,8 +142,8 @@ class BareMockMessageBuilder(HashedMessageBuilder):
 
 
 class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
-    def default():
-        return BareMockMessageBuilderNoSerial(BaseHeaders(["id_1"], []), "")
+    def default(packet_id = 0):
+        return BareMockMessageBuilderNoSerial(BaseHeaders(["id_1"], [],packet_id = packet_id), "")
 
     def creator_with_type(new_type):
         def converter(headers):
@@ -152,7 +152,7 @@ class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
 
         return converter    
 
-    def for_payload(ids, types, rows, mapper, packet_id = -1):
+    def for_payload(ids, types, rows, mapper, packet_id = 0):
         res = BareMockMessageBuilderNoSerial(BaseHeaders(ids, types, packet_id = packet_id), ids[0])
         
         for row in rows:
@@ -186,6 +186,5 @@ class MockMessage(Message):
         self._set_eof()
         self.partition =code # Negative partition es eof, be it an error or actual eof.
 
-    def set_as_eof(self, count= 1):
+    def set_as_eof(self):
         self._set_eof()
-        self.partition = count

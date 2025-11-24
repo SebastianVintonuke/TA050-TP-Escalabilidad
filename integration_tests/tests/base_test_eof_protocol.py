@@ -70,7 +70,7 @@ class BaseEOFProtocolTest(ABC):
 
         results = nodes_setup.result_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1], packet_id = 0)
 
         rows = [
             {
@@ -99,7 +99,8 @@ class BaseEOFProtocolTest(ABC):
             msg.add_row(get_row_query_transactions(row))
 
         msg_eof = msg.clone()
-        msg_eof.set_as_eof(1)
+        msg_eof.headers.packet_id = 1
+        msg_eof.set_as_eof()
 
         nodes_setup.select_middleware.push_msg(msg)
         nodes_setup.select_middleware.push_msg(msg_eof)
@@ -129,7 +130,7 @@ class BaseEOFProtocolTest(ABC):
 
         results = nodes_setup.result_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1], packet_id = 0)
 
         rows = [
             {
@@ -158,7 +159,8 @@ class BaseEOFProtocolTest(ABC):
             msg.add_row(get_row_query_transactions(row))
 
         msg_eof = msg.clone()
-        msg_eof.set_as_eof(1)
+        msg_eof.headers.packet_id = 1
+        msg_eof.set_as_eof()
 
         nodes_setup.select_middleware.push_msg(msg_eof)
         nodes_setup.select_middleware.push_msg(msg)
@@ -174,6 +176,7 @@ class BaseEOFProtocolTest(ABC):
 
         headers_msg = results.msgs[0].headers
         self.assertTrue(headers_msg.is_eof());
+        self.assertEqual(headers_msg.packet_id, 1);
         self.assertEqual(headers_msg.msg_count, 1);
 
 
@@ -191,7 +194,7 @@ class BaseEOFProtocolTest(ABC):
 
         results = nodes_setup.result_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1], packet_id = 0)
 
         rows = [
             {
@@ -219,9 +222,11 @@ class BaseEOFProtocolTest(ABC):
         msg.add_row(get_row_query_transactions(rows[0]))
 
         msg_eof = msg.clone()
-        msg_eof.set_as_eof(2)
+        msg_eof.headers.packet_id = 2
+        msg_eof.set_as_eof()
 
         msg2 = msg.clone()
+        msg2.packet_id = 1
         msg2.add_row(get_row_query_transactions(rows[1]))
 
         nodes_setup.select_middleware.push_msg(msg_eof)
@@ -266,7 +271,7 @@ class BaseEOFProtocolTest(ABC):
 
         groupby_middle = nodes_setup.groupby_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2], packet_id = 0)
 
         rows = [
             {
@@ -304,7 +309,8 @@ class BaseEOFProtocolTest(ABC):
             msg.add_row(get_row_query_transaction_items(row))
 
         msg_eof = msg.clone()
-        msg_eof.set_as_eof(1)
+        msg_eof.headers.packet_id = 1
+        msg_eof.set_as_eof()
 
         nodes_setup.select_middleware.push_msg(msg_eof)
 
@@ -366,7 +372,7 @@ class BaseEOFProtocolTest(ABC):
 
         groupby_middle = nodes_setup.groupby_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2], packet_id = 0)
 
         rows = [
             {
@@ -428,7 +434,8 @@ class BaseEOFProtocolTest(ABC):
             msg.add_row(get_row_query_transaction_items(row))
 
         msg_eof = msg.clone()
-        msg_eof.set_as_eof(1)
+        msg_eof.headers.packet_id = 1
+        msg_eof.set_as_eof()
 
         nodes_setup.select_middleware.push_msg(msg_eof)
 
@@ -541,7 +548,7 @@ class BaseEOFProtocolTest(ABC):
 
         groupby_middle = nodes_setup.groupby_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2], packet_id = 0)
 
         rows = [
             {
@@ -603,7 +610,8 @@ class BaseEOFProtocolTest(ABC):
             msg.add_row(get_row_query_transaction_items(row))
 
         msg_eof = msg.clone()
-        msg_eof.set_as_eof(1)
+        msg_eof.headers.packet_id = 1
+        msg_eof.set_as_eof()
 
         nodes_setup.select_middleware.push_msg(msg_eof)
         nodes_setup.select_middleware.push_msg(msg)
@@ -615,7 +623,7 @@ class BaseEOFProtocolTest(ABC):
         self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
 
         #Message for join is hashed
-        msg = CSVHashedMessageBuilder.with_credentials(["q_id_1"], [QUERY_PRODUCT_NAMES], "key_hash_q_id_1")
+        msg = CSVHashedMessageBuilder.with_credentials(["q_id_1"], [QUERY_PRODUCT_NAMES], "key_hash_q_id_1", packet_id = 0)
 
         # ["pr_1", "1", "100.0"], FRom topk
         # ["pr_top_q", "1", "5.0"],
@@ -625,9 +633,11 @@ class BaseEOFProtocolTest(ABC):
         msg.add_row(["pr_1", "product_name_top_rev"])
 
         msg_eof = msg.clone()
-        msg_eof.set_as_eof(2)
+        msg_eof.headers.packet_id = 2
+        msg_eof.set_as_eof()
 
         msg2 = msg.clone() # Clear payload but keep headers
+        msg2.packet_id = 1
         msg2.add_row(["pr_top_q", "product_name_top_qua"])
 
 

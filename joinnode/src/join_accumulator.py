@@ -177,7 +177,10 @@ class JoinAccumulator:
             
         eof_signal = self.msg_builder.clone()
         logging.info(f"EOF SIGNAL TO {eof_signal.headers.types} {eof_signal.headers.ids}")
-        eof_signal.set_as_eof(self.msg_sent)
+
+        eof_signal.headers.packet_id = self.msg_sent
+        eof_signal.set_as_eof()
+        
         self.type_conf.send(eof_signal)
 
     def describe_send(self):
