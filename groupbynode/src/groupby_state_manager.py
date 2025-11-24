@@ -34,6 +34,14 @@ class QueryAccumulator:
 			#acc.add_row(row) # Better in design? who knows
 		#print(f"{self.msg_builder.headers.types} HANDLED ", key, row,  acc)
 
+	def get_partial_result(self):
+		partial = self.msg_builder.clone()
+
+		for group, acc in self.groups.items():
+			self.type_conf.add_output(partial, group, acc)
+
+		return partial
+
 	def send_built(self): # What happens If the groupbynode fails here/shutdowns here?
 		for group, acc in self.groups.items():
 			self.type_conf.add_output(self.msg_builder, group, acc)

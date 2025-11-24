@@ -33,6 +33,11 @@ class GroupbyNode:
 		self.state_storage = store_creator(GroupbyStateManager(self.get_accumulator)) # Have it hardcoded for now
 		self.batch_size = batch_size
 
+	def get_acc_id(self, query_id, q_type):
+		return f"{query_id}_{q_type}"
+
+	def get_partial_result_from(self, curr_state):
+		return curr_state.get_partial_result()
 
 	def get_accumulator(self, accum_id):
 		acc = self.accumulators.get(accum_id, None)
