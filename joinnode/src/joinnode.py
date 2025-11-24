@@ -17,7 +17,7 @@ def get_credentials(accum_id):
     return "_".join(parts[:-1]), parts[-1]
 
 class JoinNode:
-    def __init__(self, join_middleware, payload_deserializer, type_expander, store_creator = NothingQueryStateStorage, batch_size = 1, limit = 1):
+    def __init__(self, join_middleware, payload_deserializer, type_expander, store_creator = NothingQueryStateStorage, batch_size = 1, limit = 1000):
         self.middleware = join_middleware
         self.type_expander = type_expander
         self.payload_deserializer = payload_deserializer
@@ -128,7 +128,6 @@ class JoinNode:
                         del self.joiners[joiner_id]
                         self.state_storage.unregister_query(joiner_id)                        
                     else:
-                        joiner.batch_ver_count += 1
                         self.state_storage.write_changes(joiner_id, joiner.version_id, joiner) # Save state
                         self.state_storage.commit_changes(joiner_id)
                         self.state_storage.push_changes(joiner_id, joiner.version_id, joiner, joiner.batch_ver_count)                    
@@ -142,7 +141,6 @@ class JoinNode:
                     self.state_storage.unregister_query(joiner_id)
 
                 else: # EOF handled but not actual EOF so just save the state for the config even If not on batch
-                    joiner.batch_ver_count += 1
                     self.state_storage.write_changes(joiner_id, joiner.version_id, joiner) # Save state
                     self.state_storage.commit_changes(joiner_id)
                     self.state_storage.push_changes(joiner_id, joiner.version_id, joiner, joiner.batch_ver_count)                    
@@ -177,11 +175,14 @@ class JoinNode:
                 self.state_storage.register_query(joiner_id, joiner)
 
             # Should check IF packet id is dupped and not add it IF it is.
+            action= joiner.get_action_for_type(query_headers.packet_id, type)
+            if action == None: # Duplicated! or invalid and so on.
+                log_info(f"Join acc {joiner_id}, received duplicate packet {query_headers.packet_id}")
+                continue
 
             outputs.append(joiner)
-
             # Given righ finished/left finished get actual action for config
-            row_actions.append(joiner.get_action_for_type(type))
+            row_actions.append(action)
 
 
         if len(outputs) == 0: 
@@ -207,7 +208,6 @@ class JoinNode:
                     self.state_storage.unregister_query(joiner_id)                        
                 
                 else: 
-                    joiner.batch_ver_count += 1
                     # Save changes.                    
                     self.state_storage.write_changes(joiner.joiner_id, joiner.version_id, joiner) # Save state
                     self.state_storage.commit_changes(joiner.joiner_id)
@@ -227,8 +227,6 @@ class JoinNode:
             del self.joiners[joiner_id]
             self.state_storage.unregister_query(joiner_id)
             return (joiner_id, batch_actions.FINISH_ACTION)
-
-        joiner.batch_ver_count+=1 
 
         # Only save/push on batch size count...
         if joiner.batch_ver_count >= self.batch_size:

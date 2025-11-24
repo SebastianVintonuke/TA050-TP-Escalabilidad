@@ -118,12 +118,19 @@ class JoinAccumulator:
 
 
 
-    def get_action_for_type(self,type):
+    def get_action_for_type(self,packet_id, type):
         if type == self.type_conf.left_type:
+            if self.left_packet_tracker.is_duplicate(packet_id):
+                return None # Do nothing is a duplicated packet!
+
             # Left message actions
             if self.right_finished:
                 return (self.do_join_left_row)
             return (self.add_row_left)
+
+        if self.right_packet_tracker.is_duplicate(packet_id):
+            return None # Do nothing is a duplicated packet!
+
         # Right message actions
         if self.left_finished:
             return (self.do_join_right_row)
@@ -148,6 +155,7 @@ class JoinAccumulator:
 
     def add_check_msg_left(self, packet_id):
         self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
 
         self.left_packet_tracker.check_new_packet(packet_id)
 
@@ -161,6 +169,7 @@ class JoinAccumulator:
 
     def add_check_msg_right(self, packet_id):
         self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
 
         self.right_packet_tracker.check_new_packet(packet_id)
 
@@ -173,9 +182,13 @@ class JoinAccumulator:
         return False
 
     def handle_eof_left(self, eof_packet_id):
+        if self.left_finished: # Check for duplicates.. If already finished then it would be one.
+            return self._trigger_eof_left() # Do not add version id or so. But why not check anyway 
+
         self.left_last_packet_id = eof_packet_id
         self.left_packet_tracker.check_new_packet(eof_packet_id)
         self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
 
         if self.left_packet_tracker.handled_all_up_to(eof_packet_id):
             return self._trigger_eof_left()
@@ -185,9 +198,13 @@ class JoinAccumulator:
 
 
     def handle_eof_right(self, eof_packet_id):
+        if self.right_finished: # Check for duplicates.. If already finished then it would be one.
+            return self._trigger_eof_right() # Do not add version id or so. But why not check anyway 
+
         self.right_last_packet_id = eof_packet_id
         self.right_packet_tracker.check_new_packet(eof_packet_id)
         self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
 
         if self.right_packet_tracker.handled_all_up_to(eof_packet_id):
             return self._trigger_eof_right()
