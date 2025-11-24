@@ -247,7 +247,10 @@ class JoinNode:
 
     def start(self):
         # Even If there is no pending changes, load states of queries, to continue on memory and not load always from disk.
-        self.state_storage.load_states() 
+        for joiner_id, (version_id, state) in self.state_storage.load_states().items():
+            log_info(f"At start restored joiner: {joiner_id}, last version:{version_id}")
+            state.version_id = version_id # To have it in mind for future messages/handling
+
         self.state_storage.check_integrity()
 
         self.middleware.start_consuming(self.handle_task)

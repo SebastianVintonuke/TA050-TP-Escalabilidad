@@ -615,3 +615,103 @@ class TestGroupbyStorage(unittest.TestCase):
             self.assertEqual(len(got_result), len(exp_content))
 
 
+
+
+
+
+    def test_query_2_groupbynode_with_storage_recovery_and_batch_size_ack_different_base_ver_at_start(self):
+
+        # In order
+        count_messages = 10
+        batch_size = 2
+        fail_at_msg = 6 # Just before the second batch save i.e msg 3 was lost
+
+        q_id = "query1_1" # 1 after _ is used for hashing!
+
+        result_grouper = self.get_res_middleware()
+        in_middle = self.get_groupby_middleware()
+
+        conf_map = self.get_q2_conf(result_grouper)
+
+
+        self.set_register_tags(count_messages +1) # +1 for eof
+
+
+        conn_mock = self.active_conns.get(rbmq_utils.RABBITMQ_HOST, None)
+
+        node = GroupbyNode(in_middle, MockMessage, conf_map, store_creator = self.creator_storage, batch_size = batch_size) # Each 2 messages 
+        node.start()
+
+
+        messages, exp_outs, eof_message = self.get_simple_messages_q2(q_id, count = count_messages)
+
+        # Use headers of
+
+        expected_out_msgs, expected_eof = self.get_simple_expected_out(
+                self.get_headers(q_id, "q2"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
+            )
+
+        tags_acked = []
+        i = 0
+        last_start = 0
+        for message in messages[:fail_at_msg]: #  Only send first messages up to fail/crash
+            self.push_msg(in_middle, message)
+
+            if (i+1) % batch_size == 0:
+                curr_end = last_start+ batch_size
+                for tag_id in range(last_start, curr_end):
+                    tags_acked.append(self.get_def_tag(tag_id)) # Ack is by batches of ... 1.. so each message should add last ack
+                last_start = curr_end
+
+            self.assertEqual(list(conn_mock.iter_acked()), tags_acked) 
+            
+            i+=1
+
+            # Check internal storage state == exp_outs[i]
+
+        ### CRASHED or so... so re start/recreate process
+        start_ind_msgs = len(tags_acked) # If acked messages then do not resend.
+        
+        node = GroupbyNode(in_middle, MockMessage, conf_map, store_creator = self.creator_storage, batch_size = batch_size) # Each 2 messages 
+        node.start()
+
+        # Now resume sending and so on..
+        i = start_ind_msgs
+        last_start = start_ind_msgs
+        for message in messages[start_ind_msgs:]: #  Only after started
+            self.push_msg(in_middle, message)
+            if (i+1) % batch_size == 0:
+                curr_end = last_start+ batch_size
+                for tag_id in range(last_start, curr_end):
+                    tags_acked.append(self.get_def_tag(tag_id)) # Ack is by batches of ... 1.. so each message should add last ack
+                last_start = curr_end
+
+            self.assertEqual(list(conn_mock.iter_acked()), tags_acked) 
+            
+            i+=1
+
+        self.push_msg(in_middle, eof_message)
+
+        # Eof makes ack of remaining.. 
+        for tag_id in range(last_start, count_messages+1):
+            tags_acked.append(self.get_def_tag(tag_id)) # Ack is by batches of ... 1.. so each message should add last ack
+        
+        self.assertEqual(list(conn_mock.iter_acked()), tags_acked)
+
+        # self.assertEqual(len(result_grouper.msgs), count_messages +1) # Include eof
+        self.assertEqual(len(result_grouper.msgs), 2) # Groupby only sends 1 message for content a 1 eof, per type so q2 that expands to two types in out would be 2*2
+
+        for ind, (exp_headers, exp_content) in enumerate(expected_out_msgs):
+            self.assertEqual(
+                result_grouper.msgs[ind].headers.to_dict(), 
+                exp_headers.to_dict())
+
+            got_result = [x for x in result_grouper.msgs[0].payload]
+            ind = 0
+            for elem in exp_content:
+                self.assertEqual(got_result[ind], elem)
+                ind += 1
+
+            self.assertEqual(len(got_result), len(exp_content))
+
+
