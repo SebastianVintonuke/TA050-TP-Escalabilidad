@@ -70,7 +70,7 @@ class BaseEOFProtocolTest(ABC):
 
         results = nodes_setup.result_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_1])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1])
 
         rows = [
             {
@@ -129,7 +129,7 @@ class BaseEOFProtocolTest(ABC):
 
         results = nodes_setup.result_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_1])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1])
 
         rows = [
             {
@@ -191,7 +191,7 @@ class BaseEOFProtocolTest(ABC):
 
         results = nodes_setup.result_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_1])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_1])
 
         rows = [
             {
@@ -266,7 +266,7 @@ class BaseEOFProtocolTest(ABC):
 
         groupby_middle = nodes_setup.groupby_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_2])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2])
 
         rows = [
             {
@@ -366,7 +366,7 @@ class BaseEOFProtocolTest(ABC):
 
         groupby_middle = nodes_setup.groupby_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_2])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2])
 
         rows = [
             {
@@ -541,7 +541,7 @@ class BaseEOFProtocolTest(ABC):
 
         groupby_middle = nodes_setup.groupby_middleware
 
-        msg = CSVMessageBuilder.with_credentials(["q_id"], [QUERY_2])
+        msg = CSVMessageBuilder.with_credentials(["q_id_1"], [QUERY_2])
 
         rows = [
             {
@@ -615,7 +615,7 @@ class BaseEOFProtocolTest(ABC):
         self.assertEqual(len(nodes_setup.result_middleware.msgs), 0)
 
         #Message for join is hashed
-        msg = CSVHashedMessageBuilder.with_credentials(["q_id"], [QUERY_PRODUCT_NAMES], "key_hash_q_id")
+        msg = CSVHashedMessageBuilder.with_credentials(["q_id_1"], [QUERY_PRODUCT_NAMES], "key_hash_q_id")
 
         # ["pr_1", "1", "100.0"], FRom topk
         # ["pr_top_q", "1", "5.0"],
