@@ -226,7 +226,7 @@ class BaseEOFProtocolTest(ABC):
         msg_eof.set_as_eof()
 
         msg2 = msg.clone()
-        msg2.packet_id = 1
+        msg2.headers.packet_id = 1
         msg2.add_row(get_row_query_transactions(rows[1]))
 
         nodes_setup.select_middleware.push_msg(msg_eof)
@@ -637,7 +637,7 @@ class BaseEOFProtocolTest(ABC):
         msg_eof.set_as_eof()
 
         msg2 = msg.clone() # Clear payload but keep headers
-        msg2.packet_id = 1
+        msg2.headers.packet_id = 1
         msg2.add_row(["pr_top_q", "product_name_top_qua"])
 
 

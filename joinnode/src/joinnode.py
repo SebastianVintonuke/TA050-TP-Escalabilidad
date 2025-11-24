@@ -177,7 +177,7 @@ class JoinNode:
             # Should check IF packet id is dupped and not add it IF it is.
             action= joiner.get_action_for_type(query_headers.packet_id, type)
             if action == None: # Duplicated! or invalid and so on.
-                log_info(f"Join acc {joiner_id}, received duplicate packet {query_headers.packet_id}")
+                log_info(f"Query type:{type}, joiner: {joiner_id}, received duplicate packet {query_headers.packet_id}")
                 continue
 
             outputs.append(joiner)

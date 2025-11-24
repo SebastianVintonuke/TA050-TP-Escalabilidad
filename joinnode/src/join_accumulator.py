@@ -123,6 +123,7 @@ class JoinAccumulator:
             if self.left_packet_tracker.is_duplicate(packet_id):
                 return None # Do nothing is a duplicated packet!
 
+
             # Left message actions
             if self.right_finished:
                 return (self.do_join_left_row)
@@ -159,7 +160,7 @@ class JoinAccumulator:
 
         self.left_packet_tracker.check_new_packet(packet_id)
 
-        left_finished = self.left_last_packet_id>=0 and self.packet_tracker.handled_all_up_to(self.left_last_packet_id)
+        left_finished = self.left_last_packet_id>=0 and self.left_packet_tracker.handled_all_up_to(self.left_last_packet_id)
 
         if left_finished:
             log_info(f"Join {self.type_conf.join_id} received final left msg {packet_id}, eof packet {self.left_last_packet_id}")
@@ -173,7 +174,7 @@ class JoinAccumulator:
 
         self.right_packet_tracker.check_new_packet(packet_id)
 
-        right_finished = self.right_last_packet_id>=0 and self.packet_tracker.handled_all_up_to(self.right_last_packet_id)
+        right_finished = self.right_last_packet_id>=0 and self.right_packet_tracker.handled_all_up_to(self.right_last_packet_id)
 
         if right_finished:
             log_info(f"Join {self.type_conf.join_id} received final right msg {packet_id}, eof packet {self.right_last_packet_id}")
