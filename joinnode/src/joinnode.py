@@ -9,8 +9,8 @@ from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 
 from middleware.routing import batch_ack_actions as batch_actions
 
-# log_info = logging.info
-log_info = print
+log_info = logging.info
+# log_info = print
 def get_credentials(accum_id):
     parts = accum_id.split("_")
 
@@ -27,6 +27,12 @@ class JoinNode:
         self.state_storage = store_creator(JoinNodeStateManager(self.get_join_accumulator)) # Have it hardcoded for now
         self.batch_size = batch_size        
         self.msg_rows_limit= limit
+
+    def get_acc_id(self, query_id, joiner_id):
+        return f"{query_id}_{joiner_id}"
+
+    def get_partial_result_from(self, curr_state):
+        return curr_state.get_partial_result()
 
     def get_config_from_joiner_type_id(self, type_id):
         for config in self.type_expander.type_configurations:

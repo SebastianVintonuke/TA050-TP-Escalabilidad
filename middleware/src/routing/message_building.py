@@ -17,6 +17,9 @@ class MessageBuilder:
         #assert len(row) == len(fields) # Same size of fields 
         self.payload.append(str(row))
 
+    def add_raw_row(self, row):
+        self.payload.append(row)
+
     def has_payload(self):
         return len(self.payload) > 0
 

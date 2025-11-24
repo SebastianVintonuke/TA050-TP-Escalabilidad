@@ -24,6 +24,7 @@ META_JOIN_ACC_ID = "join_acc_id"
 
 ROWS_LEFT = "left_rows" 
 ROWS_RIGHT = "right_rows" 
+ROWS_OUT = "out_rows" 
 
 META_EXP_MSG_COUNT = "exp_msg_count" 
 META_MSG_COUNT = "msg_count" 
@@ -56,6 +57,7 @@ def serial_state(join_acc):
 
 	res[ROWS_LEFT] = join_acc.left_rows
 	res[ROWS_RIGHT] = join_acc.right_rows
+	res[ROWS_OUT] = join_acc.get_out_rows()
 
 	return res
 
@@ -74,6 +76,7 @@ class JoinNodeStateManager:
 
 		join_acc.left_rows = changes[ROWS_LEFT]
 		join_acc.right_rows = changes[ROWS_RIGHT]
+		join_acc.set_result_rows(changes[ROWS_OUT])
 
 		return join_acc
 
@@ -91,6 +94,8 @@ class JoinNodeStateManager:
 
 		join_acc.left_rows = state[ROWS_LEFT]
 		join_acc.right_rows = state[ROWS_RIGHT]
+
+		join_acc.set_result_rows(state[ROWS_OUT])
 
 		return join_acc
 

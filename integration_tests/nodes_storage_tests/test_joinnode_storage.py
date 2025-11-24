@@ -588,9 +588,6 @@ class TestJoinNodeStorage(unittest.TestCase):
             self.assertEqual(got_result, exp_content, f"At msg {ind}")
 
 
-"""
-
-
     def test_query_2_joinode_with_no_recovery_but_batch_size_store_of_states(self):
 
         # In order
@@ -611,19 +608,12 @@ class TestJoinNodeStorage(unittest.TestCase):
 
         conn_mock = self.active_conns.get(rbmq_utils.RABBITMQ_HOST, None)
 
-        node = JoinNode(in_middle, MockMessage, conf_map, store_creator = self.creator_storage, batch_size = batch_size, limit=3) # Each 2 messages 
+        node = JoinNode(in_middle, MockMessage, conf_map, store_creator = self.creator_storage, batch_size = batch_size, limit=1000) # Each 2 messages 
         node.start()
 
 
         messages_left, eof_message_left, messages_right, eof_message_right, outputs_after_right = self.get_simple_messages_q2(q_id, count_left = count_messages_left, count_right = count_messages_right)
         messages = messages_left+messages_right
-
-        # Use headers of
-
-        expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2.OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
-            )
-
 
         # For retrieving states saved in fs
         def get_accum_mock(acc_id):
@@ -632,42 +622,57 @@ class TestJoinNodeStorage(unittest.TestCase):
 
 
         i = 0
-
-        for message in messages:
+        for message in messages_left:
             self.push_msg(in_middle, message)
+            i+=1
 
-            if (i+1) % batch_size == 0: #Saves state after batch size msgs
+        self.push_msg(in_middle, eof_message_left)
+        left_end_i = i+1
+        i=0
+
+        exp_outs = []
+        for message in messages_right:
+            self.push_msg(in_middle, message)
+            exp_outs = exp_outs + outputs_after_right[i] # Append extra res/joined
+
+            if (i) % batch_size == 0: #Saves state after batch size msgs
                 saved_states = retrieve_storage.load_states()
 
                 self.assertEqual(len(saved_states), 1) # Just this query!
-                acc_id = node.get_acc_id(q_id, "q2")
+                acc_id = node.get_acc_id(q_id, "q2.OUT")
 
                 self.assertIn(acc_id, saved_states)
 
                 q2_version, q2_state = saved_states[acc_id]
 
 
-                exp_ver = int((i+1)/batch_size)# Count of full batch sizes cycles
+                exp_ver = int((left_end_i+i)/batch_size)# Count of full batch sizes cycles
 
                 exp_ver= exp_ver * batch_size # For now version includes/is not normalized by batch size
                 
                 self.assertEqual(q2_version, exp_ver) 
 
+                # print(f"----> Q2 {i} {exp_ver} state left rows", q2_state.left_rows)
+                # print("----> Q2 state right rows", q2_state.right_rows)
+                # print("----> Q2 state out rows", q2_state.get_out_rows())
                 # And state partial result should be the same
                 partial = node.get_partial_result_from(q2_state).serialize_payload()
 
-                self.assertEqual(partial, exp_outs[i]) 
-
+                self.assertEqual(partial, exp_outs) 
             i+=1
 
             # Check internal storage state == exp_outs[i]
 
-        self.push_msg(in_middle, eof_message_left)
         self.push_msg(in_middle, eof_message_right)
 
 
-        # self.assertEqual(len(result_grouper.msgs), count_messages +1) # Include eof
-        self.assertEqual(len(result_grouper.msgs), len(expected_out_msgs) +1) # +1 cuz of eofs
+        self.assertEqual(len(result_grouper.msgs), 1+1) # 1 message since limit is so high and +1 cuz of eofs
+
+
+        expected_out_msgs, expected_eof = self.get_simple_expected_out(
+                self.get_headers(q_id, "q2.OUT"), [exp_outs] # i.e groupby only sends one message to output with the content of the last one.
+            )
+
 
         for ind, (exp_headers, exp_content) in enumerate(expected_out_msgs):
             self.assertEqual(
@@ -677,8 +682,3 @@ class TestJoinNodeStorage(unittest.TestCase):
             got_result = [x for x in result_grouper.msgs[ind].payload]
             self.assertEqual(got_result, exp_content, f"At msg {ind}")
 
-
-
-
-
-"""

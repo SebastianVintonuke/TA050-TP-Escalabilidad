@@ -1,5 +1,8 @@
 
 import logging
+# log_info = print
+log_info = logging.info
+
 DEFAULT_LIMIT= 10000
 class JoinAccumulator:
     def __init__(self, type_conf, msg_builder, limit = DEFAULT_LIMIT, ide= ""):
@@ -28,6 +31,25 @@ class JoinAccumulator:
         self.batch_msg_count = 0
         self.version_id = 0
 
+    def add_result_rows(self, rows):
+        for row in rows:
+            self.msg_builder.add_raw_row(row)
+
+    def set_result_rows(self, rows):
+        self.msg_builder.clear_payload()
+        for row in rows:
+            self.msg_builder.add_raw_row(row)
+
+    def get_out_rows(self):
+        return self.msg_builder.payload
+
+
+    def get_partial_result(self):
+        out = self.msg_builder.clone()
+
+        out.payload = [itm for itm in self.msg_builder.payload]
+        return out
+
     def get_curr_out_id(self):
         return self.msg_builder.headers.packet_id
 
@@ -45,8 +67,11 @@ class JoinAccumulator:
         return self.msg_builder.len_payload()
 
     def add_joined(self , row):
+
+        # print("--------->ADDING OUT ROW!", row)
         self.msg_builder.add_row(row)
         if self.msg_builder.len_payload() >= self.limit:
+            # print("--------->SENDING PAYLOAD!", self.msg_builder.len_payload() , ">=", self.limit)
             self.type_conf.send(self.msg_builder)
             self.msg_builder.clear_payload()
 
@@ -55,7 +80,7 @@ class JoinAccumulator:
 
     def _trigger_eof_right(self):
         self.right_finished = True
-        logging.info(f"HANDLING EOF RIGHT out types: {self.msg_builder.headers.types} left finished? {self.left_finished}")
+        log_info(f"HANDLING EOF RIGHT out types: {self.msg_builder.headers.types} left finished? {self.left_finished}")
         if self.left_finished:
             self.send_eof()
             return True
@@ -70,7 +95,7 @@ class JoinAccumulator:
 
     def _trigger_eof_left(self):
         self.left_finished = True
-        logging.info(f"HANDLING EOF LEFT {self.type_conf.left_type} out types: {self.msg_builder.headers.types} right finished? {self.right_finished}")
+        log_info(f"HANDLING EOF LEFT {self.type_conf.left_type} out types: {self.msg_builder.headers.types} right finished? {self.right_finished}")
 
         if self.right_finished:
             self.send_eof()
@@ -116,14 +141,14 @@ class JoinAccumulator:
     def add_check_msg_left(self):
         self.msg_count_left+=1
         if self.msg_expected_left >=0 and self.msg_count_left >= self.msg_expected_left:
-            logging.info(f"Join {self.type_conf.join_id} received final left msg after eof {self.msg_count_left} >= {self.msg_expected_left}(expected)")
+            log_info(f"Join {self.type_conf.join_id} received final left msg after eof {self.msg_count_left} >= {self.msg_expected_left}(expected)")
             return self._trigger_eof_left()
         return False
 
     def add_check_msg_right(self):
         self.msg_count_right+=1
         if self.msg_expected_right >=0 and self.msg_count_right >= self.msg_expected_right:
-            logging.info(f"Join {self.type_conf.join_id} received final right msg after eof {self.msg_count_right} >= {self.msg_expected_right}(expected)")
+            log_info(f"Join {self.type_conf.join_id} received final right msg after eof {self.msg_count_right} >= {self.msg_expected_right}(expected)")
             return self._trigger_eof_right()
         return False
 
@@ -134,7 +159,7 @@ class JoinAccumulator:
     def handle_eof_left(self, msg_count_expected):
         self.msg_expected_left = msg_count_expected
         if self.msg_expected_left > self.msg_count_left:
-            logging.info(f"Join {self.type_conf.join_id} received eof left without receiving all messages {self.msg_count_left} < {self.msg_expected_left}(expected)")
+            log_info(f"Join {self.type_conf.join_id} received eof left without receiving all messages {self.msg_count_left} < {self.msg_expected_left}(expected)")
             return False
         return self._trigger_eof_left()
         #self.describe()
@@ -143,7 +168,7 @@ class JoinAccumulator:
     def handle_eof_right(self, msg_count_expected):
         self.msg_expected_right = msg_count_expected
         if self.msg_expected_right > self.msg_count_right:
-            logging.info(f"Join {self.type_conf.join_id} received eof right without receiving all messages {self.msg_count_right} < {self.msg_expected_right}(expected)")
+            log_info(f"Join {self.type_conf.join_id} received eof right without receiving all messages {self.msg_count_right} < {self.msg_expected_right}(expected)")
             return False
 
         return self._trigger_eof_right()
@@ -176,7 +201,7 @@ class JoinAccumulator:
             self.msg_builder.headers.packet_id+=1
             
         eof_signal = self.msg_builder.clone()
-        logging.info(f"EOF SIGNAL TO {eof_signal.headers.types} {eof_signal.headers.ids}")
+        log_info(f"EOF SIGNAL TO {eof_signal.headers.types} {eof_signal.headers.ids}")
 
         eof_signal.headers.packet_id = self.msg_sent
         eof_signal.set_as_eof()
@@ -184,12 +209,12 @@ class JoinAccumulator:
         self.type_conf.send(eof_signal)
 
     def describe_send(self):
-        logging.info(f"SENDING TO {self.msg_builder.headers.types} {self.msg_builder.headers.ids}")
+        log_info(f"SENDING TO {self.msg_builder.headers.types} {self.msg_builder.headers.ids}")
         self.describe()
         #for itm in self.msg_builder.payload:
-        #    logging.info(f"ROW {itm}")
+        #    log_info(f"ROW {itm}")
 
     def describe(self):
-        logging.info(f"curr status join finished left:{self.left_finished} right: {self.right_finished}")
-        logging.info(f"row len left:{len(self.left_rows)} right: {len(self.right_rows)}")
-        logging.info(f"joined payload len:{self.msg_builder.len_payload()}")
+        log_info(f"curr status join finished left:{self.left_finished} right: {self.right_finished}")
+        log_info(f"row len left:{len(self.left_rows)} right: {len(self.right_rows)}")
+        log_info(f"joined payload len:{self.msg_builder.len_payload()}")
