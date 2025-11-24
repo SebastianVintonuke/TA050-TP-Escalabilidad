@@ -94,7 +94,7 @@ class JoinNodeStateManager:
 
 		return join_acc
 
-	## Almost the same as state... i.e is basically like a snapshot... no join_id needed, and adds msgs batch count...
+	## Almost the same as state... i.e is basically like a snapshot... no joiner_id needed, and adds msgs batch count...
 	def serialize_changes(self, join_acc):
 
 		res = serial_state(join_acc)
@@ -109,10 +109,10 @@ class JoinNodeStateManager:
 
 	def serialize_state(self, join_acc):
 		res = serial_state(join_acc)
-		res[META_JOIN_ACC_ID]= join_acc.join_id
+		res[META_JOIN_ACC_ID]= join_acc.joiner_id
 		return json.dumps(res).encode()
 
 	def serialize_initial_state(self, join_acc):
 		res = serial_state(join_acc)
-		res[META_JOIN_ACC_ID]= join_acc.join_id
+		res[META_JOIN_ACC_ID]= join_acc.joiner_id
 		return json.dumps(res).encode()

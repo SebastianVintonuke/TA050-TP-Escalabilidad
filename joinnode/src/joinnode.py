@@ -9,13 +9,15 @@ from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 
 from middleware.routing import batch_ack_actions as batch_actions
 
+# log_info = logging.info
+log_info = print
 def get_credentials(accum_id):
     parts = accum_id.split("_")
 
     return "_".join(parts[:-1]), parts[-1]
 
 class JoinNode:
-    def __init__(self, join_middleware, payload_deserializer, type_expander, store_creator = NothingQueryStateStorage, batch_size = 1):
+    def __init__(self, join_middleware, payload_deserializer, type_expander, store_creator = NothingQueryStateStorage, batch_size = 1, limit = 1):
         self.middleware = join_middleware
         self.type_expander = type_expander
         self.payload_deserializer = payload_deserializer
@@ -24,6 +26,7 @@ class JoinNode:
         # This does not load anything yet.. at start we do.
         self.state_storage = store_creator(JoinNodeStateManager(self.get_join_accumulator)) # Have it hardcoded for now
         self.batch_size = batch_size        
+        self.msg_rows_limit= limit
 
     def get_config_from_joiner_type_id(self, type_id):
         for config in self.type_expander.type_configurations:
@@ -38,13 +41,13 @@ class JoinNode:
 
             query_id, join_type_id = get_credentials(joiner_id)
 
-            logging.info(f"Get new Join accumulator initialization for id {joiner_id},  join type {join_type_id}")
+            log_info(f"Get new Join accumulator initialization for id {joiner_id},  join type {join_type_id}")
             config = self.get_config_from_joiner_type_id(join_type_id)
 
             # Join config new builder for... ignores basically types field but requires a value
             new_headers = BaseHeaders(ids = [query_id], types= [join_type_id])
 
-            joiner = JoinAccumulator(config, config.new_builder_for(new_headers), ide = joiner_id)
+            joiner = JoinAccumulator(config, config.new_builder_for(new_headers), ide = joiner_id, limit = self.msg_rows_limit)
 
             self.joiners[joiner_id] = joiner       
         return joiner
@@ -87,7 +90,7 @@ class JoinNode:
 
         if query_headers.is_eof(): # Partition EOF is sent when no more data on partition, or when real EOF or error happened as signal.
             if query_headers.is_error():
-                logging.info(f"Query {ide} type: {type} config len:{len(configs)}, Error: {query_headers.get_error_code()}")
+                log_info(f"Query {ide} type: {type} config len:{len(configs)}, Error: {query_headers.get_error_code()}")
                 self.type_expander.propagate_signal_in(query_headers)
 
                 for config in configs:
@@ -97,20 +100,20 @@ class JoinNode:
                         self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
                         self.state_storage.unregister_query(joiner_id)
                     else:
-                        logging.info(f"Join acc {joiner_id}, cancelled but had no state.")
+                        log_info(f"Join acc {joiner_id}, cancelled but had no state.")
 
                 # For multi config one do not batch logic for now. Since only ones with that are of 1 message len.
                 return (joiner_id, batch_actions.FINISH_ACTION) if len(configs) == 1 else None
 
-            logging.info(f"Query {ide} type: {type} config len:{len(configs)}, EOF received")
+            log_info(f"Query {ide} type: {type} config len:{len(configs)}, EOF received")
 
             for config in configs:
                 joiner_id = f"{ide}_{config.join_id}"
                 joiner = self.joiners.get(joiner_id, None)
 
                 if joiner == None:
-                    logging.info(f"Join acc {joiner_id}, EOF was the first message to be received")
-                    joiner = JoinAccumulator(config, config.new_builder_for(query_headers), ide = joiner_id)
+                    log_info(f"Join acc {joiner_id}, EOF was the first message to be received")
+                    joiner = JoinAccumulator(config, config.new_builder_for(query_headers), ide = joiner_id, limit = self.msg_rows_limit)
                     self.joiners[joiner_id] = joiner
                     self.state_storage.register_query(joiner_id, joiner)
                 
@@ -118,14 +121,14 @@ class JoinNode:
                     if joiner.handle_eof_left(query_headers.msg_count): 
                         self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
-                        logging.info(f"Join acc {joiner_id}, handling done, freeing. EOF Left was last message")
+                        log_info(f"Join acc {joiner_id}, handling done, freeing. EOF Left was last message")
                         del self.joiners[joiner_id]
                         self.state_storage.unregister_query(joiner_id)                        
 
                 elif joiner.handle_eof_right(query_headers.msg_count): # type == right_type, and eof 
                         self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
-                        logging.info(f"Join acc {joiner_id}, handling done, freeing. EOF Right was last message")
+                        log_info(f"Join acc {joiner_id}, handling done, freeing. EOF Right was last message")
                         del self.joiners[joiner_id]
                         self.state_storage.unregister_query(joiner_id)
                 else: # EOF handled but not actual EOF so just save the state for the config even If not on batch
@@ -158,8 +161,8 @@ class JoinNode:
             joiner = self.joiners.get(joiner_id, None)
 
             if joiner == None:
-                logging.info(f"Join acc {joiner_id}, Initing accumulator")
-                joiner = JoinAccumulator(config, config.new_builder_for(query_headers), ide = joiner_id)
+                log_info(f"Join acc {joiner_id}, Initing accumulator")
+                joiner = JoinAccumulator(config, config.new_builder_for(query_headers), ide = joiner_id, limit = self.msg_rows_limit)
                 self.joiners[joiner_id] = joiner
                 self.state_storage.register_query(joiner_id, joiner)
 
@@ -172,7 +175,7 @@ class JoinNode:
 
 
         if len(outputs) == 0: 
-            logging.info(f"Query {ide} type: {type} config len:{len(configs)}, duplicate message on all configs.")
+            log_info(f"Query {ide} type: {type} config len:{len(configs)}, duplicate message on all configs.")
             return # ack this message as stand alone
 
         msg = self.payload_deserializer(msg) 
@@ -189,7 +192,7 @@ class JoinNode:
                     joiner_id = joiner.joiner_id
                     self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
 
-                    logging.info(f"Join acc {joiner_id}, handling done, freeing. Final was payload msg")
+                    log_info(f"Join acc {joiner_id}, handling done, freeing. Final was payload msg")
                     del self.joiners[joiner_id]
                     self.state_storage.unregister_query(joiner_id)                        
                 
@@ -211,7 +214,7 @@ class JoinNode:
 
         if joiner.add_check_msg_for_type(type):
             self.state_storage.backup_query_final(joiner_id, joiner.version_id , joiner) # For debugging/final reviewing purposes
-            logging.info(f"Join acc {joiner_id}, handling done, freeing. Final was payload msg")
+            log_info(f"Join acc {joiner_id}, handling done, freeing. Final was payload msg")
             del self.joiners[joiner_id]
             self.state_storage.unregister_query(joiner_id)
             return (joiner_id, batch_actions.FINISH_ACTION)

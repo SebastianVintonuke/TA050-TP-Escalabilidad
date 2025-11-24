@@ -88,6 +88,7 @@ class MockCopyMiddleware(MockMiddleware):
     def send(self, msg):
         cloned = msg.clone()
         cloned.payload = [itm for itm in msg.payload]
+        
         super().send(cloned)
 
 
