@@ -7,6 +7,7 @@ services:
     environment:
       - SUPERVISOR_ID=1
       - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
+
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./supervisor/config.ini:/config.ini:ro      
@@ -17,6 +18,7 @@ services:
     environment:
       - SUPERVISOR_ID=2
       - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
+      
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./supervisor/config.ini:/config.ini:ro      
@@ -128,6 +130,7 @@ services:
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
       - ./.data/profiling/selectnode1.prof:/etc/profiling/profile.prof
+      - ./config_health.ini:/config_health.ini:ro
 
   selectnode2:
     container_name: selectnode2
@@ -146,6 +149,7 @@ services:
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
       - ./.data/profiling/selectnode2.prof:/etc/profiling/profile.prof
+      - ./config_health.ini:/config_health.ini:ro
 
   selectnode3:
     container_name: selectnode3
@@ -164,6 +168,7 @@ services:
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
       - ./.data/profiling/selectnode3.prof:/etc/profiling/profile.prof
+      - ./config_health.ini:/config_health.ini:ro
 
   groupbynode1:
     container_name: groupbynode1

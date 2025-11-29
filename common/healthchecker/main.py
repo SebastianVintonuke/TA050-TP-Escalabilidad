@@ -110,9 +110,8 @@ def main():
         logging.shutdown()
 
 import threading
-def start_on_thread():
+def start_on_thread(node_id):
     config_params = initialize_config()
-    node_id = config_params["node_id"]
     supervisors = config_params["supervisors"]
     node_health_port = config_params["node_health_port"]
     heartbeat_interval = config_params["heartbeat_interval"]
