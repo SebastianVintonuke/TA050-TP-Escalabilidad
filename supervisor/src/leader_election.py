@@ -349,13 +349,16 @@ class BullyElection:
     def _handle_alive(self, sender_id: int) -> None:
         if sender_id == self.current_leader:
             self.last_leader_alive = time.time()
-            logging.debug(f"Received ALIVE from leader {sender_id}")
+            # logging.debug(f"Received ALIVE from leader {sender_id}")
 
     def _send_message(self, addr: Tuple[str, int], msg_type: str, data: str) -> None:
         try:
             message = f"{msg_type}:{data}".encode()
             self.sock.sendto(message, addr)
-            logging.debug(f"Sent {msg_type} to {addr}")
+
+            if msg_type != MSG_ALIVE:
+                logging.debug(f"Sent {msg_type} to {addr}")
+                
         except Exception as e:
             if not self._stop_event.is_set():
                 logging.error(f"Failed to send {msg_type} to {addr}: {e}")

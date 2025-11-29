@@ -89,7 +89,7 @@ def main(config_params) -> None:
 
     try:
 
-        thread_checker, healthchecker = start_healthchecker(f"{node_id}")
+        thread_checker, healthchecker = start_healthchecker(f"selectnode{node_id}")
 
         types_expander = TypeExpander()
         result_middleware = ResultNodeMiddleware()

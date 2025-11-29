@@ -38,20 +38,40 @@ services:
     volumes:
       - ./middleware/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
 
-  results:
-    container_name: results
+  results1:
+    container_name: results1
     image: results:latest
     entrypoint: python3 /results/main.py
     environment:
       - PYTHONUNBUFFERED=1
       - DIR_PATH=/storage
+      - PORT=12349
+      - NODE_ID=1
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./results/config.ini:/config.ini:ro
-      - ./.data/storage:/results/storage
+      - ./.data/storage/results_1:/results/storage
+
+  results2:
+    container_name: results2
+    image: results:latest
+    entrypoint: python3 /results/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DIR_PATH=/storage
+      - PORT=12350
+      - NODE_ID=2
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./results/config.ini:/config.ini:ro
+      - ./.data/storage/results_2:/results/storage
+
 
   server:
     container_name: server
@@ -60,6 +80,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DISPATCHERS=dispatcher1:12347,dispatcher2:12348
+      - RESULTS_STORAGES=results1:12349,results2:12350      
     networks:
       - testing_net
     depends_on:
@@ -110,7 +131,6 @@ services:
       - testing_net
     depends_on:
       - middleware
-      - results
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
       - ./.data/profiling/resultnode1.prof:/etc/profiling/profile.prof
