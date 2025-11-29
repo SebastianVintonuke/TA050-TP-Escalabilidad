@@ -54,6 +54,7 @@ services:
     volumes:
       - ./results/config.ini:/config.ini:ro
       - ./.data/storage/results_1:/results/storage
+      - ./config_health.ini:/config_health.ini:ro
 
   results2:
     container_name: results2
@@ -71,6 +72,7 @@ services:
     volumes:
       - ./results/config.ini:/config.ini:ro
       - ./.data/storage/results_2:/results/storage
+      - ./config_health.ini:/config_health.ini:ro
 
   server:
     container_name: server
@@ -138,6 +140,7 @@ services:
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
 
 
   selectnode1:
@@ -211,6 +214,7 @@ services:
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
 
   groupbynode2:
     container_name: groupbynode2
@@ -229,6 +233,7 @@ services:
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
 
   joinnode1:
     container_name: joinnode1
@@ -237,7 +242,7 @@ services:
     environment:
       - NODE_IND=0
       - NODE_COUNT=2
-      - NODE_ID=0
+      - NODE_ID=1
     networks:
       - testing_net
     depends_on:
@@ -247,6 +252,7 @@ services:
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
 
   joinnode2:
     container_name: joinnode2
@@ -255,7 +261,7 @@ services:
     environment:
       - NODE_IND=1
       - NODE_COUNT=2
-      - NODE_ID=0
+      - NODE_ID=2
     networks:
       - testing_net
     depends_on:
@@ -265,6 +271,7 @@ services:
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
       
 
 networks:

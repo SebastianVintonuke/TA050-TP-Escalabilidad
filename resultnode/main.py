@@ -77,6 +77,7 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+from common.healthchecker.main import start_on_thread as start_healthchecker
 
 def main(config_params) -> None:
     port = config_params["port"]
@@ -118,8 +119,13 @@ def main(config_params) -> None:
     signal.signal(signal.SIGINT, close_handler)
     signal.signal(signal.SIGTERM, close_handler)
 
+    thread_checker, healthchecker = start_healthchecker(f"resultnode{node_id}")
 
     result_node.start()
+
+    logging.info(f"Closing healthchecker....");
+    healthchecker.stop()
+    thread_checker.join()
 
 
 

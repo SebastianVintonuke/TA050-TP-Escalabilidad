@@ -63,6 +63,7 @@ def initialize_log(logging_level: int) -> None:
     logging.getLogger("pika").setLevel(logging.WARNING)
     logging.getLogger("pika.adapters").setLevel(logging.WARNING)
 
+from common.healthchecker.main import start_on_thread as start_healthchecker
 
 def main() -> None:
     config_params = initialize_config()
@@ -91,7 +92,16 @@ def main() -> None:
     result_server = ResultServer(port, listen_backlog, dir_path, middleware)
     signal.signal(signal.SIGTERM, result_server.graceful_shutdown)
 
+
+    thread_checker, healthchecker = start_healthchecker(f"results{node_id}")
+
+
+
     result_server.run()
+
+    logging.info(f"Closing healthchecker....");
+    healthchecker.stop()
+    thread_checker.join()
 
     logging.shutdown()
 
