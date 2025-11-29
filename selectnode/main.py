@@ -89,7 +89,7 @@ def main(config_params) -> None:
 
     try:
 
-        thread_checker, healthchecker = start_healthchecker(f"selectnode{node_id}")
+        # thread_checker, healthchecker = start_healthchecker(f"selectnode{node_id}")
 
         types_expander = TypeExpander()
         result_middleware = ResultNodeMiddleware()
@@ -110,9 +110,10 @@ def main(config_params) -> None:
 
         node.close()
 
-        logging.info(f"Closing healthchecker....");
-        healthchecker.stop()
-        thread_checker.join()
+        # logging.info(f"Closing healthchecker....");
+        # healthchecker.stop()
+        # thread_checker.join()
+        
     except Exception as e:
         traceback.print_exc()
         logging.error(f"action: select_node_main | result: error | err:{e}")

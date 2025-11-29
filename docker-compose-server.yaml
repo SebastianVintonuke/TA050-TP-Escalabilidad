@@ -103,6 +103,7 @@ services:
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
 
   dispatcher2:
     container_name: dispatcher2
@@ -119,6 +120,7 @@ services:
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
 
   resultnode1:
     container_name: resultnode1
@@ -154,6 +156,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./config_health.ini:/config_health.ini:ro
 
   selectnode2:
     container_name: selectnode2
@@ -171,6 +174,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./config_health.ini:/config_health.ini:ro
 
   selectnode3:
     container_name: selectnode3
@@ -188,6 +192,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./config_health.ini:/config_health.ini:ro
 
   groupbynode1:
     container_name: groupbynode1

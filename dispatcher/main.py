@@ -58,6 +58,7 @@ def initialize_log(logging_level: int) -> None:
         level=logging_level,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+from common.healthchecker.main import start_on_thread as start_healthchecker
 
 
 def main(config_params) -> None:
@@ -76,7 +77,15 @@ def main(config_params) -> None:
     dispatcher_server = DispatcherServer(port, listen_backlog, node_id)
     signal.signal(signal.SIGTERM, dispatcher_server.graceful_shutdown)
 
+
+    thread_checker, healthchecker = start_healthchecker(f"dispatcher{node_id}")
+
+
     dispatcher_server.run()
+
+    logging.info(f"Closing healthchecker....");
+    healthchecker.stop()
+    thread_checker.join()
 
 
 

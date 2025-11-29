@@ -35,6 +35,6 @@ services:
 networks: # The network has to exist already i.e the server has to be up.
   testing_net:
     external: true
-    name: coffeeshopanalysisserver_testing_net
+    name: tpescalabilidad-coffeeshopanalysis_testing_net
 # OR...
 #docker network create --subnet=172.25.125.0/24 testing_net and no file has the long name
