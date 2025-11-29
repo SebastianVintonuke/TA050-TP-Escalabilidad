@@ -2,7 +2,7 @@ import logging
 import os
 from configparser import ConfigParser
 
-from healthchecker.src.healthchecker import Healthchecker
+from common.healthchecker.src.healthchecker import Healthchecker
 
 
 def parse_supervisors(supervisors_str: str):
@@ -25,7 +25,7 @@ def parse_supervisors(supervisors_str: str):
 
 def initialize_config():
     config = ConfigParser(os.environ)
-    config.read("config.ini")
+    config.read("config_health.ini")
 
     config_params = {}
     try:
@@ -108,6 +108,50 @@ def main():
         logging.error(f"Healthchecker error: {e}", exc_info=True)
     finally:
         logging.shutdown()
+
+import threading
+def start_on_thread():
+    config_params = initialize_config()
+    node_id = config_params["node_id"]
+    supervisors = config_params["supervisors"]
+    node_health_port = config_params["node_health_port"]
+    heartbeat_interval = config_params["heartbeat_interval"]
+    heartbeat_timeout = config_params["heartbeat_timeout"]
+    discovery_timeout = config_params["discovery_timeout"]
+    discovery_retries = config_params["discovery_retries"]
+    logging_level = config_params["logging_level"]
+
+    initialize_log(logging_level)
+
+    logging.debug(
+        f"action: config | result: success | node_id: {node_id} | "
+        f"supervisors: {supervisors} | node_health_port: {node_health_port} | "
+        f"heartbeat_interval: {heartbeat_interval} | logging_level: {logging_level}"
+    )
+
+    healthchecker = Healthchecker(
+        node_id=node_id,
+        supervisors=supervisors,
+        node_health_port=node_health_port,
+        heartbeat_interval=heartbeat_interval,
+        heartbeat_timeout=heartbeat_timeout,
+        discovery_timeout=discovery_timeout,
+        discovery_retries=discovery_retries,
+    )
+    
+    def run_checker():
+        try:
+            healthchecker.run()
+        except Exception as e:
+            logging.error(f"Healthchecker error: {e}", exc_info=True)
+        finally:
+            logging.shutdown()
+
+
+    thread_checker = threading.Thread(target=run_checker, daemon= True)
+    thread_checker.start()
+
+    return thread_checker, healthchecker
 
 
 if __name__ == "__main__":
