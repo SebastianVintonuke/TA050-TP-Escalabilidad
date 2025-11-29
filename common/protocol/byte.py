@@ -46,7 +46,7 @@ class ByteProtocol:
 
         If it is not between 0 and 255 raise a ValueError exception
         """
-        if not 0 <= uint8 <= 255:
+        if not (0 <= uint8 <= 255):
             raise ValueError("Value must be an uint8 (0-255)")
         self.__send_all(bytes([uint8]))
 

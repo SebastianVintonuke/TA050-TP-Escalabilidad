@@ -12,20 +12,39 @@ services:
     volumes:
       - ./middleware/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
 
-  results:
-    container_name: results
+  results1:
+    container_name: results1
     image: results:latest
     entrypoint: python3 /results/main.py
     environment:
       - PYTHONUNBUFFERED=1
       - DIR_PATH=/storage
+      - PORT=12349
+      - NODE_ID=1
     networks:
       - testing_net
     depends_on:
       - middleware
     volumes:
       - ./results/config.ini:/config.ini:ro
-      - ./.data/storage:/results/storage
+      - ./.data/storage/results_1:/results/storage
+
+  results2:
+    container_name: results2
+    image: results:latest
+    entrypoint: python3 /results/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DIR_PATH=/storage
+      - PORT=12350
+      - NODE_ID=2
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    volumes:
+      - ./results/config.ini:/config.ini:ro
+      - ./.data/storage/results_2:/results/storage
 
   server:
     container_name: server
@@ -34,13 +53,15 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DISPATCHERS=dispatcher1:12347,dispatcher2:12348
+      - RESULTS_STORAGES=results1:12349,results2:12350
     networks:
       - testing_net
     depends_on:
       - dispatcher1
       - dispatcher2
     volumes:
-      - ./server/config.ini:/config.ini:ro      
+      - ./server/config.ini:/config.ini:ro
+
   dispatcher1:
     container_name: dispatcher1
     image: dispatcher:latest
@@ -48,7 +69,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=12347
-      - PROFILE_NODE=0
+      - NODE_ID=1
     networks:
       - testing_net
     depends_on:
@@ -56,6 +77,7 @@ services:
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
       - ./.data/profiling/dispatcher1.prof:/etc/profiling/profile.prof
+      - ./.data/states/:/etc/node_state
 
   dispatcher2:
     container_name: dispatcher2
@@ -64,7 +86,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=12348
-      - PROFILE_NODE=0
+      - NODE_ID=2
     networks:
       - testing_net
     depends_on:
@@ -72,6 +94,7 @@ services:
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
       - ./.data/profiling/dispatcher2.prof:/etc/profiling/profile.prof
+      - ./.data/states/:/etc/node_state
 
   resultnode1:
     container_name: resultnode1
@@ -79,15 +102,17 @@ services:
     entrypoint: python3 /resultnode/main.py
     environment:
       - RESULT_NODE_ID=1
-      - PROFILE_NODE=0
+      - RESULTS_STORAGES_COUNT=2
     networks:
       - testing_net
     depends_on:
       - middleware
-      - results
+      - results1
+      - results2
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
       - ./.data/profiling/resultnode1.prof:/etc/profiling/profile.prof
+      - ./.data/states/:/etc/node_state
 
 
   selectnode1:
@@ -161,6 +186,7 @@ services:
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
       - ./.data/profiling/groupbynode1.prof:/etc/profiling/profile.prof
+      - ./.data/states/:/etc/node_state
 
   groupbynode2:
     container_name: groupbynode2
@@ -179,6 +205,7 @@ services:
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
       - ./.data/profiling/groupbynode2.prof:/etc/profiling/profile.prof
+      - ./.data/states/:/etc/node_state
 
   joinnode1:
     container_name: joinnode1
@@ -197,6 +224,7 @@ services:
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
       - ./.data/profiling/joinnode1.prof:/etc/profiling/profile.prof
+      - ./.data/states/:/etc/node_state
   
   joinnode2:
     container_name: joinnode2
@@ -215,7 +243,9 @@ services:
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
       - ./.data/profiling/joinnode2.prof:/etc/profiling/profile.prof
+      - ./.data/states/:/etc/node_state
       
+    
 
 networks:
   testing_net:

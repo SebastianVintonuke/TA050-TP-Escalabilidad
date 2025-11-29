@@ -51,20 +51,37 @@ class ClientProtocol:
         Upload the files to a dispatcher
         Return the client_id assigned by the dispatcher
         """
-        folders_sent = ["transaction_items","menu_items","stores", "transactions", "users"]
 
+        # folders_sent = [
+        # ["transaction_items", "transactions"], 
+
+        # ["menu_items"],["stores"], ["users"]]
+
+
+        folders_sent = ["transaction_items","menu_items","stores" , "transactions", "users"]
+
+
+        ind = 0
         for folder in folders_sent:
+            self._byte_protocol.send_uint8(ind)
+
             for file in input_dir.rglob(f"{folder}/*.csv"):
                 reader = open_file(file)
                 logging.info(f"action: upload_file | result: in-progress | file: {folder}/{file.name} | size: {file.stat().st_size}")
                 try:
                     self._batch_protocol.send_all(reader)
                     self._batch_protocol.send_batch([])
+                    
+                    self._byte_protocol.send_uint8(ind)
                 except Exception as e:
                     close_file(reader)
                     raise e
-        self._batch_protocol.send_batch([])
-
+            
+            ind+=1
+            self._batch_protocol.send_batch([])
+        
+        self._byte_protocol.send_uint8(255) # 255== no next batch
+        
         user_id = self._byte_protocol.wait_bytes().decode()
         return user_id
 
