@@ -1,5 +1,26 @@
 name: CoffeeShopAnalysisServer
 services:
+  supervisor1:
+    container_name: supervisor1
+    image: supervisor:latest
+    entrypoint: python3 /supervisor/main.py
+    environment:
+      - SUPERVISOR_ID=1
+      - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./supervisor/config.ini:/config.ini:ro      
+  supervisor2:
+    container_name: supervisor2
+    image: supervisor:latest
+    entrypoint: python3 /supervisor/main.py
+    environment:
+      - SUPERVISOR_ID=2
+      - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./supervisor/config.ini:/config.ini:ro      
+
   middleware:
     container_name: middleware
     build:

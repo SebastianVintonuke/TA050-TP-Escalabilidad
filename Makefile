@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
+TRG ?= selectnode1
 
 default: build
 
@@ -24,6 +25,7 @@ docker-image-prod:
 	docker build -f ./groupbynode/Dockerfile -t "groupbynode:latest" .
 	docker build -f ./joinnode/Dockerfile -t "joinnode:latest" .
 	docker build -f ./server/Dockerfile -t "server:latest" .	
+	docker build -f ./supervisor/Dockerfile -t "supervisor:latest" .	
 
 integration-tests-i:
 	docker build -f ./integration_tests/Dockerfile -t "integration_tests:latest" .	
@@ -98,6 +100,10 @@ run-unit-tests:
 server-up: server-down docker-image
 	docker compose -f docker-compose-server.yaml up -d --build
 	docker compose -f docker-compose-server.yaml logs -f
+server-kill:
+	echo "Should kill nodes $(TRG)"
+	docker compose -f docker-compose-server.yaml kill $(TRG)
+
 server-down:
 	docker compose -f docker-compose-server.yaml stop -t 1
 	docker compose -f docker-compose-server.yaml down

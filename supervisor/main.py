@@ -14,6 +14,7 @@ def initialize_config():
 
     config_params = {}
     try:
+        # print("----> CONFIG FOR SUPERVISOR", config, os.path.exists("config.ini"));
         config_params["nodes_config"] = os.getenv(
             "NODES_CONFIG", config["DEFAULT"]["NODES_CONFIG"]
         )
@@ -103,6 +104,19 @@ def parse_supervisor_peers(env_var: str) -> Dict[int, Tuple[str, int]]:
     return peers
 
 
+def initialize_log(logging_level: int) -> None:
+    """
+    Python custom logging initialization
+
+    Current timestamp is added to be able to identify in docker
+    compose logs the date when the log has arrived
+    """
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)-8s %(message)s",
+        level=logging_level,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
 def main():
     config_params = initialize_config()
     nodes_config_str = config_params["nodes_config"]
@@ -119,7 +133,8 @@ def main():
     supervisor_peers_str = config_params["supervisor_peers"]
     enable_leader_election = config_params["enable_leader_election"]
     election_port = config_params["election_port"]
-
+    
+    initialize_log(logging_level)
 
     logging.debug(
         f"action: config | result: success | supervisor_port: {supervisor_port} | "
