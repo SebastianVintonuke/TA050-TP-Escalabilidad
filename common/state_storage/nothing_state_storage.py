@@ -4,8 +4,7 @@
 ## Just define the contract of state storage..
 class NothingQueryStateStorage:
 	def __init__(self, manager):
-		self.acks = []
-
+		pass
 
 	## This loads the states and removes all except highest query_state
 	def load_states(self):
@@ -24,6 +23,31 @@ class NothingQueryStateStorage:
 
 	def register_query(self, query_id, metadata, initial_packet_id = 0):
 		pass
+
+	def is_query_registered(self, query_id):
+		return True
+	# -------------------------------------------------------------
+	# 5. unregister_query
+	# -------------------------------------------------------------
+		
+	def unregister_query(self, query_id):
+		pass
+
+
+	def cancel_query(self, query_id):
+		pass
+
+	def is_cancelled_query(self, query_id):
+		return False
+
+
+	## For debugging purposes and so on
+	def backup_query(self, query_id): # Backup last state saved
+		pass
+
+	def backup_query_final(self, query_id, version_id, state):# Backup final state just before del, from memory?
+		pass
+
 
 	# -------------------------------------------------------------
 	# 2. add_changes
@@ -45,16 +69,18 @@ class NothingQueryStateStorage:
 	## And also has prev state since we assume non concurrent modifying 
 	## SOO essentially received the new state calculated from get new state
 	# -------------------------------------------------------------
-	def push_changes(self, query_id, packet_id, new_state, ack_tags): ## Lets 
+	def push_changes(self, query_id, packet_id, new_state, count_msgs): ## Lets 
+		pass
+
+
+	def set_ack_tags(self, tags):
 		self.acks = ack_tags
 
-	# -------------------------------------------------------------
-	# 5. unregister_packet
-	# -------------------------------------------------------------
 	def ack_finished(self, ack_func):
-		for ack in self.acks:
-			ack_func(ack)
-		self.acks = []
+		if self.acks:		
+			for ack in self.acks:
+				ack_func(ack)
+			self.acks = []
 
 	def unregister_packet(self, tag):
 		pass

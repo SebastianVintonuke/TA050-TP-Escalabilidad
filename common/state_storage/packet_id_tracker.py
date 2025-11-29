@@ -4,10 +4,12 @@ class PacketIDTracker:
 		self.expected_next_packet = 0
 		self.missing_packets = set()
 
+	def handled_all_up_to(self, target_packet):
+		return len(self.missing_packets) == 0 and target_packet < self.expected_next_packet
 
 	# If it is a duplicate it is discarded the packet
 	def is_duplicate(self, packet_id):
-		return packet_id < self.expected_next_packet and (not self.missing_packets.has(packet_id))
+		return packet_id < self.expected_next_packet and (not packet_id in self.missing_packets)
 
 	## Checks packet id, updates missing packets and expected next packet 
 	## Should be called only If not duplicate.. so if packet_id < exp_packet .. then should be on missing packets..

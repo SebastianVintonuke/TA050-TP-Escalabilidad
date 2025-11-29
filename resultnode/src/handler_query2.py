@@ -7,14 +7,10 @@ from datetime import datetime, date
 
 import logging
 
-class HandlerQuery2BestSelling:
-    def handle_new_results(headers, msg, counter, user_id: str) -> bytes:
-        if headers.is_eof():
 
-            counter.expected_count_query_2_quantity = headers.msg_count
-            logging.info(f"Received expected message count for query 2 quantity, expect {counter.expected_count_query_2_quantity} got: {counter.count_query_2_quantity}")
-            return None
-        counter.count_query_2_quantity += 1
+
+class HandlerQuery2BestSelling:
+    def handle_new_results(msg, user_id: str) -> bytes:
 
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
@@ -29,28 +25,15 @@ class HandlerQuery2BestSelling:
             data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
         return ResultTask(user_id, QueryId.Query2BestSelling, False, False, data).to_bytes()
 
-    def check_send_eof(counter, user_id, middleware):
-        if counter.is_eof_q2_quantity():
-            logging.info(f"Received last message for query 2 best selling count: {counter.count_query_2_quantity} expected_count: {counter.expected_count_query_2_quantity}")
-            result_task = ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
-            middleware.send(result_task)
+    def get_eof_msg(user_id):
+        return ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
 
-    def send_abort(user_id, middleware):
-        middleware.send(ResultTask(user_id, QueryId.Query2BestSelling, True, True, []).to_bytes())
-
-
-
-
+    def get_abort_msg(user_id):
+        return ResultTask(user_id, QueryId.Query2BestSelling, True, True, []).to_bytes()
 
 
 class HandlerQuery2MostProfit:
-    def handle_new_results(headers, msg, counter, user_id: str) -> bytes:
-        if headers.is_eof():
-            counter.expected_count_query_2_profit = headers.msg_count
-            logging.info(f"Received expected message count for query 2 profit, expect {counter.expected_count_query_2_profit} got: {counter.count_query_2_profit}")            
-            return None
-        counter.count_query_2_profit += 1
-
+    def handle_new_results(msg, user_id: str) -> bytes:
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
             #logging.info(f"Q_2_prof {line}")
@@ -64,12 +47,8 @@ class HandlerQuery2MostProfit:
             data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
         return ResultTask(user_id, QueryId.Query2MostProfit, False, False, data).to_bytes()
 
-    def check_send_eof(counter, user_id, middleware):
-        if counter.is_eof_q2_profit():
-            logging.info(f"Received last message for query 2 profit count: {counter.count_query_2_profit} expected_count: {counter.expected_count_query_2_profit}")
-            result_task = ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
-            middleware.send(result_task)
+    def get_eof_msg(user_id):
+        return ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
 
-    def send_abort(user_id, middleware):
-        middleware.send(ResultTask(user_id, QueryId.Query2MostProfit, True, True, []).to_bytes())
-
+    def get_abort_msg(user_id):
+        return ResultTask(user_id, QueryId.Query2MostProfit, True, True, []).to_bytes()

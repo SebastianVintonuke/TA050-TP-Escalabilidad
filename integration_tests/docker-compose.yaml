@@ -1,30 +1,63 @@
 services:
-  # integration_tests:
-  #   container_name: integration_tests
-  #   image: integration_tests:latest
-  #   entrypoint: python3 /main.py
-  #   networks:
-  #     - testing_net
-  #   volumes:
-  #     - ../integration_tests/tests:/target_tests/integration_tests
 
-  # groupbynode_unit_tests:
-  #   container_name: groupbynode_unit_tests
-  #   image: integration_tests:latest
-  #   entrypoint: python3 /main.py
-  #   networks:
-  #     - testing_net
-  #   volumes:
-  #     - ../groupbynode/tests:/target_tests/groupbynode
 
-  groupbynode_storage_tests:
-    container_name: groupbynode_storage_tests
+
+  
+  integration_tests:
+    container_name: integration_tests
     image: integration_tests:latest
     entrypoint: python3 /main.py
     networks:
       - testing_net
     volumes:
-      - ../integration_tests/groupby_tests:/target_tests/groupby_tests
+      - ../integration_tests/tests:/target_tests/integration_tests
+
+  nodes_storage_tests:
+    container_name: nodes_storage_tests
+    image: integration_tests:latest
+    entrypoint: python3 /main.py
+    networks:
+      - testing_net
+    volumes:
+      - ../integration_tests/nodes_storage_tests:/target_tests/nodes_storage_tests
+
+  groupbynode_unit_tests:
+    container_name: groupbynode_unit_tests
+    image: integration_tests:latest
+    entrypoint: python3 /main.py
+    networks:
+      - testing_net
+    volumes:
+      - ../groupbynode/tests:/target_tests/groupbynode
+  common_tests:
+    container_name: common_tests
+    image: integration_tests:latest
+    entrypoint: python3 /main.py
+    networks:
+      - testing_net
+    volumes:
+      - ../integration_tests/common_tests:/target_tests/common_tests
+
+
+
+  joinnode_unit_tests:
+    container_name: joinnode_unit_tests
+    image: integration_tests:latest
+    entrypoint: python3 /main.py
+    networks:
+      - testing_net
+    volumes:
+      - ../joinnode/tests:/target_tests/joinnode
+
+  selectnode_unit_tests:
+    container_name: selectnode_unit_tests
+    image: integration_tests:latest
+    entrypoint: python3 /main.py
+    networks:
+      - testing_net
+    volumes:
+      - ../selectnode/tests:/target_tests/selectnode
+
 
 networks:
   testing_net:

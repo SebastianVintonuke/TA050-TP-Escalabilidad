@@ -19,13 +19,10 @@ def year_semester_decode(year_semester_str: str) -> Tuple[date, HalfCreatedAt]:
         semester = HalfCreatedAt.H2
     return year, semester
 
+
+
 class HandlerQuery3:
-    def handle_new_results(headers, msg,counter, user_id: str) -> bytes:
-        if headers.is_eof():
-            counter.expected_count_query_3 = headers.msg_count
-            logging.info(f"Received expected message count for query 3, expect {counter.expected_count_query_3} got: {counter.count_query_3}")
-            return
-        counter.count_query_3 += 1
+    def handle_new_results(msg, user_id: str) -> bytes:
 
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
@@ -36,11 +33,8 @@ class HandlerQuery3:
             data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
         return ResultTask(user_id, QueryId.Query3, False, False, data).to_bytes()
 
-    def check_send_eof(counter, user_id, middleware):
-        if counter.is_eof_q3():
-            logging.info(f"Received last message for query 3 count: {counter.count_query_3} expected_count: {counter.expected_count_query_3}")
-            result_task = ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
-            middleware.send(result_task)
+    def get_eof_msg(user_id):
+        return ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
 
-    def send_abort(user_id, middleware):
-        middleware.send(ResultTask(user_id, QueryId.Query3, True, True, []).to_bytes())
+    def get_abort_msg(user_id):
+        return ResultTask(user_id, QueryId.Query3, True, True, []).to_bytes()

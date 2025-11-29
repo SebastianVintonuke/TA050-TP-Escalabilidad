@@ -12,11 +12,11 @@ class JSONStateManager(BaseStateManager):
 
 	def deserialize_state(self, state_bytes):
 		if state_bytes == b"":
-			return 
-		return json.loads(str(state_bytes))
+			return {}
+		return json.loads(state_bytes.decode())
 
 	def deserialize_changes(self, changes_bytes):
-		return json.loads(str(changes_bytes))
+		return json.loads(changes_bytes.decode()), 1
 
 	def serialize_initial_state(self, metadata):
 		return b""

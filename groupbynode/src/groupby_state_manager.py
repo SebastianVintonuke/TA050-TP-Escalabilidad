@@ -1,7 +1,7 @@
 # from common.state_storage.json_state_manager import JSONStateManager
 import json
 import logging
-
+from common.state_storage.packet_id_tracker import PacketIDTracker
 
 
 
@@ -14,12 +14,18 @@ class QueryAccumulator:
 		self.accum_id = accum_id
 		self.msg_builder = msg_builder
 		self.groups = {}
-		self.batch_msg_count = 0
-		self.messages_received=0
-		self.known_message_len= -1
+		self.batch_ver_count = 0
+
+
+		self.packet_tracker =PacketIDTracker()
+		self.version_id = 0
+
+		self.last_packet_id= -1
 		self.rows_recv = 0
 		self.msg_builder.reset_eof() # Ensure its not copying the eof flag from input sender
 
+	def is_duplicated(self, packet_id):
+		return self.packet_tracker.is_duplicate(packet_id)
 	def check(self, row):
 		self.rows_recv+=1
 		row = self.type_conf.map_input_row(row)
@@ -34,14 +40,26 @@ class QueryAccumulator:
 			#acc.add_row(row) # Better in design? who knows
 		#print(f"{self.msg_builder.headers.types} HANDLED ", key, row,  acc)
 
+	def get_partial_result(self):
+		partial = self.msg_builder.clone()
+
+		for group, acc in self.groups.items():
+			self.type_conf.add_output(partial, group, acc)
+
+		return partial
+
 	def send_built(self): # What happens If the groupbynode fails here/shutdowns here?
 		for group, acc in self.groups.items():
 			self.type_conf.add_output(self.msg_builder, group, acc)
 
+		self.msg_builder.headers.packet_id = 0 # Reset packet id for next in line
+
 		logging.info(f"Grouper node sending EOF rows processed {self.rows_recv} msg sent 1")
+
 		self.type_conf.send(self.msg_builder)
 		eof_signal = self.msg_builder.clone()
-		eof_signal.set_as_eof(1)
+		eof_signal.headers.packet_id = 1 # Set packet id.
+		eof_signal.set_as_eof()
 		self.type_conf.send(eof_signal)
 
 	def len_grouped(self):
@@ -53,13 +71,26 @@ class QueryAccumulator:
 			for group, acc in self.groups.items():
 				logging.info(f"key {group} acc : {acc}")
 
-	def add_msg_count(self):
-		self.messages_received+=1
-		return self.known_message_len>=0 and self.messages_received >= self.known_message_len
+	def add_msg(self, packet_id):
+		self.version_id += 1 # Inc version by one each msg
+		self.batch_ver_count+=1 
 
-	def check_eof(self, count_messages):
-		self.known_message_len = count_messages
-		return count_messages <= self.messages_received
+		self.packet_tracker.check_new_packet(packet_id)
+
+		return self.last_packet_id>=0 and self.packet_tracker.handled_all_up_to(self.last_packet_id)
+
+	def check_eof(self, eof_packet_id):
+		
+		if self.last_packet_id >=0: # Already received EOF ... so its a duplicated.
+			return self.packet_tracker.handled_all_up_to(eof_packet_id)
+			
+		self.version_id += 1 # Inc version by one each msg .. even EOF msg
+		self.batch_ver_count+=1 
+
+		self.last_packet_id = eof_packet_id
+
+		self.packet_tracker.check_new_packet(eof_packet_id)
+		return self.packet_tracker.handled_all_up_to(eof_packet_id)
 
 
 
@@ -74,10 +105,13 @@ For now use json
 FIELD_GROUPS_KEY = "groups_keys"
 FIELD_GROUPS_STATE = "groups_state"
 META_ACUM_ID = "accumulator_id" 
-META_EXP_MSG_COUNT = "exp_msg_count" 
-META_MSG_COUNT = "msg_count" 
+META_LAST_PACKET_ID = "last_packet_id" 
 
-META_MSGS_BATCH = "msg_count_batch"
+
+META_NEXT_EXP_PACKET = "next_exp_packet" 
+META_MISSING_PACKETS = "missing_packets" 
+
+META_VERSION_COUNT_BATCH = "msg_count_batch"
 
 
 ## Base to serialize in changes and in state
@@ -92,8 +126,9 @@ def serial_acc(query_accum):
 	return {
 		FIELD_GROUPS_KEY: keys,
 		FIELD_GROUPS_STATE: vals,
-		META_MSG_COUNT: query_accum.messages_received,
-		META_EXP_MSG_COUNT: query_accum.known_message_len,
+		META_NEXT_EXP_PACKET: query_accum.packet_tracker.expected_next_packet,
+		META_MISSING_PACKETS: list(query_accum.packet_tracker.missing_packets),
+		META_LAST_PACKET_ID: query_accum.last_packet_id,
 	}
 
 ## State is :dict
@@ -108,8 +143,11 @@ class GroupbyStateManager:
 			# Convert key that is a list from serial to a tuple
 			query_accum.groups[tuple(key)] = value
 
-		query_accum.messages_received= changes[META_MSG_COUNT]
-		query_accum.known_message_len= changes[META_EXP_MSG_COUNT]
+		query_accum.packet_tracker.expected_next_packet = changes[META_NEXT_EXP_PACKET]
+		query_accum.packet_tracker.missing_packets = set(changes[META_MISSING_PACKETS])
+
+
+		query_accum.last_packet_id= changes[META_LAST_PACKET_ID]
 		return query_accum
 
 
@@ -125,8 +163,10 @@ class GroupbyStateManager:
 			# Convert key that is a list from serial to a tuple
 			query_accum.groups[tuple(key)] = value
 
-		query_accum.messages_received= state[META_MSG_COUNT]
-		query_accum.known_message_len= state[META_EXP_MSG_COUNT]
+		query_accum.packet_tracker.expected_next_packet = state[META_NEXT_EXP_PACKET]
+		query_accum.packet_tracker.missing_packets = set(state[META_MISSING_PACKETS])
+
+		query_accum.last_packet_id= state[META_LAST_PACKET_ID]
 
 		return query_accum
 
@@ -136,14 +176,14 @@ class GroupbyStateManager:
 
 		## Changes when serializing ... is ... in fact... also QueryAccumulator 
 		res = serial_acc(query_accum)
-		res[META_MSGS_BATCH] = query_accum.batch_msg_count
+		res[META_VERSION_COUNT_BATCH] = query_accum.batch_ver_count
 
 		# print("------> GOT STATE TO SERIALIZE JSON! ", res)
 		return json.dumps(res).encode()
 
 	def deserialize_changes(self, changes_bytes):
 		res = json.loads(changes_bytes.decode())
-		msg_count = res.pop(META_MSGS_BATCH)
+		msg_count = res.pop(META_VERSION_COUNT_BATCH)
 		return res, msg_count
 
 

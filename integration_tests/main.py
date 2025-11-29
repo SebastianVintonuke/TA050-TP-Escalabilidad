@@ -2,18 +2,18 @@ import unittest
 import logging
 import os
 
-def run_tests_simple(root_folder):
+def run_tests_simple(root_folder, verbosity):
     print(f" Discovering tests in : {root_folder}")
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
     folder_suite = loader.discover(root_folder)
     suite.addTests(folder_suite)
 
-    runner = unittest.TextTestRunner(verbosity=2)
+    runner = unittest.TextTestRunner(verbosity=verbosity)
     result = runner.run(suite)
 
 
-def run_tests(root_folder):
+def run_tests(root_folder, verbosity):
     print(f"Discovering and running tests from {root_folder}")
 
     
@@ -31,7 +31,7 @@ def run_tests(root_folder):
         folder_suite = loader.discover(subfolder, pattern="test_*.py")
         suite.addTests(folder_suite)
     
-        runner = unittest.TextTestRunner(verbosity=2)
+        runner = unittest.TextTestRunner(verbosity=verbosity)
         result = runner.run(suite)
     
     return result
@@ -50,7 +50,8 @@ def initialize_log() -> None:
 def main_tests():
     initialize_log()
     folder = os.getenv("TARGET_FOLDER", "/target_tests")
-    run_tests(folder)
+    verbosity = int(os.getenv("VERBOSITY", "1"))
+    run_tests(folder, verbosity)
     # run_tests_simple(folder)
 
 if __name__ == "__main__":

@@ -13,20 +13,18 @@ class MemoryMessage(Message):
 
 class HashedMemoryMessageBuilder(HashedMessageBuilder):
 
-    def with_credentials(query_id, q_type):
-        return HashedMemoryMessageBuilder(BaseHeaders([query_id], [q_type]), query_id)
+    def with_credentials(query_id, q_type, packet_id = UNDEFINED_PACKET_ID):
+        return HashedMemoryMessageBuilder(BaseHeaders([query_id], [q_type], packet_id = packet_id), query_id)
 
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] = new_type
-            return HashedMemoryMessageBuilder(headers, headers.ids[0])
+            return HashedMemoryMessageBuilder(headers.with_types([new_type]), headers.ids[0])
         return converter
 
     def creator_with_types(*types):
         def converter(headers):
-            headers.types = list(types)
-            headers.ids = [headers.ids[0]] * len(types) # Ensure same count.
-            return HashedMemoryMessageBuilder(headers, headers.ids[0])
+            # headers.ids = [headers.ids[0]] * len(types) # Ensure same count.
+            return HashedMemoryMessageBuilder(headers.with_types_pad(list(types)), headers.ids[0])
         return converter
 
 
