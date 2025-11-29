@@ -7,7 +7,8 @@ services:
     environment:
       - SUPERVISOR_ID=1
       - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
-
+    networks:
+      - testing_net
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./supervisor/config.ini:/config.ini:ro      
@@ -18,6 +19,8 @@ services:
     environment:
       - SUPERVISOR_ID=2
       - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
+    networks:
+      - testing_net
       
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
