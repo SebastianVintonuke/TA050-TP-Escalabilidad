@@ -33,6 +33,7 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["listen_backlog"] = int(
             os.getenv("LISTEN_BACKLOG", config["DEFAULT"]["LISTEN_BACKLOG"])
         )
+        config_params["node_id"] = int(os.getenv("NODE_ID", config["DEFAULT"]["NODE_ID"]))
         config_params["dir_path"] = os.getenv("DIR_PATH", config["DEFAULT"]["DIR_PATH"])
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
@@ -67,6 +68,7 @@ def main() -> None:
     config_params = initialize_config()
     port = config_params["port"]
     listen_backlog = config_params["listen_backlog"]
+    node_id = config_params["node_id"]
     dir_path = config_params["dir_path"]
     logging_level = config_params["logging_level"]
 
@@ -74,12 +76,12 @@ def main() -> None:
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | dir_path: {dir_path} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | listen_backlog: {listen_backlog} | node_id: {node_id} | dir_path: {dir_path} | logging_level: {logging_level}"
     )
 
     while True:
         try:
-            middleware = MessageMiddlewareQueue("middleware", "results")
+            middleware = MessageMiddlewareQueue("middleware", f"results-{node_id}")
             break
         except AMQPConnectionError:
             time.sleep(1)  # Reintentar hasta que RabbitMQ esté disponible
