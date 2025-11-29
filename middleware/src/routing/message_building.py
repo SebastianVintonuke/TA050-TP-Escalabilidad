@@ -17,6 +17,9 @@ class MessageBuilder:
         #assert len(row) == len(fields) # Same size of fields 
         self.payload.append(str(row))
 
+    def add_raw_row(self, row):
+        self.payload.append(row)
+
     def has_payload(self):
         return len(self.payload) > 0
 
@@ -41,9 +44,11 @@ class MessageBuilder:
             yield new_header.to_dict()
             
 
-    def set_as_eof(self, count: int = 0):
+    def set_as_eof(self):
         self.should_be_eof = True
-        self.headers.msg_count = count
+        # For now we have this logic here but should refactor so that caller sets the correct ID!
+        # self.headers.packet_id = count
+        self.headers.msg_count = self.headers.packet_id
 
     def reset_eof(self):
         self.should_be_eof = False
@@ -53,7 +58,10 @@ class MessageBuilder:
         return self.should_be_eof
 
     def set_error(self, code = DEFAULT_ERROR_SIGNAL):
-        self.set_as_eof(DEFAULT_ERROR_SIGNAL if code >=EOF_SIGNAL else code)
+        self.set_as_eof()
+
+        self.headers.msg_count = DEFAULT_ERROR_SIGNAL if code >=EOF_SIGNAL else code
+
 
     def clone(self):
         return MessageBuilder(self.headers.clone())

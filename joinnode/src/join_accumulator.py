@@ -1,10 +1,14 @@
+from common.state_storage.packet_id_tracker import PacketIDTracker
 
 import logging
+# log_info = print
+log_info = logging.info
+
 DEFAULT_LIMIT= 10000
 class JoinAccumulator:
     def __init__(self, type_conf, msg_builder, limit = DEFAULT_LIMIT, ide= ""):
         self.type_conf = type_conf
-        self.msg_builder = msg_builder#type_conf.new_builder_for(msg, ind)
+        self.msg_builder = msg_builder #type_conf.new_builder_for(msg, ind)
         self.msg_builder.reset_eof()# Ensure its not copying the eof flag from input sender
 
         # Also reset packet id to 0... output packet id thing. If restored from state this starting id 
@@ -13,18 +17,46 @@ class JoinAccumulator:
 
         self.left_rows = []
         self.right_rows = []
-        self.left_finished = False
-        self.right_finished = False
         self.limit = limit
-        self.msg_sent = 0
 
-        self.msg_expected_left = -1
-        self.msg_expected_right = -1
 
-        self.msg_count_left = 0
-        self.msg_count_right = 0
-        self.join_id = ide#ide+ self.type_conf.join_id
-        self.batch_msg_count = 0
+        self.left_packet_tracker =PacketIDTracker()
+        self.left_last_packet_id = -1
+        self.left_finished = False
+
+        self.right_packet_tracker =PacketIDTracker()
+        self.right_last_packet_id = -1
+        self.right_finished = False
+
+        self.joiner_id = ide#ide+ self.type_conf.join_id
+
+        self.batch_ver_count = 0
+        self.version_id = 0
+
+    def reload_status(self):
+        # log_info(f"AT reload ... left status? last pck: {self.left_last_packet_id}. exp new:{self.left_packet_tracker.expected_next_packet} .. missing?: {self.left_packet_tracker.missing_packets}")
+
+        self.left_finished = self.left_last_packet_id >=0 and self.left_packet_tracker.handled_all_up_to(self.left_last_packet_id)
+        self.right_finished = self.right_last_packet_id >=0 and self.right_packet_tracker.handled_all_up_to(self.right_last_packet_id)
+
+    def add_result_rows(self, rows):
+        for row in rows:
+            self.msg_builder.add_raw_row(row)
+
+    def set_result_rows(self, rows):
+        self.msg_builder.clear_payload()
+        for row in rows:
+            self.msg_builder.add_raw_row(row)
+
+    def get_out_rows(self):
+        return self.msg_builder.payload
+
+
+    def get_partial_result(self):
+        out = self.msg_builder.clone()
+
+        out.payload = [itm for itm in self.msg_builder.payload]
+        return out
 
     def get_curr_out_id(self):
         return self.msg_builder.headers.packet_id
@@ -43,17 +75,20 @@ class JoinAccumulator:
         return self.msg_builder.len_payload()
 
     def add_joined(self , row):
+
+        # print("--------->ADDING OUT ROW!", row)
         self.msg_builder.add_row(row)
         if self.msg_builder.len_payload() >= self.limit:
+            # print("--------->SENDING PAYLOAD!", self.msg_builder.len_payload() , ">=", self.limit)
             self.type_conf.send(self.msg_builder)
             self.msg_builder.clear_payload()
 
             self.msg_builder.headers.packet_id += 1            
-            self.msg_sent+=1 # With pck id its replaced.
 
     def _trigger_eof_right(self):
         self.right_finished = True
-        logging.info(f"HANDLING EOF RIGHT out types: {self.msg_builder.headers.types} left finished? {self.left_finished}")
+        log_info(f"Join acc: {self.joiner_id} triggered RIGHT EOF left finished? {self.left_finished}")
+
         if self.left_finished:
             self.send_eof()
             return True
@@ -68,7 +103,7 @@ class JoinAccumulator:
 
     def _trigger_eof_left(self):
         self.left_finished = True
-        logging.info(f"HANDLING EOF LEFT {self.type_conf.left_type} out types: {self.msg_builder.headers.types} right finished? {self.right_finished}")
+        log_info(f"Join acc: {self.joiner_id} triggered LEFT EOF {self.type_conf.left_type} right finished? {self.right_finished}")
 
         if self.right_finished:
             self.send_eof()
@@ -83,12 +118,20 @@ class JoinAccumulator:
 
 
 
-    def get_action_for_type(self,type):
+    def get_action_for_type(self,packet_id, type):
         if type == self.type_conf.left_type:
+            if self.left_packet_tracker.is_duplicate(packet_id):
+                return None # Do nothing is a duplicated packet!
+
+
             # Left message actions
             if self.right_finished:
                 return (self.do_join_left_row)
             return (self.add_row_left)
+
+        if self.right_packet_tracker.is_duplicate(packet_id):
+            return None # Do nothing is a duplicated packet!
+
         # Right message actions
         if self.left_finished:
             return (self.do_join_right_row)
@@ -106,46 +149,70 @@ class JoinAccumulator:
         return (self.add_check_msg_right, self.add_row_right)
 
 
-    def add_check_msg_for_type(self, type):
+    def add_check_msg_for_type(self, type, packet_id):
         if type == self.type_conf.left_type:
-            return self.add_check_msg_left()
-        return self.add_check_msg_right()
+            return self.add_check_msg_left(packet_id)
+        return self.add_check_msg_right(packet_id)
 
-    def add_check_msg_left(self):
-        self.msg_count_left+=1
-        if self.msg_expected_left >=0 and self.msg_count_left >= self.msg_expected_left:
-            logging.info(f"Join {self.type_conf.join_id} received final left msg after eof {self.msg_count_left} >= {self.msg_expected_left}(expected)")
+    def add_check_msg_left(self, packet_id):
+        self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
+
+        self.left_packet_tracker.check_new_packet(packet_id)
+
+        left_finished = self.left_last_packet_id>=0 and self.left_packet_tracker.handled_all_up_to(self.left_last_packet_id)
+
+        if left_finished:
+            log_info(f"Join {self.type_conf.join_id} received final left msg {packet_id}, eof packet {self.left_last_packet_id}")
             return self._trigger_eof_left()
+
         return False
 
-    def add_check_msg_right(self):
-        self.msg_count_right+=1
-        if self.msg_expected_right >=0 and self.msg_count_right >= self.msg_expected_right:
-            logging.info(f"Join {self.type_conf.join_id} received final right msg after eof {self.msg_count_right} >= {self.msg_expected_right}(expected)")
+    def add_check_msg_right(self, packet_id):
+        self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
+
+        self.right_packet_tracker.check_new_packet(packet_id)
+
+        right_finished = self.right_last_packet_id>=0 and self.right_packet_tracker.handled_all_up_to(self.right_last_packet_id)
+
+        if right_finished:
+            log_info(f"Join {self.type_conf.join_id} received final right msg {packet_id}, eof packet {self.right_last_packet_id}")
             return self._trigger_eof_right()
+            
+        return False
+
+    def handle_eof_left(self, eof_packet_id):
+        if self.left_finished: # Check for duplicates.. If already finished then it would be one.
+            return self._trigger_eof_left() # Do not add version id or so. But why not check anyway 
+
+        self.left_last_packet_id = eof_packet_id
+        self.left_packet_tracker.check_new_packet(eof_packet_id)
+        self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
+
+        if self.left_packet_tracker.handled_all_up_to(eof_packet_id):
+            return self._trigger_eof_left()
+
+        log_info(f"Join {self.type_conf.join_id} received eof left without receiving all messages, missing: {len(self.left_packet_tracker.missing_packets)}")
         return False
 
 
+    def handle_eof_right(self, eof_packet_id):
+        if self.right_finished: # Check for duplicates.. If already finished then it would be one.
+            return self._trigger_eof_right() # Do not add version id or so. But why not check anyway 
 
+        self.right_last_packet_id = eof_packet_id
+        self.right_packet_tracker.check_new_packet(eof_packet_id)
+        self.version_id += 1 # Inc version by one each msg be it left or right.
+        self.batch_ver_count += 1
 
+        if self.right_packet_tracker.handled_all_up_to(eof_packet_id):
+            return self._trigger_eof_right()
+            
+        log_info(f"Join {self.type_conf.join_id} received eof right without receiving all messages, missing: {len(self.right_packet_tracker.missing_packets)}")
+        return False
 
-    def handle_eof_left(self, msg_count_expected):
-        self.msg_expected_left = msg_count_expected
-        if self.msg_expected_left > self.msg_count_left:
-            logging.info(f"Join {self.type_conf.join_id} received eof left without receiving all messages {self.msg_count_left} < {self.msg_expected_left}(expected)")
-            return False
-        return self._trigger_eof_left()
-        #self.describe()
-
-
-    def handle_eof_right(self, msg_count_expected):
-        self.msg_expected_right = msg_count_expected
-        if self.msg_expected_right > self.msg_count_right:
-            logging.info(f"Join {self.type_conf.join_id} received eof right without receiving all messages {self.msg_count_right} < {self.msg_expected_right}(expected)")
-            return False
-
-        return self._trigger_eof_right()
-        #self.describe()
 
     def do_join_right_row(self, right_row):
         self.type_conf.do_join_right_row(self.left_rows, right_row, self.add_joined)
@@ -168,23 +235,25 @@ class JoinAccumulator:
 
     def send_eof(self): # What happens If the groupbynode fails here/shutdowns here?
         if self.msg_builder.has_payload(): # if it has payload send it
-            self.describe_send()
+            # self.describe_send()
             self.type_conf.send(self.msg_builder)
-            self.msg_sent+=1
-            self.msg_builder.headers.packet_id+=1
             
         eof_signal = self.msg_builder.clone()
-        logging.info(f"EOF SIGNAL TO {eof_signal.headers.types} {eof_signal.headers.ids}")
-        eof_signal.set_as_eof(self.msg_sent)
+        eof_signal.headers.packet_id+=1
+        eof_signal.set_as_eof()
+
+        log_info(f"{self.joiner_id} Send EOF {eof_signal.headers}")
+
+        
         self.type_conf.send(eof_signal)
 
     def describe_send(self):
-        logging.info(f"SENDING TO {self.msg_builder.headers.types} {self.msg_builder.headers.ids}")
+        log_info(f"{self.joiner_id} send remaining: {self.msg_builder.headers}")
         self.describe()
         #for itm in self.msg_builder.payload:
-        #    logging.info(f"ROW {itm}")
+        #    log_info(f"ROW {itm}")
 
     def describe(self):
-        logging.info(f"curr status join finished left:{self.left_finished} right: {self.right_finished}")
-        logging.info(f"row len left:{len(self.left_rows)} right: {len(self.right_rows)}")
-        logging.info(f"joined payload len:{self.msg_builder.len_payload()}")
+        log_info(f"curr status join finished left:{self.left_finished} right: {self.right_finished}")
+        log_info(f"row len left:{len(self.left_rows)} right: {len(self.right_rows)}")
+        log_info(f"joined payload len:{self.msg_builder.len_payload()}")

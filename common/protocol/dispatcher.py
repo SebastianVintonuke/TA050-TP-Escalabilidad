@@ -177,31 +177,31 @@ class DispatcherProtocol:
         if model is Transaction:
             logging.info(f"action: eof_transaction | result: success | count: {counter.counter_transactions}")
             eof_task = CSVMessageBuilder.with_credentials([user_id, user_id, user_id], ["query_1", "query_3", "query_4"], counter.counter_transactions)
-            eof_task.set_as_eof(count= counter.counter_transactions) # If set as 0 assumes all messages were sent. Since it checks if msg received < expected. If it is > then fine
+            eof_task.set_as_eof() # If set as 0 assumes all messages were sent. Since it checks if msg received < expected. If it is > then fine
             self.out_middleware.select_middleware.send(eof_task)
 
         elif model is TransactionItem:
             logging.info(f"action: eof_transaction_item | result: success | count: {counter.counter_transaction_items}")
             eof_task = CSVMessageBuilder.with_credentials([user_id],["query_2"],counter.counter_transaction_items)
-            eof_task.set_as_eof(counter.counter_transaction_items)
+            eof_task.set_as_eof()
             self.out_middleware.select_middleware.send(eof_task)
 
         elif model is MenuItem:
             logging.info(f"action: eof_menu_item | result: success | count: {counter.counter_menu_items}")
             eof_product_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_product_names"], user_id, counter.counter_menu_items)
-            eof_product_task.set_as_eof(counter.counter_menu_items)
+            eof_product_task.set_as_eof()
             self.out_middleware.join_middleware.send(eof_product_task)
     
         elif model is User:
             logging.info(f"action: eof_user | result: success | count: {counter.counter_user}")
             eof_user_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_users"], user_id, counter.counter_user)
-            eof_user_task.set_as_eof(counter.counter_user)
+            eof_user_task.set_as_eof()
             self.out_middleware.join_middleware.send(eof_user_task)
 
         elif model is Store:
             logging.info(f"action: eof_store | result: success | count: {counter.counter_store}")
             eof_store_task = CSVHashedMessageBuilder.with_credentials([user_id], ["query_store_names"], user_id, counter.counter_store)
-            eof_store_task.set_as_eof(counter.counter_store)
+            eof_store_task.set_as_eof()
             self.out_middleware.join_middleware.send(eof_store_task)
 
 
@@ -211,5 +211,5 @@ class DispatcherProtocol:
 
 
     def __remove_request_register_from_local_storage(self, user_id: str) -> None:
-        self._state_storage.unregister_packet(user_id)
+        self._state_storage.unregister_query(user_id)
         logging.info(f"action: remove_request_register | result: success")

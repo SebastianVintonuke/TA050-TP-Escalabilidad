@@ -88,6 +88,7 @@ class MockCopyMiddleware(MockMiddleware):
     def send(self, msg):
         cloned = msg.clone()
         cloned.payload = [itm for itm in msg.payload]
+        
         super().send(cloned)
 
 
@@ -96,7 +97,7 @@ class MockMessageBuilder(HashedMessageBuilder):
     def default():
         return MockMessageBuilder(None, -1)
     def __init__(self, msg, ind):
-        super().__init__(BaseHeaders.default(), "")
+        super().__init__(BaseHeaders.default(), "_1")
         self.msg_from = msg
         self.ind = ind
 
@@ -106,66 +107,66 @@ class MockMessageBuilder(HashedMessageBuilder):
 
     def clone(self):
         msg = MockMessageBuilder(self.msg_from, self.ind)
+        msg.key_hash = self.key_hash
         msg.headers = self.headers.clone()
         return msg
 
 
 class BareMockMessageBuilder(HashedMessageBuilder):
-    def default():
-        return BareMockMessageBuilder(BaseHeaders.default())
+    def default(packet_id = 0):
+        return BareMockMessageBuilder(BaseHeaders(["id_1"], [], packet_id = packet_id), "")
 
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] =new_type
-            return BareMockMessageBuilder(headers)
+            return BareMockMessageBuilder(headers.with_types([new_type]), headers.ids[0])
 
         return converter    
 
-    def for_payload(ids, types, rows, mapper):
-        res = BareMockMessageBuilder(BaseHeaders(ids, types))
+    def for_payload(ids, types, rows, mapper, packet_id = 0):
+        res = BareMockMessageBuilder(BaseHeaders(ids, types, packet_id = packet_id), ids[0])
         
         for row in rows:
             res.add_row(mapper(row))
 
         return res
 
-    def __init__(self, headers):
-        super().__init__(headers, "")
+    def __init__(self, headers, key_hash = None):
+        super().__init__(headers, key_hash if key_hash else headers.ids[0])
     def add_row(self, row):
         self.payload.append(row)
 
     def clone(self):
-        return BareMockMessageBuilder(self.headers.clone())
+        return BareMockMessageBuilder(self.headers.clone(), self.key_hash)
 
 
 
 
 class BareMockMessageBuilderNoSerial(BareMockMessageBuilder):
-    def default():
-        return BareMockMessageBuilderNoSerial(BaseHeaders.default())
+    def default(packet_id = 0):
+        return BareMockMessageBuilderNoSerial(BaseHeaders(["id_1"], [],packet_id = packet_id), "")
 
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] =new_type
-            return BareMockMessageBuilderNoSerial(headers)
+            return BareMockMessageBuilderNoSerial(headers.with_types([new_type]), headers.ids[0])
 
         return converter    
 
-    def for_payload(ids, types, rows, mapper):
-        res = BareMockMessageBuilderNoSerial(BaseHeaders(ids, types))
+    def for_payload(ids, types, rows, mapper, packet_id = 0):
+        res = BareMockMessageBuilderNoSerial(BaseHeaders(ids, types, packet_id = packet_id), ids[0])
         
         for row in rows:
             res.add_row(mapper(row))
 
         return res
 
-    def __init__(self, headers):
-        super().__init__(headers)
+    def __init__(self, headers, key_hash = None):
+        super().__init__(headers,key_hash if key_hash else headers.ids[0])
 
     def serialize_payload(self):
         return self.payload
+
     def clone(self):
-        return BareMockMessageBuilderNoSerial(self.headers.clone())
+        return BareMockMessageBuilderNoSerial(self.headers.clone(), self.key_hash)
 
 
 def identity(itm):
@@ -184,6 +185,5 @@ class MockMessage(Message):
         self._set_eof()
         self.partition =code # Negative partition es eof, be it an error or actual eof.
 
-    def set_as_eof(self, count= 1):
+    def set_as_eof(self):
         self._set_eof()
-        self.partition = count

@@ -21,17 +21,13 @@ class CSVMessageBuilder(MessageBuilder):
 
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] =new_type
-            return CSVMessageBuilder(headers)
+            return CSVMessageBuilder(headers.with_types([new_type]))
 
         return converter
 
     def creator_with_types(*types):
         def converter(headers):
-            headers.types = list(types)
-            headers.ids = [headers.ids[0]] * len(types) # Ensure same count.
-            
-            return CSVMessageBuilder(headers)
+            return CSVMessageBuilder(headers.with_types_pad(list(types)))
 
         return converter
 
@@ -55,15 +51,12 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
 
     def creator_with_type(new_type):
         def converter(headers):
-            headers.types[0] = new_type
-            return CSVHashedMessageBuilder(headers, headers.ids[0])
+            return CSVHashedMessageBuilder(headers.with_types([new_type]), headers.ids[0])
         return converter
 
     def creator_with_types(*types):
         def converter(headers):
-            headers.types = list(types)
-            headers.ids = [headers.ids[0]] * len(types) # Ensure same count.
-            return CSVHashedMessageBuilder(headers, headers.ids[0])
+            return CSVHashedMessageBuilder(headers.with_types_pad(list(types)), headers.ids[0])
         return converter
 
 

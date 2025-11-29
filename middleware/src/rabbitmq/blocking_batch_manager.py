@@ -4,8 +4,11 @@ import logging
 import threading
 from ..routing.csv_message import CSVMessageBuilder, CSVMessage
 from ..routing.header_fields import BaseHeaders
+from ..routing.batch_ack_actions import BatchingACKManager
 
 from .blocking_manager import RabbitMQManager,RabbitMQChannel
+
+# import traceback
 
 DEFAULT_EXCHANGE = ''
 CONNECTIONS_ATTMPS = 10
@@ -19,30 +22,19 @@ class BatchedRabbitMQChannel(RabbitMQChannel):
 
 	def _callback_wrapper(self, callback):
 
-		msgs_to_ack = []
+		map_ack_groups = BatchingACKManager()
 		def real_callback(ch, method, properties, body):
 			headers = BaseHeaders.from_headers(properties.headers)
 			try:
 				# headers.tag = method.delivery_tag
-				accum_to_batch = callback(headers, body) # Handle msg
+				ack_info = callback(headers, body) # Handle msg
 
-				msgs_to_ack.append(method.delivery_tag)
+				if ack_info == None: # Retu == None == auto ack only this packet.
+					ch.basic_ack(delivery_tag=method.delivery_tag)
+					return
 
-				if accum_to_batch == False: # If told not to accumulate then send nacks.
-					
-					for tag in msgs_to_ack:						
-						# If msg failed, requeue is desired else throw exception(for now?)
-						ch.basic_nack(delivery_tag=tag, requeue=True)
-					msgs_to_ack.clear()
-
-				elif accum_to_batch == None: # No return functions do by default auto ack messages.. return True to avoid auto acking i.e accumulate in a batch
-					
-					for tag in msgs_to_ack:			
-
-						# If msg failed, requeue is desired else throw exception(for now?)
-						ch.basic_ack(delivery_tag=tag)
-					msgs_to_ack.clear()
-
+				# Ack info includes a ack_group for acks and the action i.e wether accumulate, ack or nack. == None means accumulate
+				map_ack_groups.new_ack_info(method.delivery_tag, ch, *ack_info)
 
 			except Exception as e:
 				logging.error(f"Message handling failed {headers}")
@@ -50,6 +42,7 @@ class BatchedRabbitMQChannel(RabbitMQChannel):
 				logging.error(f"msg method: {method} prop: {properties}")
 				logging.error(f"payload: {body[:min(50,len(body))]} error: {e}")
 				ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)	
+				# traceback.print_exc()
 
 
 		return real_callback

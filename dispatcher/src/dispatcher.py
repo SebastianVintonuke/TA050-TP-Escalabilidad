@@ -131,5 +131,5 @@ class DispatcherServer:
         out_middleware = OutMiddleware()
         for user_id in state.keys():
             out_middleware.send_abort_for(user_id)
-            self._query_state_storage.unregister_packet(user_id)
+            self._query_state_storage.unregister_query(user_id)
         logging.info(f"action: clean_local_storage | result: success")
