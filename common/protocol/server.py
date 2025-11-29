@@ -54,4 +54,4 @@ class ServerProtocol:
         address = self._results_storages[index]
         self._byte_protocol.send_bytes(address.encode("utf-8"))
         self._signal_protocol.wait_signal()
-        logging.info(f"action: assign_results_storage_address | result: success | assigned: {address}")
+        logging.info(f"action: assign_results_storage_address | result: success | client_id: {client_id} | assigned: {address}")

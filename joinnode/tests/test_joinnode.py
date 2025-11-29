@@ -149,7 +149,9 @@ class TestJoinAccumulator(unittest.TestCase):
         # EOFS LEFT
 
         eof_message = BareMockMessageBuilder.for_payload(["user_id"],["LEFT"],[], lambda r: r) 
-        eof_message.set_as_eof(1)
+        
+        eof_message.packet_id=1
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)
 
         # LIMITED BY LIMIT 
@@ -158,7 +160,9 @@ class TestJoinAccumulator(unittest.TestCase):
         # EOFS RIGHT
         #FINAL EOF
         eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT"],[], lambda r: r) 
-        eof_message.set_as_eof(1)
+        
+        eof_message.packet_id=1
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)        
 
         self.assertEqual(len(result_grouper.msgs), 2)
@@ -246,7 +250,9 @@ class TestJoinAccumulator(unittest.TestCase):
 
         #FINAL EOF
         eof_message = BareMockMessageBuilder.for_payload(["user_id"],["LEFT"],[], lambda r: r) 
-        eof_message.set_as_eof(1)
+        
+        eof_message.packet_id=1
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)        
 
         self.assertEqual(node.len_in_progress(), 1)
@@ -260,7 +266,9 @@ class TestJoinAccumulator(unittest.TestCase):
 
         # EOFS RIGHT
         eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT"],[], lambda r: r) 
-        eof_message.set_as_eof(1)
+        
+        eof_message.packet_id=1
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)        
 
         self.assertEqual(len(result_grouper.msgs), 2)
@@ -367,7 +375,9 @@ class TestJoinAccumulator(unittest.TestCase):
 
         # EOFS LEFT
         eof_message = BareMockMessageBuilder.for_payload(["user_id"],["LEFT"],[], lambda r: r) 
-        eof_message.set_as_eof(1)
+        
+        eof_message.packet_id=1
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)        
 
         # LIMITED BY LIMIT 
@@ -375,7 +385,9 @@ class TestJoinAccumulator(unittest.TestCase):
 
         #FINAL EOF
         eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT"],[], lambda r: r) 
-        eof_message.set_as_eof(1)
+        
+        eof_message.packet_id=1
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)        
 
         self.assertEqual(len(result_grouper.msgs),2)
@@ -401,7 +413,9 @@ class TestJoinAccumulator(unittest.TestCase):
 
         #FINAL EOF
         eof_message = BareMockMessageBuilder.for_payload(["user_id"],["RIGHT2"],[], lambda r: r) 
-        eof_message.set_as_eof(1)
+        
+        eof_message.packet_id=1
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)        
 
         self.assertEqual(len(result_grouper2.msgs), 2)

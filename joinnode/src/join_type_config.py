@@ -68,6 +68,10 @@ class JoinTypeConfiguration:
         self.middleware = out_middleware
 
     def send(self, builder):
+        # logging.info(f"-----------------------------------------------")
+        logging.info(f"Sending payload len: {builder.len_payload()} {builder.headers}")
+        # logging.info(f"{builder.payload}")
+
         return self.middleware.send(builder)
 
     def do_join_left_row(self, right_rows, left_row, join_receiver):

@@ -77,13 +77,13 @@ class TestTopKNode(unittest.TestCase):
         in_middle.push_msg(message)
 
         #Partition eof
-        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f) 
-        eof_message.set_as_eof(1)
+        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f, packet_id = 1) 
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)
 
 
         self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
-
+        message.headers.packet_id = 0 # Expected id = 0 for recv packet
         for ind, exp_out_headers in enumerate(message.headers.split()):
             self.assertEqual(
                 result_grouper.msgs[ind].headers.to_dict(), 
@@ -150,12 +150,13 @@ class TestTopKNode(unittest.TestCase):
         in_middle.push_msg(message)
 
         #Partition eof
-        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f) 
-        eof_message.set_as_eof(1)
+        eof_message = BareMockMessageBuilder.for_payload(["query_3323"],["t1"],[], map_f, packet_id = 1) 
+        eof_message.set_as_eof()
         in_middle.push_msg(eof_message)
 
         self.assertEqual(len(result_grouper.msgs), message.headers.len_queries() *2) # Include eof for each type
 
+        message.headers.packet_id = 0 # Expected id = 0 for recv packet
         for ind, exp_out_headers in enumerate(message.headers.split()):
             self.assertEqual(
                 result_grouper.msgs[ind].headers.to_dict(), 

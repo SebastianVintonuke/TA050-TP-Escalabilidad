@@ -28,7 +28,7 @@ class TopKTypeConfiguration:
 			msg_builder.add_row(self.mapper.project_out(row))
 
 	def send(self, builder):
-		logging.info(f"TOPK SENDING TO {builder.headers.types} {builder.headers.ids} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
+		logging.info(f"TOPK SENDING {builder.headers} len: {builder.len_payload()} eof? {builder.headers.is_eof()}")
 		#for itm in builder.payload:
 		#	logging.info(f"ROW {itm}")
 			

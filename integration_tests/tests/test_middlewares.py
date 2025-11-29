@@ -13,6 +13,7 @@ from middleware.memory_middleware import *
 from common.config.row_filtering import *
 from middleware.rabbitmq import utils as rbmq_utils
 from integration_tests.src.mocks_rabbit import *
+from middleware.routing import batch_ack_actions as batch_actions
 
 def map_dict_to_vect(row):
     return [row["year"], row["hour"], row["sum"]]
@@ -155,7 +156,7 @@ class TestMiddlewares(unittest.TestCase):
         msg_build = CSVHashedMessageBuilder(
             BaseHeaders(["8845cdaa-d230-4453-bbdf-0e4f783045bf,76.5"],
             ["query_1"]),
-            "hash_base",
+            "hash_base_1",
         )
 
         hashed_id = msg_build.hash_in(COUNT_NODES)
@@ -262,7 +263,9 @@ class TestMiddlewares(unittest.TestCase):
             out_msgs.append(MessageHolder(headers, payload))
 
             if len(out_msgs) < 2:
-                return True # Do not ack!
+                return ("g1", batch_actions.ACCUMULATE_ACTION) 
+
+            return ("g1", batch_actions.FINISH_ACTION)
 
         middleware.start_consuming(batch_handle) # return None.... that is for auto ack! i.e batch ack
 

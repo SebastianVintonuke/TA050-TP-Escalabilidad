@@ -47,6 +47,7 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["node_id"] = os.getenv(
             "RESULT_NODE_ID", config["DEFAULT"]["RESULT_NODE_ID"]
         )
+        config_params["results_storages_count"] = int(os.getenv("RESULTS_STORAGES_COUNT", config["DEFAULT"]["RESULTS_STORAGES_COUNT"]))
         config_params["logging_level"] = os.getenv(
             "LOGGING_LEVEL", config["DEFAULT"]["LOGGING_LEVEL"]
         )
@@ -80,6 +81,7 @@ def initialize_log(logging_level: int) -> None:
 def main(config_params) -> None:
     port = config_params["port"]
     node_id = config_params["node_id"]
+    results_storages_count = config_params["results_storages_count"]
     logging_level = config_params["logging_level"]
 
     node_folder= "/etc/node_state/resultnode"
@@ -88,13 +90,16 @@ def main(config_params) -> None:
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | port: {port} | node_id: {node_id} | logging_level: {logging_level}"
+        f"action: config | result: success | port: {port} | node_id: {node_id} | results_storages_count: {results_storages_count} | logging_level: {logging_level}"
     )
 
     logging.debug(f"Using for resultnode state: {node_folder}")
 
     in_middle = ResultNodeMiddleware()
-    out_middle = MessageMiddlewareQueue("middleware", "results")
+    out_middle: List[MessageMiddlewareQueue] = []
+
+    for n in range(1, results_storages_count + 1):
+        out_middle.append(MessageMiddlewareQueue("middleware", f"results-{n}"))
 
     handlers = {
         QUERY_1: HandlerQuery1,
