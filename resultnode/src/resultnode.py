@@ -120,7 +120,10 @@ class ResultNode:
 		self.state_storage.push_changes(user_query_id, counter.version_id, counter, counter.batch_ver_count)
 
 	def out_middle_for(self, client_id: str) -> MessageMiddlewareQueue:
-		index = stable_hash(client_id) % len(self.out_middle)
+		ind_query = client_id.split("_")[-1]
+		log_info(f"GOT OUT MIDDLE FOR {ind_query}")
+
+		index = int(ind_query) % len(self.out_middle)
 		return self.out_middle[index]
 
 	def start(self):

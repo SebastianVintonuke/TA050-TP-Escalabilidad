@@ -55,6 +55,7 @@ services:
       - ./results/config.ini:/config.ini:ro
       - ./.data/storage/results_1:/results/storage
       - ./config_health.ini:/config_health.ini:ro
+      - ./.data/states/:/etc/node_state
 
   results2:
     container_name: results2
@@ -73,6 +74,7 @@ services:
       - ./results/config.ini:/config.ini:ro
       - ./.data/storage/results_2:/results/storage
       - ./config_health.ini:/config_health.ini:ro
+      - ./.data/states/:/etc/node_state
 
   server:
     container_name: server

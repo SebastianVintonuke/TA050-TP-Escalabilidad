@@ -13,7 +13,7 @@ from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
 from common.state_storage.nothing_state_storage import NothingQueryStateStorage
 from common.state_storage.query_state_storage import QueryStateStorage
-from .duplicated_state_handler import ResultStateManager, ResultQueryTracker
+from .result_data_state_handler import ResultStateManager, ResultQueryTracker
 
 from .storage import ResultStorage
 
@@ -59,7 +59,7 @@ class ResultServer:
             target=self.__handle_consumer_connection
         )
         self._results_storage = ResultStorage(dir_path)
-        self.duplicated_metadata_map = {}
+        self.results_metadata_map = {}
         self.data_storage = store_creator(ResultStateManager(self.get_data_storage))
         self.start_data_storage()
 
@@ -171,7 +171,14 @@ class ResultServer:
             result_task = ResultTask.from_bytes(data)
             self._results_storage.handle(result_task)
 
-            tracker = self.get_data_storage(f"{result_task.user_id}_{result_task.query_id}")
+            user_query_id = f"{result_task.user_id}_{result_task.query_id}"
+            tracker = self.results_metadata_map.get(user_query_id, None)
+            if tracker == None:
+                #user_id, query_type = get_credentials(user_query_id)
+                tracker = ResultQueryTracker(user_query_id)
+                self.results_metadata_map[user_query_id] = tracker
+                self.data_storage.register_query(user_query_id, tracker)
+                
             tracker.version_id += 1
 
             for line in result_task.data:
@@ -186,18 +193,19 @@ class ResultServer:
             logging.error(f"action: message_callback | result: fail | error: {e}")
 
     def get_data_storage(self, user_query_id: str):
-        counter = self.duplicated_metadata_map.get(user_query_id, None)
-        if counter == None:
+        tracker = self.results_metadata_map.get(user_query_id, None)
+        if tracker == None:
             #user_id, query_type = get_credentials(user_query_id)
-            counter = ResultQueryTracker(user_query_id)
-            self.duplicated_metadata_map[user_query_id] = counter
+            tracker = ResultQueryTracker(user_query_id)
+            self.results_metadata_map[user_query_id] = tracker
 
-        return counter
+        return tracker
 
 
     def start_data_storage(self):
+        logging.info("Starting result data storage....")
         for user_query_id, (version_id, query_tracker) in self.data_storage.load_states().items():
+            logging.info(f"Restoring state of {user_query_id} has version {version_id}")
             query_tracker.version_id = version_id
-
         self.data_storage.check_integrity()
 
