@@ -121,7 +121,6 @@ class ResultNode:
 
 	def out_middle_for(self, client_id: str) -> MessageMiddlewareQueue:
 		ind_query = client_id.split("_")[-1]
-		log_info(f"GOT OUT MIDDLE FOR {ind_query}")
 
 		index = int(ind_query) % len(self.out_middle)
 		return self.out_middle[index]

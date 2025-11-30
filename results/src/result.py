@@ -169,17 +169,52 @@ class ResultServer:
     ) -> None:
         try:
             result_task = ResultTask.from_bytes(data)
+            # logging.info(f"action: rcv_msg | action: in-progress | msg: {result_task.user_id} | {result_task.query_id}")
             self._results_storage.handle(result_task)
 
             user_query_id = f"{result_task.user_id}_{result_task.query_id}"
+
+
+            if result_task.abort:
+                logging.info(f"action: abort | action: in-progress | result: {result_task.user_id} | {result_task.query_id}")
+
+                tracker = self.results_metadata_map.pop(user_query_id, None)
+                if tracker != None:
+
+                    # Clean up state!
+                    self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker) # For debugging/final reviewing purposes
+                    self.data_storage.unregister_query(user_query_id)
+
+                # Do it at the end the cancel so that If it crashes in the middle it wont ignore the need to free space.
+                self.data_storage.cancel_query(user_query_id)
+                channel.basic_ack(deliver.delivery_tag)
+
+                return
+
+
             tracker = self.results_metadata_map.get(user_query_id, None)
             if tracker == None:
                 #user_id, query_type = get_credentials(user_query_id)
                 tracker = ResultQueryTracker(user_query_id)
                 self.results_metadata_map[user_query_id] = tracker
                 self.data_storage.register_query(user_query_id, tracker)
-                
             tracker.version_id += 1
+
+
+            if result_task.eof:
+                logging.info(
+                    f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
+                )
+                # out_middle.send(handler.get_eof_msg(user_id))
+
+                self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker)
+                
+                # If it was actually the eof... then unregister
+                self.data_storage.unregister_query(user_query_id)
+                del self.results_metadata_map[user_query_id]
+                channel.basic_ack(deliver.delivery_tag)
+
+                return
 
             for line in result_task.data:
                 tracker.data.append(str(line))
