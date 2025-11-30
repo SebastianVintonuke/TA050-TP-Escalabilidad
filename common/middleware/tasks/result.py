@@ -8,12 +8,13 @@ from common.utils import query_result_for
 class ResultTask:
     TASK_ID: ClassVar[str] = "RESULT"
 
-    def __init__(self, user_id: str, query_id: QueryId, eof: bool, abort: bool, data: Sequence[QueryResult]):
+    def __init__(self, user_id: str, query_id: QueryId, eof: bool, abort: bool, data: Sequence[QueryResult], packet_id: int = -1):
         self.user_id = user_id
         self.query_id = query_id
         self.eof = eof
         self.abort = abort
         self.data = data
+        self.packet_id = packet_id
 
     @classmethod
     def from_bytes(cls, data: bytes) -> "ResultTask":
@@ -21,7 +22,7 @@ class ResultTask:
         lines = decoded.split("\n")
 
         header = lines[0]
-        user_id, query_id_str, task_id, eof_str, abort_str = header.split("|")
+        user_id, query_id_str, task_id, eof_str, abort_str, packet_id_str = header.split("|")
 
         if task_id != cls.TASK_ID:
             raise ValueError(f"Invalid task_id: {task_id}, expected {cls.TASK_ID}")
@@ -38,12 +39,12 @@ class ResultTask:
             if line.strip():
                 query_results.append(query_result.from_bytes(line.encode("utf-8")))
 
-        return cls(user_id, query_id, eof, abort, query_results)
+        return cls(user_id, query_id, eof, abort, query_results, int(packet_id_str))
 
     def to_bytes(self) -> bytes:
         return self.__str__().encode("utf-8")
 
     def __str__(self) -> str:
-        header = f"{self.user_id}|{self.query_id}|{self.TASK_ID}|{self.eof}|{self.abort}"
+        header = f"{self.user_id}|{self.query_id}|{self.TASK_ID}|{self.eof}|{self.abort}|{self.packet_id}"
         body = "\n".join(str(query_result) for query_result in self.data)
         return f"{header}\n{body}"

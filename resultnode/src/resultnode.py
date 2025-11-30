@@ -102,12 +102,12 @@ class ResultNode:
 			log_info(f"Received expected message count for '{user_query_id}', last packet is {headers.packet_id} missing: {counter.packet_tracker.missing_packets}")
 		else:
 			msg = self.payload_deserializer(msg)
-			out_middle.send(handler.handle_new_results(msg,  user_id))
+			out_middle.send(handler.handle_new_results(msg,  user_id, headers.packet_id))
 		counter.version_id +=1 # Add 1 to version even on final eof or so
 
 		if counter.is_eof():
 			log_info(f"Query '{user_query_id}' finished last: {headers.packet_id}, freeing saved state.")
-			out_middle.send(handler.get_eof_msg(user_id))
+			out_middle.send(handler.get_eof_msg(user_id, headers.packet_id))
 
 			# If it was actually the eof... then unregister
 			self.state_storage.backup_query_final(user_query_id, counter.version_id , counter)

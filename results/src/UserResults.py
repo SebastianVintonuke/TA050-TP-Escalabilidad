@@ -63,19 +63,25 @@ class UserResult:
                     line = r.to_bytes() + b"\n"
                     f.write(line)
 
-    def mark_ready(self, src_file: Path, query_id: QueryId) -> None:
+    def is_ready(self, query_id: QueryId):
+        return self._query_states[query_id]["ready"]
+
+    def mark_ready(self, tracker, query_id: QueryId) -> None:
         file_name = file_name_for(query_id)
 
         temp_file = self._base_dir / f"{file_name}"
 
-        shutil.copy(src_file, temp_file)
+        with temp_file.open("ab") as f:
+            for r in tracker.data:
+                line = r.encode() + b"\n"
+                f.write(line)
 
         dst = self._base_dir / f"ready_{file_name}"
         with self._query_states[query_id]["lock"]:
             if dst.exists():
                 return # 2 EOF
             temp_file.rename(dst)
-            
+
         with self._all_queries_are_ready:
             self._query_states[query_id]["ready"] = True
             self._all_queries_are_ready.notify_all()

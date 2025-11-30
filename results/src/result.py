@@ -171,12 +171,25 @@ class ResultServer:
             result_task = ResultTask.from_bytes(data)
             user_query_id = f"{result_task.user_id}_{result_task.query_id}"
 
+            # logging.info(f"recv_msg: {result_task.user_id} | {result_task.query_id} | {user_query_id}, pck_id: {result_task.packet_id}")
             if self.data_storage.is_cancelled_query(user_query_id):
-                log_info(f"Query '{user_query_id}' type: {query_type}, was cancelled so ignore message")
+                logging.info(f"Query '{user_query_id}' type: {result_task.query_id}, was cancelled so ignore message")
+
                 channel.basic_ack(deliver.delivery_tag)
+
                 return
 
+            user_result = self._results_storage.get_or_create_user(result_task.user_id)
 
+            if user_result.is_ready(result_task.query_id):
+                logging.info(f"Query '{user_query_id}' type: {result_task.query_id}, was already finished, so just ack")
+
+                tracker = self.results_metadata_map.pop(user_query_id, None)
+                if tracker != None:
+                    self.data_storage.unregister_query(user_query_id)
+                
+                channel.basic_ack(deliver.delivery_tag)
+                return
 
             if result_task.abort:
                 logging.info(f"action: abort | action: in-progress | result: {result_task.user_id} | {result_task.query_id}")
@@ -190,6 +203,7 @@ class ResultServer:
 
                 # Do it at the end the cancel so that If it crashes in the middle it wont ignore the need to free space.
                 self.data_storage.cancel_query(user_query_id)
+
                 channel.basic_ack(deliver.delivery_tag)
 
                 return
@@ -202,34 +216,63 @@ class ResultServer:
                 self.results_metadata_map[user_query_id] = tracker
                 self.data_storage.register_query(user_query_id, tracker)
 
+            elif tracker.packet_tracker.is_duplicate(result_task.packet_id):
+                logging.info(f"Received duplicate message for {result_task} '{user_query_id}', {result_task.packet_id}, {tracker.packet_tracker.missing_packets} {tracker.packet_tracker.expected_next_packet}")
+                if result_task.eof:
+                    logging.info(
+                        f"action: query_eof | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
+                    )
+
+                    tracker.last_packet_id = result_task.packet_id
+                    
+                    if tracker.is_eof():
+                        logging.info(
+                            f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
+                        )
+                        # self.data_storage.state_file(user_query_id, tracker.version_id)
+                        user_result.mark_ready(
+                                tracker,
+                                result_task.query_id)
+
+                        # self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker)
+                        # If it was actually the eof... then unregister
+                        self.data_storage.unregister_query(user_query_id)
+                        del self.results_metadata_map[user_query_id]
+
+
+                channel.basic_ack(deliver.delivery_tag)
+                return
+
+            tracker.packet_tracker.check_new_packet(result_task.packet_id)
+            tracker.version_id += 1
 
             if result_task.eof:
                 logging.info(
+                    f"action: query_eof | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
+                )
+
+                tracker.last_packet_id = result_task.packet_id
+            else:
+                for line in result_task.data:
+                    tracker.data.append(str(line))
+
+            self.data_storage.write_changes(tracker.user_query_id, tracker.version_id, tracker)
+            self.data_storage.commit_changes(tracker.user_query_id)
+            self.data_storage.push_changes(tracker.user_query_id, tracker.version_id, tracker, tracker.batch_ver_count)
+
+            if tracker.is_eof():
+                logging.info(
                     f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
                 )
-                # out_middle.send(handler.get_eof_msg(user_id))
-
-                self._results_storage.mark_ready(
-                    self.data_storage.state_file(user_query_id, tracker.version_id),
-                    result_task
-                    )
+                # self.data_storage.state_file(user_query_id, tracker.version_id)
+                user_result.mark_ready(
+                        tracker,
+                        result_task.query_id)
 
                 # self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker)
                 # If it was actually the eof... then unregister
                 self.data_storage.unregister_query(user_query_id)
                 del self.results_metadata_map[user_query_id]
-                channel.basic_ack(deliver.delivery_tag)
-
-                return
-
-            tracker.version_id += 1
-
-            for line in result_task.data:
-                tracker.data.append(str(line))
-
-            self.data_storage.write_changes(tracker.user_query_id, tracker.version_id, tracker)
-            self.data_storage.commit_changes(tracker.user_query_id)
-            self.data_storage.push_changes(tracker.user_query_id, tracker.version_id, tracker, tracker.batch_ver_count)
 
             channel.basic_ack(deliver.delivery_tag)
         except Exception as e:
@@ -238,7 +281,6 @@ class ResultServer:
     def get_data_storage(self, user_query_id: str):
         tracker = self.results_metadata_map.get(user_query_id, None)
         if tracker == None:
-            #user_id, query_type = get_credentials(user_query_id)
             tracker = ResultQueryTracker(user_query_id)
             self.results_metadata_map[user_query_id] = tracker
 
@@ -248,7 +290,27 @@ class ResultServer:
     def start_data_storage(self):
         logging.info("Starting result data storage....")
         for user_query_id, (version_id, query_tracker) in self.data_storage.load_states().items():
-            logging.info(f"Restoring state of {user_query_id} has version {version_id}")
             query_tracker.version_id = version_id
         self.data_storage.check_integrity()
+
+
+        finished = []
+        for user_query_id, tracker in self.results_metadata_map.items():
+            if tracker.is_eof():
+                finished.append((user_query_id, tracker))
+            else:
+                logging.info(f"Restoring state of {user_query_id} has version {tracker.version_id}")
+
+        for user_query_id, tracker in finished:
+            user_id, query_id = get_credentials(user_query_id)
+            logging.info(f"When restoring state of {user_query_id} it was ready with version: {tracker.version_id} with query id '{query_id}'")
+            
+            user_result = self._results_storage.get_or_create_user(user_id)
+
+            user_result.mark_ready(
+                    tracker, query_id)
+
+            self.data_storage.unregister_query(user_query_id)
+            del self.results_metadata_map[user_query_id]
+
 

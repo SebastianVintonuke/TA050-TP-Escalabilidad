@@ -46,19 +46,12 @@ class ResultStorage:
 
 
 
-    def __get_or_create_user(self, user_id: str) -> UserResult:
+    def get_or_create_user(self, user_id: str) -> UserResult:
         with self._users_lock:
             if user_id not in self._users:
                 user_dir = self._dir_path / user_id
                 self._users[user_id] = UserResult(user_dir)
             return self._users[user_id]
-
-
-    def mark_ready(self, src : Path, result_task: ResultTask): # src_file
-        self.__get_or_create_user(result_task.user_id).mark_ready(
-            src, result_task.query_id
-        )
-
 
     # def handle(self, result_task: ResultTask) -> None:
     #     if result_task.abort:
@@ -66,11 +59,11 @@ class ResultStorage:
     #         self.__delete_results(result_task.user_id)
     #         return
 
-    #     self.__get_or_create_user(result_task.user_id).append(
+    #     self.get_or_create_user(result_task.user_id).append(
     #         result_task.query_id, result_task.data
     #     )
     #     if result_task.eof:
-    #         self.__get_or_create_user(result_task.user_id).mark_ready(
+    #         self.get_or_create_user(result_task.user_id).mark_ready(
     #             result_task.query_id
     #         )
     #         logging.info(

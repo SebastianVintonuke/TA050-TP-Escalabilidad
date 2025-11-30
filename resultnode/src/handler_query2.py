@@ -10,7 +10,7 @@ import logging
 
 
 class HandlerQuery2BestSelling:
-    def handle_new_results(msg, user_id: str) -> bytes:
+    def handle_new_results(msg, user_id: str, packet_id) -> bytes:
 
         data: List[QueryResult2BestSelling] = []
         for line in msg.stream_rows():
@@ -23,17 +23,17 @@ class HandlerQuery2BestSelling:
             sellings_qty: int = int(float(line[2]))
             #logging.info(f"type: {msg.types[0]}: {year_month_created_at}, {item_name}, {sellings_qty}")
             data.append(QueryResult2BestSelling(year_month_created_at=year_month_created_at, item_name=item_name, sellings_qty=sellings_qty))
-        return ResultTask(user_id, QueryId.Query2BestSelling, False, False, data).to_bytes()
+        return ResultTask(user_id, QueryId.Query2BestSelling, False, False, data, packet_id).to_bytes()
 
-    def get_eof_msg(user_id):
-        return ResultTask(user_id, QueryId.Query2BestSelling, True, False, []).to_bytes()
+    def get_eof_msg(user_id, packet_id):
+        return ResultTask(user_id, QueryId.Query2BestSelling, True, False, [], packet_id).to_bytes()
 
     def get_abort_msg(user_id):
         return ResultTask(user_id, QueryId.Query2BestSelling, True, True, []).to_bytes()
 
 
 class HandlerQuery2MostProfit:
-    def handle_new_results(msg, user_id: str) -> bytes:
+    def handle_new_results(msg, user_id: str, packet_id) -> bytes:
         data: List[QueryResult2MostProfit] = []
         for line in msg.stream_rows():
             #logging.info(f"Q_2_prof {line}")
@@ -45,10 +45,10 @@ class HandlerQuery2MostProfit:
             profit_sum: float = line[2]
             #logging.info(f"type: {msg.types[0]}: {year_month_created_at}, {item_name}, {profit_sum}")
             data.append(QueryResult2MostProfit(year_month_created_at=year_month_created_at, item_name=item_name, profit_sum=profit_sum))
-        return ResultTask(user_id, QueryId.Query2MostProfit, False, False, data).to_bytes()
+        return ResultTask(user_id, QueryId.Query2MostProfit, False, False, data, packet_id).to_bytes()
 
-    def get_eof_msg(user_id):
-        return ResultTask(user_id, QueryId.Query2MostProfit, True, False, []).to_bytes()
+    def get_eof_msg(user_id, packet_id):
+        return ResultTask(user_id, QueryId.Query2MostProfit, True, False, [], packet_id).to_bytes()
 
     def get_abort_msg(user_id):
         return ResultTask(user_id, QueryId.Query2MostProfit, True, True, []).to_bytes()
