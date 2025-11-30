@@ -30,7 +30,7 @@ class InvalidStateError(Exception):
     def __init__(self, msg):
         super().__init__(msg)
 
-class QueryStateStorage:
+class ResultStateStorage:
     def __init__(self, base_path, state_manager):
         # self.base = Path(base_path)
         self.base = PathType(base_path) 
@@ -96,11 +96,6 @@ class QueryStateStorage:
             else: # Current state is older so del
                 file.unlink()
 
-        for value in query_states.values():
-            # Replace second vl with the deserial state
-            
-            value[1] =  self.manager.deserialize_state(value[1].read_bytes())
-
         return query_states
 
     # -------------------------------------------------------------
@@ -135,8 +130,6 @@ class QueryStateStorage:
                 continue
 
             commit_ts= self._get_commit_timestamp(query_id)
-            state = self.manager.deserialize_state(base_state_file.read_bytes())
-
             i = 0
 
             while i < len(changes) and changes[i][1].stat().st_mtime <= commit_ts:
@@ -150,29 +143,31 @@ class QueryStateStorage:
                     i+=1
                     continue
 
-                state = self.manager.apply_changes(state, changes_to_apply)
-
-                # Create temp file with new state.. check for conflicts? future stuff!
                 new_file = self.not_finished / f"{query_id}_{version_id}"
-                new_file.write_bytes(self.manager.serialize_state(state)) # Manager.serialize? or just str?
+                copy_file(base_state_file, new_file)
 
-                ## Atomic replace/move of file 
-                new_file.replace(self.states / f"{query_id}_{version_id}")
+                self.manager.apply_changes(new_file, changes_to_apply)
+
+                ## Atomic replace/move of file
+                new_state_file = self.states / f"{query_id}_{version_id}"
+                new_file.replace(new_state_file)
 
                 ## Del previous one/ base version! guaranteed to exist .. else would not be here.. else it should throw an error
-                (self.states / f"{query_id}_{base_version}").unlink()
+                base_state_file.unlink()
 
                 # delete file! not_applied
                 changes[i][1].unlink()
 
                 base_version = version_id #For next change/version this should be the base version.
                 i+=1
+                base_state_file = new_state_file
 
             while i < len(changes): #unlink any remaining change since its  modify time after commit...
                 changes[i][1].unlink()
                 i+=1
 
-            query_states[query_id] = state # Save on res
+            query_states[query_id] = base_state_file
+
         return query_states
 
 
@@ -192,8 +187,6 @@ class QueryStateStorage:
             # If it crashes before creating commit file then at most you would create again or so these ones
             file_state = self.states / f"{query_id}_{initial_version_id}" # First/initial state
             file_state.touch()
-            # Since commit file not created no issues with having it corrupted. If it crashes here.
-            file_state.write_bytes(self.manager.serialize_initial_state(metadata))
 
             # Now create commit one
             file.touch()
@@ -239,14 +232,6 @@ class QueryStateStorage:
 
         copy_file(newest_state[1], self.base/ f"backups/{newest_state[1].name}")
 
-    def backup_query_final(self, query_id, version_id, state):
-        out_file = self.base/ f"backups/{query_id}_{version_id}_final"
-        out_file.touch()
-
-        out_file.write_bytes(self.manager.serialize_state(state))
-
-
-
     # -------------------------------------------------------------
     # 2. add_changes
     # -------------------------------------------------------------
@@ -266,53 +251,27 @@ class QueryStateStorage:
     def commit_changes(self, query_id):
         self._update_commit_timestamp(query_id)
 
-
-
-    def calculate_new_state(self, base_state, changes):
-        return self.manager.apply_changes(base_state, changes)
-
-    # From base version in storage.
-    def get_new_state(self, query_id, version_id, changes, count_versions = 1):
-        base_state_file = self.states / f"{query_id}_{version_id - count_versions}"
-
-        if not base_state_file.exists():
-            raise InvalidStateError(f"Base version for new state {base_state_file} does not exist, storage allows only for sequential/exact version calculation.")
-
-        # base_state = None
-        # with open_file(base_state_file, "r") as f:
-
-        base_state = self.manager.deserialize_state(base_state_file.read_bytes())
-
-        return self.manager.apply_changes(base_state, changes)
-
     # -------------------------------------------------------------
     # 4. push_changes
     ## Lets assume caller has the changes saved on change_file... change file is just for backup in case of a crash.
     ## And also has prev state/ base version/state since we assume non concurrent modifying 
     ## SOO essentially received the new state calculated from get new state
     # -------------------------------------------------------------
-    def push_changes(self, query_id, version_id, new_state, count_versions = 1): ## Lets 
+    def push_changes(self, query_id, version_id, changes, count_versions = 1): ## Lets
         change_file = self.not_applied / f"{query_id}_{version_id}"
         if not change_file.exists():
             raise InvalidStateError(f"Not supported concurrent changes.. saved changes/version '{change_file}' did not exist!")
 
+        base_state_file = self.states / f"{query_id}_{version_id - count_versions}"
+
         new_file = self.not_finished / f"{query_id}_{version_id}"
-        new_file.write_bytes(self.manager.serialize_state(new_state)) # Manager.serialize? or just str?
+        self.manager.apply_changes(new_file, changes)
 
         ## Atomic replace/move of file 
         # print(f"Saving new version! '{query_id}_{version_id}' base ver is allegedly {version_id-count_versions}")
         new_file.replace(self.states / f"{query_id}_{version_id}")
 
-
-        base_state_file = self.states / f"{query_id}_{version_id - count_versions}"
-
-        ## Del previous/base state! For now allow it to not exist... checks for consistency should be at get_new_state or so.
-        if base_state_file.exists():
-            base_state_file.unlink()
-        else:
-            # raise InvalidStateError(f"Warning.. at push changes version: {version_id} base state file did not exist {base_state_file}")
-            logging.warning(f"Warning.. at push changes version: {version_id} base state file did not exist {base_state_file}")
-
+        base_state_file.unlink()
 
         # delete file! not_applied... should always exist since not concurrent
         change_file.unlink()

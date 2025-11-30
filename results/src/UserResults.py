@@ -74,12 +74,6 @@ class UserResult:
     def do_with_each_result_file_when_ready(
         self, a_closure: Callable[[BufferedReader], None]
     ) -> None:
-        with self._all_queries_are_ready:
-            while not all(
-                query_state["ready"] for query_state in self._query_states.values()
-            ):
-                self._all_queries_are_ready.wait()
-
         for query_id, file_name in FILE_NAMES:
             ready_path = self._base_dir / f"ready_{file_name}"
             state = self._query_states[query_id]

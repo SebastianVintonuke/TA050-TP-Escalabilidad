@@ -9,8 +9,14 @@ from configparser import ConfigParser
 from pika.exceptions import AMQPConnectionError
 
 from common.middleware.middleware import MessageMiddlewareQueue
+from common.state_storage.query_state_storage import QueryStateStorage
 from results.src.result import ResultServer
 
+def creator_query_storage_in(folder):
+    def creator(manager):
+        logging.error(f"action: creator | {manager} | {folder}")
+        return QueryStateStorage(folder, manager)
+    return creator
 
 def initialize_config():  # type: ignore[no-untyped-def]
     """Parse env variables or config file to find program config params
@@ -89,13 +95,12 @@ def main() -> None:
         except Exception as e:
             logging.error(f"action: init_middleware | result: fail | error: {e}")
 
-    result_server = ResultServer(port, listen_backlog, dir_path, middleware)
+    node_folder = f"/etc/node_state/result_{node_id}"
+    result_server = ResultServer(port, listen_backlog, dir_path, middleware, store_creator = creator_query_storage_in(node_folder))
     signal.signal(signal.SIGTERM, result_server.graceful_shutdown)
 
 
     thread_checker, healthchecker = start_healthchecker(f"results{node_id}")
-
-
 
     result_server.run()
 

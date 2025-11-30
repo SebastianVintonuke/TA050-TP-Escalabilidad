@@ -11,9 +11,15 @@ from pika.spec import Basic, BasicProperties
 from common import ResultsProtocol
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
+from common.state_storage.nothing_state_storage import NothingQueryStateStorage
+from common.state_storage.query_state_storage import QueryStateStorage
+from .duplicated_state_handler import ResultStateManager, ResultQueryTracker
 
 from .storage import ResultStorage
 
+def get_credentials(accum_id):
+	parts = accum_id.split("_")
+	return "_".join(parts[:-1]), parts[-1]
 
 class ResultServer:
     @staticmethod
@@ -41,6 +47,7 @@ class ResultServer:
         listen_backlog: int,
         dir_path: str,
         middleware: MessageMiddlewareQueue,
+        store_creator=NothingQueryStateStorage
     ) -> None:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(("", port))
@@ -52,6 +59,9 @@ class ResultServer:
             target=self.__handle_consumer_connection
         )
         self._results_storage = ResultStorage(dir_path)
+        self.duplicated_metadata_map = {}
+        self.data_storage = store_creator(ResultStateManager(self.get_data_storage))
+        self.start_data_storage()
 
     def run(self) -> None:
         """
@@ -160,6 +170,34 @@ class ResultServer:
         try:
             result_task = ResultTask.from_bytes(data)
             self._results_storage.handle(result_task)
+
+            tracker = self.get_data_storage(f"{result_task.user_id}_{result_task.query_id}")
+            tracker.version_id += 1
+
+            for line in result_task.data:
+                tracker.data.append(str(line))
+
+            self.data_storage.write_changes(tracker.user_query_id, tracker.version_id, tracker)
+            self.data_storage.commit_changes(tracker.user_query_id)
+            self.data_storage.push_changes(tracker.user_query_id, tracker.version_id, tracker, tracker.batch_ver_count)
+
             channel.basic_ack(deliver.delivery_tag)
         except Exception as e:
             logging.error(f"action: message_callback | result: fail | error: {e}")
+
+    def get_data_storage(self, user_query_id: str):
+        counter = self.duplicated_metadata_map.get(user_query_id, None)
+        if counter == None:
+            #user_id, query_type = get_credentials(user_query_id)
+            counter = ResultQueryTracker(user_query_id)
+            self.duplicated_metadata_map[user_query_id] = counter
+
+        return counter
+
+
+    def start_data_storage(self):
+        for user_query_id, (version_id, query_tracker) in self.data_storage.load_states().items():
+            query_tracker.version_id = version_id
+
+        self.data_storage.check_integrity()
+
