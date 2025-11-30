@@ -227,6 +227,9 @@ class QueryStateStorage:
         return file in self.cached_cancelled
         # return  file.exists()
 
+    def state_file(self, query_id, version_id):
+        return self.states / f"{query_id}_{version_id}"
+
     ## For debugging purposes and so on
     def backup_query(self, query_id):
         newest_state = None

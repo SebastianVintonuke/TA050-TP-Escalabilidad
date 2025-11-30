@@ -169,10 +169,13 @@ class ResultServer:
     ) -> None:
         try:
             result_task = ResultTask.from_bytes(data)
-            # logging.info(f"action: rcv_msg | action: in-progress | msg: {result_task.user_id} | {result_task.query_id}")
-            self._results_storage.handle(result_task)
-
             user_query_id = f"{result_task.user_id}_{result_task.query_id}"
+
+            if self.data_storage.is_cancelled_query(user_query_id):
+                log_info(f"Query '{user_query_id}' type: {query_type}, was cancelled so ignore message")
+                channel.basic_ack(deliver.delivery_tag)
+                return
+
 
 
             if result_task.abort:
@@ -198,7 +201,6 @@ class ResultServer:
                 tracker = ResultQueryTracker(user_query_id)
                 self.results_metadata_map[user_query_id] = tracker
                 self.data_storage.register_query(user_query_id, tracker)
-            tracker.version_id += 1
 
 
             if result_task.eof:
@@ -207,14 +209,20 @@ class ResultServer:
                 )
                 # out_middle.send(handler.get_eof_msg(user_id))
 
-                self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker)
-                
+                self._results_storage.mark_ready(
+                    self.data_storage.state_file(user_query_id, tracker.version_id),
+                    result_task
+                    )
+
+                # self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker)
                 # If it was actually the eof... then unregister
                 self.data_storage.unregister_query(user_query_id)
                 del self.results_metadata_map[user_query_id]
                 channel.basic_ack(deliver.delivery_tag)
 
                 return
+
+            tracker.version_id += 1
 
             for line in result_task.data:
                 tracker.data.append(str(line))

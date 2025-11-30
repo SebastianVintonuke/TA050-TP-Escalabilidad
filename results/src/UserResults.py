@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Sequence, Tuple, TypedDict
 
 from common import QueryId
 from common.results.query import QueryResult
-
+import logging
 
 def file_name_for(query_id: QueryId) -> str:
     for q, name in FILE_NAMES:
@@ -41,12 +41,16 @@ class UserResult:
         }
         self._all_queries_are_ready = threading.Condition()
         self._base_dir.mkdir(exist_ok=True)
+
         for query_id, file_name in FILE_NAMES:
-            path = self._base_dir / file_name
+
+            path = self._base_dir / f"{file_name}"
+            if path.exists():
+                path.unlink()           
+
             ready_path = self._base_dir / f"ready_{file_name}"
-            if not path.exists() and not ready_path.exists():
-                path.touch()
             if ready_path.exists():
+                logging.info(f"User '{self._base_dir.name}' has ready query {file_name}")
                 self._query_states[query_id]["ready"] = True
 
     def append(self, query_id: QueryId, results: Sequence[QueryResult]) -> None:
@@ -59,14 +63,19 @@ class UserResult:
                     line = r.to_bytes() + b"\n"
                     f.write(line)
 
-    def mark_ready(self, query_id: QueryId) -> None:
+    def mark_ready(self, src_file: Path, query_id: QueryId) -> None:
         file_name = file_name_for(query_id)
-        src = self._base_dir / file_name
+
+        temp_file = self._base_dir / f"{file_name}"
+
+        shutil.copy(src_file, temp_file)
+
         dst = self._base_dir / f"ready_{file_name}"
         with self._query_states[query_id]["lock"]:
             if dst.exists():
                 return # 2 EOF
-            src.rename(dst)
+            temp_file.rename(dst)
+            
         with self._all_queries_are_ready:
             self._query_states[query_id]["ready"] = True
             self._all_queries_are_ready.notify_all()

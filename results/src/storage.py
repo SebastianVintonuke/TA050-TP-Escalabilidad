@@ -15,22 +15,6 @@ class ResultStorage:
         self._users: Dict[str, UserResult] = self.__load_users()
         self._users_lock = threading.Lock()
 
-    def handle(self, result_task: ResultTask) -> None:
-        if result_task.abort:
-            logging.info(f"action: abort | action: in-progress | result: {result_task.user_id} | {result_task.query_id}")
-            self.__delete_results(result_task.user_id)
-            return
-
-        self.__get_or_create_user(result_task.user_id).append(
-            result_task.query_id, result_task.data
-        )
-        if result_task.eof:
-            self.__get_or_create_user(result_task.user_id).mark_ready(
-                result_task.query_id
-            )
-            logging.info(
-                f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
-            )
 
     def do_with_results_when_ready(
         self, user_id: str, a_closure: Callable[[BufferedReader], None]
@@ -44,14 +28,7 @@ class ResultStorage:
                     f"Does not exist user_id: '{user_id}' in the result storage"
                 )
 
-    def __get_or_create_user(self, user_id: str) -> UserResult:
-        with self._users_lock:
-            if user_id not in self._users:
-                user_dir = self._dir_path / user_id
-                self._users[user_id] = UserResult(user_dir)
-            return self._users[user_id]
-
-    def __delete_results(self, user_id: str) -> None:
+    def delete_results(self, user_id: str) -> None:
         with self._users_lock:
             user = self._users.pop(user_id, None)
             if user:
@@ -61,5 +38,43 @@ class ResultStorage:
         users = {}
         for user_dir in self._dir_path.iterdir():
             if user_dir.is_dir():
-                users[user_dir.name] = UserResult(user_dir)
+                user_result = UserResult(user_dir)
+                users[user_dir.name] = user_result
+
         return users
+
+
+
+
+    def __get_or_create_user(self, user_id: str) -> UserResult:
+        with self._users_lock:
+            if user_id not in self._users:
+                user_dir = self._dir_path / user_id
+                self._users[user_id] = UserResult(user_dir)
+            return self._users[user_id]
+
+
+    def mark_ready(self, src : Path, result_task: ResultTask): # src_file
+        self.__get_or_create_user(result_task.user_id).mark_ready(
+            src, result_task.query_id
+        )
+
+
+    # def handle(self, result_task: ResultTask) -> None:
+    #     if result_task.abort:
+    #         logging.info(f"action: abort | action: in-progress | result: {result_task.user_id} | {result_task.query_id}")
+    #         self.__delete_results(result_task.user_id)
+    #         return
+
+    #     self.__get_or_create_user(result_task.user_id).append(
+    #         result_task.query_id, result_task.data
+    #     )
+    #     if result_task.eof:
+    #         self.__get_or_create_user(result_task.user_id).mark_ready(
+    #             result_task.query_id
+    #         )
+    #         logging.info(
+    #             f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
+    #         )
+
+
