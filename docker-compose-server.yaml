@@ -199,14 +199,54 @@ services:
       - ./selectnode/config.ini:/config.ini:ro
       - ./config_health.ini:/config_health.ini:ro
 
-  groupbynode1:
-    container_name: groupbynode1
+
+  groupbynode1_query_2:
+    container_name: groupbynode1_query_2
     image: groupbynode:latest
     entrypoint: python3 /groupbynode/main.py
     environment:
       - NODE_IND=0
       - NODE_COUNT=2
       - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_2
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+  groupbynode1_query_3:
+    container_name: groupbynode1_query_3
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_3
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+  groupbynode1_query_4:
+    container_name: groupbynode1_query_4
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_4
     networks:
       - testing_net
     depends_on:
@@ -218,14 +258,55 @@ services:
       - ./.data/states/:/etc/node_state
       - ./config_health.ini:/config_health.ini:ro
 
-  groupbynode2:
-    container_name: groupbynode2
+
+
+  groupbynode2_query_2:
+    container_name: groupbynode2_query_2
     image: groupbynode:latest
     entrypoint: python3 /groupbynode/main.py
     environment:
       - NODE_IND=1
       - NODE_COUNT=2
       - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_2
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+  groupbynode2_query_3:
+    container_name: groupbynode2_query_3
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=1
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_3
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+  groupbynode2_query_4:
+    container_name: groupbynode2_query_4
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=1
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_4
     networks:
       - testing_net
     depends_on:

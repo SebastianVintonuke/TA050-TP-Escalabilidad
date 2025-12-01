@@ -104,8 +104,8 @@ def main(config_params) -> None:
     loadtopk = config_params["load_topk"] != 0
     is_profiling = config_params["profile_node"]
     init_folder="/etc/node_state/"
-    grp_folder = init_folder+f"groupby_{node_ind}"
-    topk_folder = init_folder+f"topk_{node_ind}"
+    grp_folder = init_folder+f"groupby_{qtype}_{node_ind}"
+    topk_folder = init_folder+f"topk_{qtype}_{node_ind}"
 
     initialize_log(logging_level)
 

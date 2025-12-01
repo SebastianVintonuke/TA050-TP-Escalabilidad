@@ -22,7 +22,7 @@ class GroupbyTasksMiddleware(RabbitExchangeMiddleware):
 	# 	super().__init__(GROUPBY_TASKS_QUEUE_BASE, GROUPBY_EXCHANGE, node_count, ind , host =host)
 
 
-	def __init__(self, node_count, ind = 0, type = "", host = rbmq_utils.RABBITMQ_HOST):
+	def __init__(self, node_count, ind = 0, type = "query_4", host = rbmq_utils.RABBITMQ_HOST):
 		super().__init__(GROUPBY_TASKS_QUEUE_BASE.format(IND= ind, TYPE = type), GROUPBY_EXCHANGE , host =host)
 		self.queue_name_base = GROUPBY_TASKS_QUEUE_BASE
 		self.node_count = int(node_count)
