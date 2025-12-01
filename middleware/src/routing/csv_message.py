@@ -40,8 +40,6 @@ class CSVMessageBuilder(MessageBuilder):
     def add_row_bytes(self,row):
         self.payload.append((b",".join(row)).decode())
 
-    def add_row_dict(self,row):
-        self.add_row_vec(row.values())
     def clone(self):
         return CSVMessageBuilder(self.headers.clone())
 
@@ -74,8 +72,40 @@ class CSVHashedMessageBuilder(HashedMessageBuilder):
     def add_row_bytes(self,row):
         self.payload.append((b",".join(row)).decode())
 
-    def add_row_dict(self,row):
-        self.add_row_vec(row.values())
 
     def clone(self):
         return CSVHashedMessageBuilder(self.headers.clone(), self.key_hash)
+
+
+
+class CSVTypeHashedMessageBuilder(HashedMessageBuilder):
+    def with_credentials(ids, types, key_hash, packet_id = UNDEFINED_PACKET_ID):
+        return CSVTypeHashedMessageBuilder(BaseHeaders(ids, types, packet_id = packet_id), key_hash)
+
+    def creator_with_type(new_type):
+        def converter(headers):
+            return CSVTypeHashedMessageBuilder(headers.with_types([new_type]), headers.ids[0])
+        return converter
+
+    def creator_with_types(*types):
+        def converter(headers):
+            return CSVTypeHashedMessageBuilder(headers.with_types_pad(list(types)), headers.ids[0])
+        return converter
+
+
+    def simple_creator():
+        def converter(headers):
+            return CSVTypeHashedMessageBuilder(headers, headers.ids[0])
+        return converter
+
+
+    def __init__(self,headers_obj, key_hash):
+        super().__init__(headers_obj, key_hash)
+    def clone(self):
+        return CSVTypeHashedMessageBuilder(self.headers.clone(), self.key_hash)
+
+    def add_row(self,row):
+        self.payload.append(",".join(map(str, row)))
+    def add_row_bytes(self,row):
+        self.payload.append((b",".join(row)).decode())
+

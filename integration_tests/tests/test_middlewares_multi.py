@@ -7,7 +7,8 @@ from middleware.groupby_middleware import (
 )
 from middleware.routing.csv_message import *
 from middleware.routing.header_fields import *
-from middleware.select_tasks_middleware import SelectTasksMiddleware, SelectTasksMultiMiddleware, SELECT_TASKS_EXCHANGE
+from middleware.select_tasks_middleware import SelectTasksMiddleware
+from middleware.select_tasks_multi import SelectTasksMultiMiddleware, SELECT_TASKS_EXCHANGE
 from middleware.memory_middleware import *
 
 from common.config.row_filtering import *

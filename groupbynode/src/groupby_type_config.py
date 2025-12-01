@@ -47,16 +47,3 @@ class GroupbyTypeConfiguration:
 
 	def close(self):
 		self.middleware.close()
-
-
-"""
-	def send(self, hashed_message_builder): #: 
-		target = self.queue_name_base.format(IND= hashed_message_builder.hash_in(self.node_count))
-		payload = hashed_message_builder.serialize_payload()
-		
-		# Send separately each type..
-		for headers in hashed_message_builder.split_headers():
-			print(f"SEND TO GROUPBY MIDDLE SENDING SPLITTED {headers} TO {target}")
-
-			self._channel.send(target, headers,payload)
-"""

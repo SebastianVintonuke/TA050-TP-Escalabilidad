@@ -159,9 +159,8 @@ class TestMiddlewares(unittest.TestCase):
             "hash_base_1",
         )
 
-        hashed_id = msg_build.hash_in(COUNT_NODES)
-        TARGET_QUEUE = GROUPBY_TASKS_QUEUE_BASE.format(IND=hashed_id)
-
+        TARGET_QUEUE = msg_build.hash_in(GROUPBY_TASKS_QUEUE_BASE, COUNT_NODES)
+        
         # Sender should not need to care about declaring the queue
         channel.queue_declare(TARGET_QUEUE)
 
