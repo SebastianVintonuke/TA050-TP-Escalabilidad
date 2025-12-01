@@ -171,7 +171,7 @@ class ResultServer:
             result_task = ResultTask.from_bytes(data)
             user_query_id = f"{result_task.user_id}_{result_task.query_id}"
 
-            # logging.info(f"recv_msg: {result_task.user_id} | {result_task.query_id} | {user_query_id}, pck_id: {result_task.packet_id}")
+            # logging.info(f"recv_msg: {result_task.headers()} | {user_query_id}, pck_id: {result_task.packet_id}")
             if self.data_storage.is_cancelled_query(user_query_id):
                 logging.info(f"Query '{user_query_id}' type: {result_task.query_id}, was cancelled so ignore message")
 
@@ -217,33 +217,15 @@ class ResultServer:
                 self.data_storage.register_query(user_query_id, tracker)
 
             elif tracker.packet_tracker.is_duplicate(result_task.packet_id):
-                logging.info(f"Received duplicate message for {result_task} '{user_query_id}', {result_task.packet_id}, {tracker.packet_tracker.missing_packets} {tracker.packet_tracker.expected_next_packet}")
-                if result_task.eof:
-                    logging.info(
-                        f"action: query_eof | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
-                    )
-
-                    tracker.last_packet_id = result_task.packet_id
-                    
-                    if tracker.is_eof():
-                        logging.info(
-                            f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
-                        )
-                        # self.data_storage.state_file(user_query_id, tracker.version_id)
-                        user_result.mark_ready(
-                                tracker,
-                                result_task.query_id)
-
-                        # self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker)
-                        # If it was actually the eof... then unregister
-                        self.data_storage.unregister_query(user_query_id)
-                        del self.results_metadata_map[user_query_id]
-
-
+                logging.info(f"Received duplicate message for {result_task.headers()} '{user_query_id}', {result_task.packet_id}, {tracker.packet_tracker}")
+                
                 channel.basic_ack(deliver.delivery_tag)
                 return
 
             tracker.packet_tracker.check_new_packet(result_task.packet_id)
+
+            # logging.info(f"New pck for {user_query_id}, pck_id: {result_task.packet_id}, aftr {tracker.packet_tracker}")
+
             tracker.version_id += 1
 
             if result_task.eof:

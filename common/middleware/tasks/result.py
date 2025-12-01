@@ -44,6 +44,10 @@ class ResultTask:
     def to_bytes(self) -> bytes:
         return self.__str__().encode("utf-8")
 
+    def headers(self) -> str:
+        return f"{self.user_id}|{self.query_id}|{self.TASK_ID}|{self.eof}|{self.abort}|{self.packet_id}"
+
+
     def __str__(self) -> str:
         header = f"{self.user_id}|{self.query_id}|{self.TASK_ID}|{self.eof}|{self.abort}|{self.packet_id}"
         body = "\n".join(str(query_result) for query_result in self.data)

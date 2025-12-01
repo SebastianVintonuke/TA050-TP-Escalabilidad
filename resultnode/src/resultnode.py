@@ -93,21 +93,22 @@ class ResultNode:
 
 
 		if counter.packet_tracker.is_duplicate(headers.packet_id):
-			log_info(f"Received duplicate message count for '{user_query_id}', {headers.packet_id}")
+			log_info(f"Received duplicate message count for '{user_query_id}', {headers.packet_id}, in {counter.packet_tracker}")
 			return
 		counter.packet_tracker.check_new_packet(headers.packet_id)
 
 		if headers.is_eof():
 			counter.last_packet_id = headers.packet_id
-			log_info(f"Received expected message count for '{user_query_id}', last packet is {headers.packet_id} missing: {counter.packet_tracker.missing_packets}")
+			log_info(f"Received expected message count for '{user_query_id}', {counter.last_packet_id}, tracker: {counter.packet_tracker}")
 		else:
+			# log_info(f"Send data msg '{user_query_id}', {headers.packet_id} tracker: {counter.packet_tracker}")
 			msg = self.payload_deserializer(msg)
 			out_middle.send(handler.handle_new_results(msg,  user_id, headers.packet_id))
 		counter.version_id +=1 # Add 1 to version even on final eof or so
 
 		if counter.is_eof():
-			log_info(f"Query '{user_query_id}' finished last: {headers.packet_id}, freeing saved state.")
-			out_middle.send(handler.get_eof_msg(user_id, headers.packet_id))
+			log_info(f"Query '{user_query_id}' finished last: {headers.packet_id}, eof_id:{counter.last_packet_id}, freeing saved state.")
+			out_middle.send(handler.get_eof_msg(user_id, counter.last_packet_id))
 
 			# If it was actually the eof... then unregister
 			self.state_storage.backup_query_final(user_query_id, counter.version_id , counter)
