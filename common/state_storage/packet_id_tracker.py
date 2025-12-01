@@ -31,3 +31,6 @@ class PacketIDTracker:
 
 		# Should be guaranteed to be on missing but still just discard If found, do not throw error. Idempotent
 		self.missing_packets.discard(packet_id)
+
+	def __repr__(self):
+		return f"exp: {self.expected_next_packet} missing:{self.missing_packets}"

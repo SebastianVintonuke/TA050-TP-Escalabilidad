@@ -1,5 +1,31 @@
-name: CoffeeShopAnalysisServer
+name: TP Escalabilidad - Coffee Shop Analysis
 services:
+  supervisor1:
+    container_name: supervisor1
+    image: supervisor:latest
+    entrypoint: python3 /supervisor/main.py
+    environment:
+      - SUPERVISOR_ID=1
+      - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
+    networks:
+      - testing_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./supervisor/config.ini:/config.ini:ro
+
+  supervisor2:
+    container_name: supervisor2
+    image: supervisor:latest
+    entrypoint: python3 /supervisor/main.py
+    environment:
+      - SUPERVISOR_ID=2
+      - SUPERVISOR_PEERS=1:supervisor1:6000,2:supervisor2:6000
+    networks:
+      - testing_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./supervisor/config.ini:/config.ini:ro
+
   middleware:
     container_name: middleware
     build:
@@ -28,6 +54,8 @@ services:
     volumes:
       - ./results/config.ini:/config.ini:ro
       - ./.data/storage/results_1:/results/storage
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/states/:/etc/node_state
 
   results2:
     container_name: results2
@@ -45,6 +73,8 @@ services:
     volumes:
       - ./results/config.ini:/config.ini:ro
       - ./.data/storage/results_2:/results/storage
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/states/:/etc/node_state
 
   server:
     container_name: server
@@ -76,8 +106,9 @@ services:
       - middleware
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
-      - ./.data/profiling/dispatcher1.prof:/etc/profiling/profile.prof
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/dispatcher1.prof:/etc/profiling/profile.prof
 
   dispatcher2:
     container_name: dispatcher2
@@ -93,8 +124,9 @@ services:
       - middleware
     volumes:
       - ./dispatcher/config.ini:/config.ini:ro
-      - ./.data/profiling/dispatcher2.prof:/etc/profiling/profile.prof
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/dispatcher2.prof:/etc/profiling/profile.prof
 
   resultnode1:
     container_name: resultnode1
@@ -111,8 +143,9 @@ services:
       - results2
     volumes:
       - ./resultnode/config.ini:/config.ini:ro
-      - ./.data/profiling/resultnode1.prof:/etc/profiling/profile.prof
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/resultnode1.prof:/etc/profiling/profile.prof
 
 
   selectnode1:
@@ -131,6 +164,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./config_health.ini:/config_health.ini:ro
       - ./.data/profiling/selectnode1.prof:/etc/profiling/profile.prof
 
   selectnode2:
@@ -149,6 +183,7 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./config_health.ini:/config_health.ini:ro
       - ./.data/profiling/selectnode2.prof:/etc/profiling/profile.prof
 
   selectnode3:
@@ -167,16 +202,19 @@ services:
       - middleware
     volumes:
       - ./selectnode/config.ini:/config.ini:ro
+      - ./config_health.ini:/config_health.ini:ro
       - ./.data/profiling/selectnode3.prof:/etc/profiling/profile.prof
 
-  groupbynode1:
-    container_name: groupbynode1
+
+  groupbynode1_query_2:
+    container_name: groupbynode1_query_2
     image: groupbynode:latest
     entrypoint: python3 /groupbynode/main.py
     environment:
       - NODE_IND=0
       - NODE_COUNT=2
       - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_2
     networks:
       - testing_net
     depends_on:
@@ -185,17 +223,61 @@ services:
       - middleware
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
-      - ./.data/profiling/groupbynode1.prof:/etc/profiling/profile.prof
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/groupbynode1_query_2.prof:/etc/profiling/profile.prof
+  groupbynode1_query_3:
+    container_name: groupbynode1_query_3
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_3
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/groupbynode1_query_3.prof:/etc/profiling/profile.prof
 
-  groupbynode2:
-    container_name: groupbynode2
+  groupbynode1_query_4:
+    container_name: groupbynode1_query_4
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=0
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_4
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/groupbynode1_query_4.prof:/etc/profiling/profile.prof
+
+
+  groupbynode2_query_2:
+    container_name: groupbynode2_query_2
     image: groupbynode:latest
     entrypoint: python3 /groupbynode/main.py
     environment:
       - NODE_IND=1
       - NODE_COUNT=2
       - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_2
     networks:
       - testing_net
     depends_on:
@@ -204,8 +286,51 @@ services:
       - middleware
     volumes:
       - ./groupbynode/config.ini:/config.ini:ro
-      - ./.data/profiling/groupbynode2.prof:/etc/profiling/profile.prof
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/groupbynode2_query_2.prof:/etc/profiling/profile.prof
+
+  groupbynode2_query_3:
+    container_name: groupbynode2_query_3
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=1
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_3
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/groupbynode2_query_3.prof:/etc/profiling/profile.prof
+  
+  groupbynode2_query_4:
+    container_name: groupbynode2_query_4
+    image: groupbynode:latest
+    entrypoint: python3 /groupbynode/main.py
+    environment:
+      - NODE_IND=1
+      - NODE_COUNT=2
+      - JOIN_NODE_COUNT=2
+      - Q_TYPE=query_4
+    networks:
+      - testing_net
+    depends_on:
+      - middleware
+    links:
+      - middleware
+    volumes:
+      - ./groupbynode/config.ini:/config.ini:ro
+      - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/groupbynode2_query_4.prof:/etc/profiling/profile.prof
 
   joinnode1:
     container_name: joinnode1
@@ -214,7 +339,7 @@ services:
     environment:
       - NODE_IND=0
       - NODE_COUNT=2
-      - NODE_ID=0
+      - NODE_ID=1
     networks:
       - testing_net
     depends_on:
@@ -223,9 +348,10 @@ services:
       - middleware
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
-      - ./.data/profiling/joinnode1.prof:/etc/profiling/profile.prof
       - ./.data/states/:/etc/node_state
-  
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/joinnode1.prof:/etc/profiling/profile.prof
+
   joinnode2:
     container_name: joinnode2
     image: joinnode:latest
@@ -233,7 +359,7 @@ services:
     environment:
       - NODE_IND=1
       - NODE_COUNT=2
-      - NODE_ID=0
+      - NODE_ID=2
     networks:
       - testing_net
     depends_on:
@@ -242,10 +368,10 @@ services:
       - middleware
     volumes:
       - ./joinnode/config.ini:/config.ini:ro
-      - ./.data/profiling/joinnode2.prof:/etc/profiling/profile.prof
       - ./.data/states/:/etc/node_state
+      - ./config_health.ini:/config_health.ini:ro
+      - ./.data/profiling/joinnode2.prof:/etc/profiling/profile.prof
       
-    
 
 networks:
   testing_net:

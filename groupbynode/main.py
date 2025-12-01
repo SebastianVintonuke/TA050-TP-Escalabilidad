@@ -65,6 +65,9 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["profile_node"] = os.getenv(
             "PROFILE_NODE", 0)
 
+        config_params["q_type"] = os.getenv(
+            "Q_TYPE",  config["DEFAULT"]["Q_TYPE"])
+
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting groupbynode".format(e))
     except ValueError as e:
@@ -88,18 +91,21 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+from common.healthchecker.main import start_on_thread as start_healthchecker
+
 def main(config_params) -> None:
     port = config_params["port"]
     logging_level = config_params["logging_level"]
     node_ind = config_params["node_ind"]
     node_count = config_params["node_count"]
     join_node_count = config_params["join_node_count"]
+    qtype= config_params["q_type"]
     
     loadtopk = config_params["load_topk"] != 0
     is_profiling = config_params["profile_node"]
     init_folder="/etc/node_state/"
-    grp_folder = init_folder+f"groupby_{node_ind}"
-    topk_folder = init_folder+f"topk_{node_ind}"
+    grp_folder = init_folder+f"groupby_{qtype}_{node_ind}"
+    topk_folder = init_folder+f"topk_{qtype}_{node_ind}"
 
     initialize_log(logging_level)
 
@@ -115,7 +121,7 @@ def main(config_params) -> None:
         #result_middleware = ResultNodeMiddleware()
         topk_middleware = MemoryMiddleware()
         join_middleware = JoinTasksMiddleware(join_node_count)
-        middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind)
+        middleware_group = GroupbyTasksMiddleware(node_count, ind = node_ind, type= qtype)
 
         #types_config_groupby = configure_types_groupby(join_middleware, topk_middleware)
         types_config_groupby = configure_types_groupby(
@@ -136,7 +142,14 @@ def main(config_params) -> None:
         signal.signal(signal.SIGINT, close_handler)
         signal.signal(signal.SIGTERM, close_handler)
 
+
+        thread_checker, healthchecker = start_healthchecker(f"groupbynode{int(node_ind)+1}_{qtype}")
+
         restarter.start_node_loop(node)
+
+        logging.info(f"Closing healthchecker....");
+        healthchecker.stop()
+        thread_checker.join()
         
         node.close()
     except Exception as e:

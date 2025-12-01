@@ -73,7 +73,7 @@ def initialize_log(logging_level: int) -> None:
         level=logging_level,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-
+from common.healthchecker.main import start_on_thread as start_healthchecker
 def main(config_params) -> None:
     port = config_params["port"]
     node_id = config_params["node_id"]
@@ -88,6 +88,9 @@ def main(config_params) -> None:
     )
 
     try:
+
+        thread_checker, healthchecker = start_healthchecker(f"selectnode{node_id}")
+
         types_expander = TypeExpander()
         result_middleware = ResultNodeMiddleware()
         groupby_middleware = GroupbyTasksMiddleware(groupby_node_count)
@@ -106,6 +109,11 @@ def main(config_params) -> None:
         restarter.start_node_loop(node)
 
         node.close()
+
+        logging.info(f"Closing healthchecker....");
+        healthchecker.stop()
+        thread_checker.join()
+        
     except Exception as e:
         traceback.print_exc()
         logging.error(f"action: select_node_main | result: error | err:{e}")

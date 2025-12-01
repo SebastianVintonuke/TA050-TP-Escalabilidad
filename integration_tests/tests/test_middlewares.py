@@ -140,10 +140,10 @@ class TestMiddlewares(unittest.TestCase):
     def test_simple_hashed_send(self):
         HOST = "test_hashed_send"
         NODE_IND = 2
-        QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND)
+        QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND, TYPE= "query_1")
 
         COUNT_NODES = 12
-        middleware = GroupbyTasksMiddleware(COUNT_NODES, ind=NODE_IND, host=HOST)
+        middleware = GroupbyTasksMiddleware(COUNT_NODES, ind=NODE_IND, host=HOST, type= "query_1")
 
         conn = self.active_conns.get(HOST, None)
         self.assertTrue(conn != None)
@@ -159,9 +159,9 @@ class TestMiddlewares(unittest.TestCase):
             "hash_base_1",
         )
 
-        hashed_id = msg_build.hash_in(COUNT_NODES)
-        TARGET_QUEUE = GROUPBY_TASKS_QUEUE_BASE.format(IND=hashed_id)
-
+        TARGET_QUEUE = msg_build.hash_in(GROUPBY_TASKS_QUEUE_BASE, COUNT_NODES)
+        TARGET_QUEUE = TARGET_QUEUE.format(TYPE= "query_1")
+        
         # Sender should not need to care about declaring the queue
         channel.queue_declare(TARGET_QUEUE)
 
@@ -188,10 +188,10 @@ class TestMiddlewares(unittest.TestCase):
     def test_simple_hashed_consume(self):
         HOST = "test_hashed_send"
         NODE_IND = 2
-        QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND)
+        QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND, TYPE= "t_1")
 
         COUNT_NODES = 12
-        middleware = GroupbyTasksMiddleware(COUNT_NODES, ind=NODE_IND, host=HOST)
+        middleware = GroupbyTasksMiddleware(COUNT_NODES, ind=NODE_IND, host=HOST, type= "t_1")
 
         conn = self.active_conns.get(HOST, None)
         self.assertTrue(conn != None)
@@ -246,10 +246,10 @@ class TestMiddlewares(unittest.TestCase):
     def test_simple_batched_ack(self):
         HOST = "test_hashed_send"
         NODE_IND = 2
-        QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND)
+        QUEUE_NAME = GROUPBY_TASKS_QUEUE_BASE.format(IND=NODE_IND, TYPE= "t_1")
 
         COUNT_NODES = 12
-        middleware = GroupbyTasksMiddleware(COUNT_NODES, ind=NODE_IND, host=HOST)
+        middleware = GroupbyTasksMiddleware(COUNT_NODES, ind=NODE_IND, host=HOST, type= "t_1")
 
         conn = self.active_conns.get(HOST, None)
         self.assertTrue(conn != None)

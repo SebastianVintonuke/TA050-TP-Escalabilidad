@@ -11,9 +11,15 @@ from pika.spec import Basic, BasicProperties
 from common import ResultsProtocol
 from common.middleware.middleware import MessageMiddlewareQueue
 from common.middleware.tasks.result import ResultTask
+from common.state_storage.nothing_state_storage import NothingQueryStateStorage
+from common.state_storage.query_state_storage import QueryStateStorage
+from .result_data_state_handler import ResultStateManager, ResultQueryTracker
 
 from .storage import ResultStorage
 
+def get_credentials(accum_id):
+	parts = accum_id.split("_")
+	return "_".join(parts[:-1]), parts[-1]
 
 class ResultServer:
     @staticmethod
@@ -41,6 +47,7 @@ class ResultServer:
         listen_backlog: int,
         dir_path: str,
         middleware: MessageMiddlewareQueue,
+        store_creator=NothingQueryStateStorage
     ) -> None:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(("", port))
@@ -52,6 +59,9 @@ class ResultServer:
             target=self.__handle_consumer_connection
         )
         self._results_storage = ResultStorage(dir_path)
+        self.results_metadata_map = {}
+        self.data_storage = store_creator(ResultStateManager(self.get_data_storage))
+        self.start_data_storage()
 
     def run(self) -> None:
         """
@@ -159,7 +169,130 @@ class ResultServer:
     ) -> None:
         try:
             result_task = ResultTask.from_bytes(data)
-            self._results_storage.handle(result_task)
+            user_query_id = f"{result_task.user_id}_{result_task.query_id}"
+
+            # logging.info(f"recv_msg: {result_task.headers()} | {user_query_id}, pck_id: {result_task.packet_id}")
+            if self.data_storage.is_cancelled_query(user_query_id):
+                logging.info(f"Query '{user_query_id}' type: {result_task.query_id}, was cancelled so ignore message")
+
+                channel.basic_ack(deliver.delivery_tag)
+
+                return
+
+            user_result = self._results_storage.get_or_create_user(result_task.user_id)
+
+            if user_result.is_ready(result_task.query_id):
+                logging.info(f"Query '{user_query_id}' type: {result_task.query_id}, was already finished, so just ack")
+
+                tracker = self.results_metadata_map.pop(user_query_id, None)
+                if tracker != None:
+                    self.data_storage.unregister_query(user_query_id)
+                
+                channel.basic_ack(deliver.delivery_tag)
+                return
+
+            if result_task.abort:
+                logging.info(f"action: abort | action: in-progress | result: {result_task.user_id} | {result_task.query_id}")
+
+                tracker = self.results_metadata_map.pop(user_query_id, None)
+                if tracker != None:
+
+                    # Clean up state!
+                    self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker) # For debugging/final reviewing purposes
+                    self.data_storage.unregister_query(user_query_id)
+
+                # Do it at the end the cancel so that If it crashes in the middle it wont ignore the need to free space.
+                self.data_storage.cancel_query(user_query_id)
+
+                channel.basic_ack(deliver.delivery_tag)
+
+                return
+
+
+            tracker = self.results_metadata_map.get(user_query_id, None)
+            if tracker == None:
+                #user_id, query_type = get_credentials(user_query_id)
+                tracker = ResultQueryTracker(user_query_id)
+                self.results_metadata_map[user_query_id] = tracker
+                self.data_storage.register_query(user_query_id, tracker)
+
+            elif tracker.packet_tracker.is_duplicate(result_task.packet_id):
+                logging.info(f"Received duplicate message for {result_task.headers()} '{user_query_id}', {result_task.packet_id}, {tracker.packet_tracker}")
+                
+                channel.basic_ack(deliver.delivery_tag)
+                return
+
+            tracker.packet_tracker.check_new_packet(result_task.packet_id)
+
+            # logging.info(f"New pck for {user_query_id}, pck_id: {result_task.packet_id}, aftr {tracker.packet_tracker}")
+
+            tracker.version_id += 1
+
+            if result_task.eof:
+                logging.info(
+                    f"action: query_eof | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
+                )
+
+                tracker.last_packet_id = result_task.packet_id
+            else:
+                for line in result_task.data:
+                    tracker.data.append(str(line))
+
+            self.data_storage.write_changes(tracker.user_query_id, tracker.version_id, tracker)
+            self.data_storage.commit_changes(tracker.user_query_id)
+            self.data_storage.push_changes(tracker.user_query_id, tracker.version_id, tracker, tracker.batch_ver_count)
+
+            if tracker.is_eof():
+                logging.info(
+                    f"action: query_ready | result: success | user: {result_task.user_id} | query:{result_task.query_id}"
+                )
+                # self.data_storage.state_file(user_query_id, tracker.version_id)
+                user_result.mark_ready(
+                        tracker,
+                        result_task.query_id)
+
+                # self.data_storage.backup_query_final(user_query_id, tracker.version_id , tracker)
+                # If it was actually the eof... then unregister
+                self.data_storage.unregister_query(user_query_id)
+                del self.results_metadata_map[user_query_id]
+
             channel.basic_ack(deliver.delivery_tag)
         except Exception as e:
             logging.error(f"action: message_callback | result: fail | error: {e}")
+
+    def get_data_storage(self, user_query_id: str):
+        tracker = self.results_metadata_map.get(user_query_id, None)
+        if tracker == None:
+            tracker = ResultQueryTracker(user_query_id)
+            self.results_metadata_map[user_query_id] = tracker
+
+        return tracker
+
+
+    def start_data_storage(self):
+        logging.info("Starting result data storage....")
+        for user_query_id, (version_id, query_tracker) in self.data_storage.load_states().items():
+            query_tracker.version_id = version_id
+        self.data_storage.check_integrity()
+
+
+        finished = []
+        for user_query_id, tracker in self.results_metadata_map.items():
+            if tracker.is_eof():
+                finished.append((user_query_id, tracker))
+            else:
+                logging.info(f"Restoring state of {user_query_id} has version {tracker.version_id}")
+
+        for user_query_id, tracker in finished:
+            user_id, query_id = get_credentials(user_query_id)
+            logging.info(f"When restoring state of {user_query_id} it was ready with version: {tracker.version_id} with query id '{query_id}'")
+            
+            user_result = self._results_storage.get_or_create_user(user_id)
+
+            user_result.mark_ready(
+                    tracker, query_id)
+
+            self.data_storage.unregister_query(user_query_id)
+            del self.results_metadata_map[user_query_id]
+
+

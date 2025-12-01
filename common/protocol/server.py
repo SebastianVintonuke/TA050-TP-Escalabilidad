@@ -50,7 +50,9 @@ class ServerProtocol:
 
     def __assign_results_storage_address(self) -> None:
         client_id = self._byte_protocol.wait_bytes().decode("utf-8")
-        index = stable_hash(client_id) % len(self._results_storages)
+        index = int(client_id.split("_")[-1]) % len(self._results_storages)
+        
+        # index = stable_hash(client_id) % len(self._results_storages)
         address = self._results_storages[index]
         self._byte_protocol.send_bytes(address.encode("utf-8"))
         self._signal_protocol.wait_signal()

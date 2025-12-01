@@ -82,6 +82,7 @@ def initialize_log(logging_level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+from common.healthchecker.main import start_on_thread as start_healthchecker
 
 def main(config_params) -> None:
     port = config_params["port"]
@@ -127,7 +128,14 @@ def main(config_params) -> None:
         # 'Start' nested node. Means registering callbacks and so on
         node.start_on(nested_joins_middleware)
         
+
+        thread_checker, healthchecker = start_healthchecker(f"joinnode{node_id}")
+
         restarter.start_node_loop(node)
+
+        logging.info(f"Closing healthchecker....");
+        healthchecker.stop()
+        thread_checker.join()
 
         node.close()
     except Exception as e:

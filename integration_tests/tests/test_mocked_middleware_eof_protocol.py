@@ -25,7 +25,7 @@ from integration_tests.src.mocks_rabbit import *
 from base_test_eof_protocol import *
 
 class TestRealMiddlewaresEOFProtocol(unittest.TestCase, BaseEOFProtocolTest):
-    def get_node_setup(self):
+    def get_node_setup(self, q_type):
         return BaseEOFProtocolTest.wrap_intermediate(
             msg_type= CSVMessage,# Initial msg_type
             select_middleware = SerializeMemoryMiddleware(),

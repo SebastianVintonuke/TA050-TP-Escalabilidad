@@ -63,7 +63,7 @@ class BaseEOFProtocolTest(ABC):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = self.get_node_setup()
+        nodes_setup = self.get_node_setup(QUERY_1)
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -123,7 +123,7 @@ class BaseEOFProtocolTest(ABC):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = self.get_node_setup()
+        nodes_setup = self.get_node_setup(QUERY_1)
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -187,7 +187,7 @@ class BaseEOFProtocolTest(ABC):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = self.get_node_setup()
+        nodes_setup = self.get_node_setup(QUERY_1)
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -260,7 +260,7 @@ class BaseEOFProtocolTest(ABC):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = self.get_node_setup()
+        nodes_setup = self.get_node_setup(QUERY_2)
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -358,7 +358,7 @@ class BaseEOFProtocolTest(ABC):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = self.get_node_setup()
+        nodes_setup = self.get_node_setup(QUERY_2)
 
         select_node = nodes_setup.get_select_node()
         select_node.start()
@@ -531,7 +531,7 @@ class BaseEOFProtocolTest(ABC):
         #nested_joins_middleware = SerializeMemoryMiddleware() # Serialize message since it will be the same node that receives the action.
 
         ## INIT NODES
-        nodes_setup = self.get_node_setup()
+        nodes_setup = self.get_node_setup(QUERY_2)
 
         select_node = nodes_setup.get_select_node()
         select_node.start()

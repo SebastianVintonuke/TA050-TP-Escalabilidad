@@ -22,7 +22,7 @@ def year_semester_decode(year_semester_str: str) -> Tuple[date, HalfCreatedAt]:
 
 
 class HandlerQuery3:
-    def handle_new_results(msg, user_id: str) -> bytes:
+    def handle_new_results(msg, user_id: str, packet_id) -> bytes:
 
         data: List[QueryResult3] = []
         for line in msg.stream_rows():
@@ -31,10 +31,10 @@ class HandlerQuery3:
             year_created_at, half_created_at = year_semester_decode(line[1])
             tpv = float(line[2])
             data.append(QueryResult3(year_created_at=year_created_at, half_created_at=half_created_at, store_name=store_name, tpv=tpv))
-        return ResultTask(user_id, QueryId.Query3, False, False, data).to_bytes()
+        return ResultTask(user_id, QueryId.Query3, False, False, data, packet_id).to_bytes()
 
-    def get_eof_msg(user_id):
-        return ResultTask(user_id, QueryId.Query3, True, False, []).to_bytes()
+    def get_eof_msg(user_id, packet_id):
+        return ResultTask(user_id, QueryId.Query3, True, False, [], packet_id).to_bytes()
 
     def get_abort_msg(user_id):
         return ResultTask(user_id, QueryId.Query3, True, True, []).to_bytes()
