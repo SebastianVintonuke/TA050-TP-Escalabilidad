@@ -31,12 +31,12 @@ from middleware.join_tasks_middleware import *
 from middleware.groupby_middleware import *
 from middleware.result_node_middleware import *
 
-def real_setup():
+def real_setup(q_type):
     return BaseEOFProtocolTest.wrap_intermediate(
         msg_type= CSVMessage,# Initial msg_type
         select_middleware = SelectTasksMiddleware(),
         join_middleware = JoinTasksMiddleware(1, ind = 0),
-        groupby_middleware = GroupbyTasksMiddleware(1, ind = 0),
+        groupby_middleware = GroupbyTasksMiddleware(1, ind = 0, type= q_type),
         topk_middleware = SerializeMemoryMiddleware(),
         result_middleware = ResultNodeMiddleware(),
     )
@@ -47,8 +47,8 @@ class TestRealMiddlewaresEOFProtocol(unittest.TestCase, BaseEOFProtocolTest):
         self.active_conns = {}
 
 
-    def get_node_setup(self):
-        return real_setup()
+    def get_node_setup(self, q_type):
+        return real_setup(q_type)
 
     def mock_open_connection(self, host, attempts):
         res = MockConnection(host)

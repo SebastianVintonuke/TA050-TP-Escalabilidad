@@ -172,8 +172,8 @@ class TestGroupbyStorage(unittest.TestCase):
         #f"tag_{builder.headers.packet_id}"
         middleware.send(builder)
 
-    def get_groupby_middleware(self):
-        return GroupbyTasksMiddleware(1, ind = 0)
+    def get_groupby_middleware(self, q_type):
+        return GroupbyTasksMiddleware(1, ind = 0, type = q_type)
 
     def get_res_middleware(self):
         return MockMiddlewareTags()
@@ -227,7 +227,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware()
+        in_middle = self.get_groupby_middleware("q2")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -294,7 +294,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware()
+        in_middle = self.get_groupby_middleware("q2")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -360,7 +360,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware()
+        in_middle = self.get_groupby_middleware("q2")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -435,7 +435,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware()
+        in_middle = self.get_groupby_middleware("q2")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -529,7 +529,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware()
+        in_middle = self.get_groupby_middleware("q2")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -629,7 +629,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware()
+        in_middle = self.get_groupby_middleware("q2")
 
         conf_map = self.get_q2_conf(result_grouper)
 

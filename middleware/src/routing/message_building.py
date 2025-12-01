@@ -86,7 +86,7 @@ class HashedMessageBuilder(MessageBuilder):
     def hash_in(self, base_name, count):
         #h = hash_function(self.key_hash.split("_")[-1].encode()).hexdigest()
         h = self.key_hash.split("_")[-1]
-        return base_name.format(IND= int(h) % count)
+        return base_name.format(IND= int(h) % count, TYPE= self.headers.types[0])
 
     def clone(self):
         return HashedMessageBuilder(self.headers.clone(), self.key_hash)
