@@ -14,6 +14,8 @@ from middleware.groupby_middleware import *
 from middleware.join_tasks_middleware import * 
 
 
+from src.groupby_state_manager_binary import BinaryGroupbyStateManager
+
 from src.groupbynode import GroupbyNode 
 from src.groupby_initialize import * 
 from src.topk_initialize import * 
@@ -21,6 +23,8 @@ from common.node_utils import RestartLogic
 
 from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 from common.state_storage.query_state_storage import  QueryStateStorage
+
+
 def creator_query_storage_in(folder):
     return lambda manager: QueryStateStorage(folder, manager)    
 
@@ -132,7 +136,10 @@ def main(config_params) -> None:
         node_topk = GroupbyNode(topk_middleware, MemoryMessage, types_config_topk, store_creator = creator_query_storage_in(topk_folder))
         node_topk.start()
 
-        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, store_creator = creator_query_storage_in(grp_folder), batch_size = 10)
+        node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, 
+                store_creator = creator_query_storage_in(grp_folder), batch_size = 10,
+                state_manager_creator= BinaryGroupbyStateManager
+                )
         restarter = RestartLogic(MessageMiddlewareMessageError)
 
         def close_handler(sig, frame):
