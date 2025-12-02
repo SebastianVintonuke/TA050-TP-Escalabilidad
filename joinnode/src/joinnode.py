@@ -12,9 +12,9 @@ from middleware.routing import batch_ack_actions as batch_actions
 log_info = logging.info
 # log_info = print
 def get_credentials(accum_id):
-    parts = accum_id.split("_")
+    parts = accum_id.split(".")
 
-    return "_".join(parts[:-1]), parts[-1]
+    return ".".join(parts[:-1]), parts[-1]
 
 class JoinNode:
     def __init__(self, join_middleware, payload_deserializer, type_expander, store_creator = NothingQueryStateStorage, batch_size = 1, limit = 1000):
@@ -34,7 +34,7 @@ class JoinNode:
             acc.describe()
 
     def get_acc_id(self, query_id, joiner_id):
-        return f"{query_id}_{joiner_id}"
+        return f"{query_id}.{joiner_id}"
 
     def get_partial_result_from(self, curr_state):
         return curr_state.get_partial_result()
@@ -98,7 +98,7 @@ class JoinNode:
                 self.type_expander.propagate_signal_in(query_headers)
 
                 for config in configs:
-                    joiner_id = f"{ide}_{config.join_id}"
+                    joiner_id = f"{ide}.{config.join_id}"
 
                     joiner = self.joiners.pop(joiner_id, None)
                     if joiner: # Cleanup
@@ -116,7 +116,7 @@ class JoinNode:
             log_info(f"Query {ide} type: {type} config len:{len(configs)}, EOF received")
 
             for config in configs:
-                joiner_id = f"{ide}_{config.join_id}"
+                joiner_id = f"{ide}.{config.join_id}"
 
                 if self.state_storage.is_cancelled_query(joiner_id):
                     log_info(f"Query '{join_id}' was cancelled so ignore message")
@@ -174,7 +174,7 @@ class JoinNode:
         row_actions= []
 
         for config in configs:
-            joiner_id=f"{ide}_{config.join_id}"
+            joiner_id=f"{ide}.{config.join_id}"
             if self.state_storage.is_cancelled_query(joiner_id):
                 log_info(f"Query '{join_id}' was cancelled so ignore message")
                 continue

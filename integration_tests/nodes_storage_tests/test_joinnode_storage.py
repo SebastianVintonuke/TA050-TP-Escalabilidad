@@ -90,13 +90,13 @@ class TestJoinNodeStorage(unittest.TestCase):
         def create(headers):  
             
             res= BareMockMessageBuilderNoSerial(headers, headers.ids[0])
-            res.headers.types[0] = "q2.OUT"
+            res.headers.types[0] = "q2_OUT"
             return res
         config = JoinTypeConfiguration(result_grouper, create,
             left_type= "q2.LEFT", #
             in_fields_left=in_left,  # ..product names
             in_fields_right=in_right,
-            join_id = "q2.OUT",
+            join_id = "q2_OUT",
             join_conf=[INNER_ON_EQ, {"col_left":"product_id", "col_right":"top_product_id"}],
             out_cols= out_cols
         )
@@ -288,7 +288,7 @@ class TestJoinNodeStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2.OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -366,7 +366,7 @@ class TestJoinNodeStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2.OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -442,7 +442,7 @@ class TestJoinNodeStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2.OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -524,7 +524,7 @@ class TestJoinNodeStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2.OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_OUT"), list(outputs_after_right) # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -640,7 +640,7 @@ class TestJoinNodeStorage(unittest.TestCase):
                 saved_states = retrieve_storage.load_states()
 
                 self.assertEqual(len(saved_states), 1) # Just this query!
-                acc_id = node.get_acc_id(q_id, "q2.OUT")
+                acc_id = node.get_acc_id(q_id, "q2_OUT")
 
                 self.assertIn(acc_id, saved_states)
 
@@ -671,7 +671,7 @@ class TestJoinNodeStorage(unittest.TestCase):
 
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2.OUT"), [exp_outs] # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_OUT"), [exp_outs] # i.e groupby only sends one message to output with the content of the last one.
             )
 
 

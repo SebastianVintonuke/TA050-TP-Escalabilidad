@@ -17,9 +17,9 @@ from middleware.routing import batch_ack_actions as batch_actions
 
 
 def get_credentials(accum_id):
-	parts = accum_id.split("_")
+	parts = accum_id.split(".")
 
-	return "_".join(parts[:-1]), parts[-1]
+	return ".".join(parts[:-1]), parts[-1]
 
 class GroupbyNode:
 	def __init__(self, group_middleware, payload_deserializer, types_confs, store_creator = NothingQueryStateStorage, batch_size = 1):
@@ -34,7 +34,7 @@ class GroupbyNode:
 		self.batch_size = batch_size
 
 	def get_acc_id(self, query_id, q_type):
-		return f"{query_id}_{q_type}"
+		return f"{query_id}.{q_type}"
 
 	def get_partial_result_from(self, curr_state):
 		return curr_state.get_partial_result()
@@ -79,7 +79,7 @@ class GroupbyNode:
 	def handle_task(self, headers, msg):
 		query_headers = headers.first_query() # Should only be one for groupby/topk
 		q_type = query_headers.types[0]
-		accum_id = query_headers.ids[0]+"_"+q_type
+		accum_id = query_headers.ids[0]+"."+q_type
 
 		if self.state_storage.is_cancelled_query(accum_id):
 			log_info(f"Query '{accum_id}' type: {q_type}, was cancelled so ignore message")

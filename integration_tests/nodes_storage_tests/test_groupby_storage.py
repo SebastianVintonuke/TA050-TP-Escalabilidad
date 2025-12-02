@@ -86,7 +86,7 @@ class TestGroupbyStorage(unittest.TestCase):
         )
 
         type_exp= {
-            "q2": type_conf
+            "q2_type": type_conf
         }
 
         return type_exp
@@ -146,7 +146,7 @@ class TestGroupbyStorage(unittest.TestCase):
         for i in range(1, count+1):
             messages.append(BareMockMessageBuilderNoSerial.for_payload(
                     [query_id],
-                    ["q2"],
+                    ["q2_type"],
                     rows, map_f,packet_id = i-1)
             )
 
@@ -159,7 +159,7 @@ class TestGroupbyStorage(unittest.TestCase):
             outputs_mess.append(new_out)
 
 
-        eof_message = BareMockMessageBuilderNoSerial.for_payload([query_id],["q2"],[], map_f, packet_id = count) 
+        eof_message = BareMockMessageBuilderNoSerial.for_payload([query_id],["q2_type"],[], map_f, packet_id = count) 
         eof_message.set_as_eof()
 
         return messages, outputs_mess, eof_message
@@ -227,7 +227,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware("q2")
+        in_middle = self.get_groupby_middleware("q2_type")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -246,7 +246,7 @@ class TestGroupbyStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_type"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -294,7 +294,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware("q2")
+        in_middle = self.get_groupby_middleware("q2_type")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -313,7 +313,7 @@ class TestGroupbyStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_type"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -360,7 +360,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware("q2")
+        in_middle = self.get_groupby_middleware("q2_type")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -379,7 +379,7 @@ class TestGroupbyStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_type"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -435,7 +435,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware("q2")
+        in_middle = self.get_groupby_middleware("q2_type")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -454,13 +454,13 @@ class TestGroupbyStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_type"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
             )
 
 
         # For retrieving states saved in fs
         def get_accum_mock(acc_id):
-            return QueryAccumulator(acc_id, conf_map["q2"], BareMockMessageBuilderNoSerial.default())
+            return QueryAccumulator(acc_id, conf_map["q2_type"], BareMockMessageBuilderNoSerial.default())
         retrieve_storage = self.creator_storage(GroupbyStateManager(get_accum_mock))
 
 
@@ -473,7 +473,7 @@ class TestGroupbyStorage(unittest.TestCase):
                 saved_states = retrieve_storage.load_states()
 
                 self.assertEqual(len(saved_states), 1) # Just this query!
-                acc_id = node.get_acc_id(q_id, "q2")
+                acc_id = node.get_acc_id(q_id, "q2_type")
 
                 self.assertIn(acc_id, saved_states)
 
@@ -529,7 +529,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware("q2")
+        in_middle = self.get_groupby_middleware("q2_type")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -548,7 +548,7 @@ class TestGroupbyStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_type"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
@@ -629,7 +629,7 @@ class TestGroupbyStorage(unittest.TestCase):
         q_id = "query1_1" # 1 after _ is used for hashing!
 
         result_grouper = self.get_res_middleware()
-        in_middle = self.get_groupby_middleware("q2")
+        in_middle = self.get_groupby_middleware("q2_type")
 
         conf_map = self.get_q2_conf(result_grouper)
 
@@ -648,7 +648,7 @@ class TestGroupbyStorage(unittest.TestCase):
         # Use headers of
 
         expected_out_msgs, expected_eof = self.get_simple_expected_out(
-                self.get_headers(q_id, "q2"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
+                self.get_headers(q_id, "q2_type"), [exp_outs[-1]] # i.e groupby only sends one message to output with the content of the last one.
             )
 
         tags_acked = []
