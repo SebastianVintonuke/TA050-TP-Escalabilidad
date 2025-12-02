@@ -59,10 +59,15 @@ class ClientProtocol:
 
 
 
-    def send_mixed_files(self, input_dir, open_file, close_file):
+    def send_mixed_files(self, input_dir, open_file, close_file, invert_send):
         shared,remaining, bigger_type, smaller_type = get_mixed_files(input_dir)
         ind = 1
         len_remaining = len(shared)+len(remaining)
+
+        if invert_send:
+            shared.reverse() # Send first transaction not transaction items... to have more fair spread of tasks
+            logging.info(f"action: setup_inver_send | result: success")
+            
 
         for batch_type, file in shared:
             reader = open_file(file)
@@ -103,7 +108,8 @@ class ClientProtocol:
     def upload_files(self,
                      input_dir: Path,
                      open_file: Callable[[Path], BufferedReader],
-                     close_file: Callable[[Union[BufferedWriter, BufferedReader]], None]
+                     close_file: Callable[[Union[BufferedWriter, BufferedReader]], None],
+                     invert_send
     ) -> str:
         """
         Upload the files to a dispatcher
@@ -118,7 +124,7 @@ class ClientProtocol:
 
         # folders_sent = ["transaction_items","menu_items","stores" , "transactions", "users"]
         
-        self.send_mixed_files(input_dir, open_file ,close_file)
+        self.send_mixed_files(input_dir, open_file ,close_file, invert_send)
 
         folders_sent = ["menu_items", "stores", "users"]
 

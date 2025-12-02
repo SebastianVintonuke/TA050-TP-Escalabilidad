@@ -40,6 +40,9 @@ def initialize_config():  # type: ignore[no-untyped-def]
         config_params["executions"] = int(
             os.getenv("EXECUTIONS", config["DEFAULT"]["EXECUTIONS"])
         )
+        config_params["offset"] = int(
+            os.getenv("OFFSET", "0")
+        )
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting client".format(e))
     except ValueError as e:
@@ -71,15 +74,16 @@ def main() -> None:
     output_dir = config_params["output_dir"]
     logging_level = config_params["logging_level"]
     number_of_executions = config_params["executions"]
+    offset = config_params["offset"]
 
     initialize_log(logging_level)
 
     # Log config parameters at the beginning of the program to verify the configuration of the component
     logging.debug(
-        f"action: config | result: success | server_address: {server_address} | input_dir: {input_dir} | output_dir: {output_dir} | logging_level: {logging_level} | client_executions: {number_of_executions}"
+        f"action: config | result: success | server_address: {server_address} | input_dir: {input_dir} | output_dir: {output_dir} | logging_level: {logging_level} | client_executions: {number_of_executions} | offset: {offset}"
     )
 
-    client = Client(server_address, input_dir, output_dir)
+    client = Client(server_address, input_dir, output_dir, offset)
     signal.signal(signal.SIGTERM, client.graceful_shutdown)
 
     client.start(number_of_executions)

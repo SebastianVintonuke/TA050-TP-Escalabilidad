@@ -43,7 +43,7 @@ class Client:
                     f"action: close_{socket_name_to_log} | result: fail | error: {e}"
                 )
 
-    def __init__(self, server_address: str, input_dir: str, output_dir: str) -> None:
+    def __init__(self, server_address: str, input_dir: str, output_dir: str, offset: int) -> None:
         self._server_address = server_address
         self._client_socket_to_server: Optional[socket.socket] = None
         self._client_socket_to_dispatcher: Optional[socket.socket] = None
@@ -51,6 +51,7 @@ class Client:
         self._input_dir = Path(input_dir)
         self._output_dir = Path(output_dir)
         self._file_descriptors: List[Union[BufferedWriter, BufferedReader]] = []
+        self.invert_send = offset % 2 == 0;
 
     def create_client_socket(self, address: str) -> socket.socket:
         try:
@@ -122,7 +123,7 @@ class Client:
         try:
             client_protocol_to_dispatcher = ClientProtocol(self._client_socket_to_dispatcher)
             client_id = client_protocol_to_dispatcher.upload_files(
-                self._input_dir, self.__open_input_file, self.__close_file
+                self._input_dir, self.__open_input_file, self.__close_file, self.invert_send
             )
             self.__try_close(self._client_socket_to_dispatcher, 'socket_to_dispatcher')
             self._client_socket_to_dispatcher = None

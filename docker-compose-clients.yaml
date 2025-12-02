@@ -9,6 +9,7 @@ services:
       - INPUT_DIR=/input
       - OUTPUT_DIR=/output
       - EXECUTIONS=1
+      - OFFSET=1
     networks:
       - testing_net
     volumes:
@@ -25,6 +26,7 @@ services:
       - INPUT_DIR=/input
       - OUTPUT_DIR=/output
       - EXECUTIONS=1
+      - OFFSET=2
     networks:
       - testing_net
     volumes:
