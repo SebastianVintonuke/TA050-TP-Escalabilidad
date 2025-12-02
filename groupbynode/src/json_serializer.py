@@ -1,6 +1,27 @@
 # from common.state_storage.json_state_manager import JSONStateManager
 import json
-from .query_accumulator import *
+import logging
+from common.state_storage.packet_id_tracker import PacketIDTracker
+
+"""
+
+For groupby "state" is the previous QueryAccumulator , specifically the "groups" 
+but also has the logic encapsulated.to avoid searching for that logic many times
+For now use json
+"""
+
+
+FIELD_GROUPS_KEY = "groups_keys"
+FIELD_GROUPS_STATE = "groups_state"
+META_ACUM_ID = "accumulator_id" 
+META_LAST_PACKET_ID = "last_packet_id" 
+
+
+META_NEXT_EXP_PACKET = "next_exp_packet" 
+META_MISSING_PACKETS = "missing_packets" 
+
+META_VERSION_COUNT_BATCH = "msg_count_batch"
+
 
 ## Base to serialize in changes and in state
 def serial_acc(query_accum):

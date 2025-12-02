@@ -5,6 +5,10 @@ AVG_ACTION = "avg"
 MAX_ACTION = "max"
 COUNT_ACTION = "count"
 
+SUM_ACTION_INT = "sum_int"
+MAX_ACTION_INT = "max_int"
+
+
 class CountAction:
 	def new(self): # By default it doesnt do anything? just return 1
 		return 1 
@@ -23,6 +27,15 @@ class SumAction:
 	def get_result(self, acc):
 		return acc
 
+
+class SumActionInt:
+	def new(self, value):
+		return int(value)
+	def add_value(self, acc, value):
+		return acc+int(value)
+	def get_result(self, acc):
+		return acc
+
 class MaxAction:
 	def new(self, value):
 		return float(value)
@@ -32,6 +45,17 @@ class MaxAction:
 		return value if value > acc else acc
 	def get_result(self, acc):
 		return acc
+
+class MaxActionInt:
+	def new(self, value):
+		return int(value)
+
+	def add_value(self, acc, value):
+		value = int(value)
+		return value if value > acc else acc
+	def get_result(self, acc):
+		return acc
+
 
 
 class AvgAction:
@@ -51,6 +75,9 @@ NUMBER_ACTIONS = {
 	SUM_ACTION: SumAction,
 	MAX_ACTION: MaxAction,
 	AVG_ACTION: AvgAction,
+
+	SUM_ACTION_INT: SumActionInt,
+	MAX_ACTION_INT: MaxActionInt,
 }
 
 

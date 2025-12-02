@@ -26,7 +26,7 @@ def configure_types_groupby(join_middleware, topk_middleware, topk_middleware_ty
             grouping_conf = [["product_id", "month"], [
                 [SUM_ACTION,"revenue"],
                 #[COUNT_ACTION, "quantity_sold"],
-                [SUM_ACTION,"quantity"],
+                [SUM_ACTION_INT,"quantity"],
             ]],
             out_conf={ROW_CONFIG_OUT_COLS: ["product_id", "month", "revenue", "quantity"]},
     )

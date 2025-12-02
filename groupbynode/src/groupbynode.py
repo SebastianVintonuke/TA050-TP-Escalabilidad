@@ -1,6 +1,8 @@
 #from .type_config import TypeConfiguration
 import logging
-from .groupby_state_manager import GroupbyStateManager, QueryAccumulator
+from .query_accumulator import QueryAccumulator
+
+from .groupby_state_manager import GroupbyStateManager
 
 log_info = logging.info
 # log_info = print
@@ -10,7 +12,6 @@ log_info = logging.info
 
 
 from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
-# from common.state_storage.query_state_storage import  QueryStateStorage
 # DEF_STORE_PATH = "/etc/node_state"
 from middleware.routing.header_fields import BaseHeaders
 from middleware.routing import batch_ack_actions as batch_actions
@@ -22,7 +23,8 @@ def get_credentials(accum_id):
 	return ".".join(parts[:-1]), parts[-1]
 
 class GroupbyNode:
-	def __init__(self, group_middleware, payload_deserializer, types_confs, store_creator = NothingQueryStateStorage, batch_size = 1):
+	def __init__(self, group_middleware, payload_deserializer, types_confs, store_creator = NothingQueryStateStorage, batch_size = 1, 
+			state_manager_creator = GroupbyStateManager):
 		self.middleware = group_middleware;
 		self.payload_deserializer = payload_deserializer
 
@@ -30,7 +32,7 @@ class GroupbyNode:
 		self.accumulators = {}
 
 		# This does not load anything yet.. at start we do.
-		self.state_storage = store_creator(GroupbyStateManager(self.get_accumulator)) # Have it hardcoded for now
+		self.state_storage = store_creator(state_manager_creator(self.get_accumulator)) # Have it hardcoded for now
 		self.batch_size = batch_size
 
 	def get_acc_id(self, query_id, q_type):
