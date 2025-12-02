@@ -113,7 +113,7 @@ def main(config_params) -> None:
 
         add_joinnode_config(types_expander, result_middleware, nested_joins_middleware)
 
-        node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), CSVMessage, types_expander, store_creator = creator_query_storage_in(join_folder), batch_size = 10)
+        node = JoinNode(JoinTasksMiddleware(join_node_count, ind = join_node_ind), CSVMessage, types_expander, store_creator = creator_query_storage_in(join_folder), batch_size = 50)
 
 
         restarter = RestartLogic(MessageMiddlewareMessageError)

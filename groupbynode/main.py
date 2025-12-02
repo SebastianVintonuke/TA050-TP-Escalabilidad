@@ -137,7 +137,7 @@ def main(config_params) -> None:
         node_topk.start()
 
         node = GroupbyNode(middleware_group, CSVMessage, types_config_groupby, 
-                store_creator = creator_query_storage_in(grp_folder), batch_size = 10,
+                store_creator = creator_query_storage_in(grp_folder), batch_size = 100,
                 state_manager_creator= BinaryGroupbyStateManager
                 )
         restarter = RestartLogic(MessageMiddlewareMessageError)
