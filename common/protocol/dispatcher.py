@@ -66,8 +66,8 @@ TYPE_ACTIONS_INDEXS = [
 DEF_IND_EOF_SEND = -1
 
 class MessagePublisher:
-    def __init__(self, out_middleware, ind = 0):
-        self.queue = queue.Queue()
+    def __init__(self, out_middleware, ind = 0, maxsize = 40):
+        self.queue = queue.Queue(maxsize = maxsize)
         self.out_middleware = out_middleware
         self.thread = None
         self._running = threading.Event()
@@ -122,10 +122,10 @@ class MessagePublisher:
                     return
 
                 # action_type, user_id, model, batch, pck_id
-                if len(params) ==5:
-                    logging.info(f"MessagePublisher {self.ind} should send '{params[0]}' {params[1]} {params[2]} len:{len(params[3])}, {params[4]}")
-                else:
-                    logging.info(f"MessagePublisher {self.ind} should send '{params}'")
+                # if len(params) ==5:
+                #     logging.info(f"MessagePublisher {self.ind} should send '{params[0]}' {params[1]} {params[2]} len:{len(params[3])}, {params[4]}")
+                # else:
+                #     logging.info(f"MessagePublisher {self.ind} should send '{params}'")
 
                 action_type= params[0]
 
@@ -297,7 +297,7 @@ class DispatcherProtocol:
             if len(file) == 0:
                 ## Ya termino el batch type 
                 model, ind_publisher, counter = map_batch_models.get(curr_batch_type, (None, 0, None))
-                logging.info(f"EOF For {curr_batch_type}: {model} {ind_publisher} {counter.count_messages}")
+                logging.info(f"Queued EOF  For {curr_batch_type}: {model} {ind_publisher} {counter.count_messages}")
 
                 if model:
                     # Put in task/send thread the eof task.

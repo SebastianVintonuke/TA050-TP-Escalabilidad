@@ -10,6 +10,20 @@ from common.protocol.byte import ByteProtocol
 from common.protocol.signal import SignalProtocol
 from common.protocol.server import ServerOperations
 
+def get_mixed_files(input_dir: Path):
+    transaction_items = list(input_dir.rglob(f"transaction_items/*.csv"))
+    transactions = list(input_dir.rglob(f"transactions/*.csv"))
+
+    shared= []
+
+    for item, trans in zip(transaction_items, transactions):
+        shared.append((0, item))
+        shared.append((1, trans))
+
+    if len(transactions) > len(transaction_items):
+        return shared, transactions[len(transaction_items):], 1, 0
+
+    return shared, transaction_items[len(transactions):], 0, 1
 
 class ClientProtocol:
     @staticmethod
@@ -42,6 +56,50 @@ class ClientProtocol:
         """
         self._byte_protocol.close_with(closure_to_close)
 
+
+
+
+    def send_mixed_files(self, input_dir, open_file, close_file):
+        shared,remaining, bigger_type, smaller_type = get_mixed_files(input_dir)
+        ind = 1
+        len_remaining = len(shared)+len(remaining)
+
+        for batch_type, file in shared:
+            reader = open_file(file)
+            logging.info(f"action: upload_file | result: in-progress | file: {file.name} {ind}/{len_remaining}| size: {file.stat().st_size}")
+            try:
+                self._byte_protocol.send_uint8(batch_type)
+                self._batch_protocol.send_all(reader)
+                self._batch_protocol.send_batch([])
+                
+            except Exception as e:
+                close_file(reader)
+                raise e
+
+            ind+=1
+
+        self._byte_protocol.send_uint8(smaller_type)
+        self._batch_protocol.send_batch([])
+
+        for file in remaining:
+            reader = open_file(file)
+            logging.info(f"action: upload_file | result: in-progress | file: {file.name} {ind}/{len_remaining}| size: {file.stat().st_size}")
+            try:
+                self._byte_protocol.send_uint8(ind)
+                self._batch_protocol.send_all(reader)
+                self._batch_protocol.send_batch([])
+                
+            except Exception as e:
+                close_file(reader)
+                raise e
+            ind+=1
+
+        self._byte_protocol.send_uint8(bigger_type)
+        self._batch_protocol.send_batch([])
+
+
+
+
     def upload_files(self,
                      input_dir: Path,
                      open_file: Callable[[Path], BufferedReader],
@@ -58,27 +116,31 @@ class ClientProtocol:
         # ["menu_items"],["stores"], ["users"]]
 
 
-        folders_sent = ["transaction_items","menu_items","stores" , "transactions", "users"]
+        # folders_sent = ["transaction_items","menu_items","stores" , "transactions", "users"]
+        
+        self.send_mixed_files(input_dir, open_file ,close_file)
+
+        folders_sent = ["menu_items", "stores", "users"]
 
 
-        ind = 0
+        ind = 2
         for folder in folders_sent:
-            self._byte_protocol.send_uint8(ind)
 
             for file in input_dir.rglob(f"{folder}/*.csv"):
                 reader = open_file(file)
                 logging.info(f"action: upload_file | result: in-progress | file: {folder}/{file.name} | size: {file.stat().st_size}")
                 try:
+                    self._byte_protocol.send_uint8(ind)
                     self._batch_protocol.send_all(reader)
                     self._batch_protocol.send_batch([])
                     
-                    self._byte_protocol.send_uint8(ind)
                 except Exception as e:
                     close_file(reader)
                     raise e
             
-            ind+=1
+            self._byte_protocol.send_uint8(ind)
             self._batch_protocol.send_batch([])
+            ind+=1
         
         self._byte_protocol.send_uint8(255) # 255== no next batch
         
