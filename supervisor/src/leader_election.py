@@ -226,7 +226,11 @@ class BullyElection:
 
             for peer_id, (host, port) in self.supervisor_peers.items():
                 if peer_id != self.supervisor_id:
-                    self._send_message((host, port), MSG_ALIVE, str(self.supervisor_id))
+                    try:
+                        self._send_message((host, port), MSG_ALIVE, str(self.supervisor_id))
+                    except Exception:
+                        # comportamiento esperado → ignorar
+                        pass
 
             time.sleep(self.alive_interval)
 
@@ -305,11 +309,16 @@ class BullyElection:
             logging.info(f"Received ELECTION from {sender_id} (lower ID), sending ANSWER")
             self._send_message(addr, MSG_ANSWER, str(self.supervisor_id))
 
-            # Iniciar elección si soy seguidor
             with self._state_lock:
                 current_state = self.state
             
-            if current_state == SupervisorState.FOLLOWER:
+            # reenvio de COORDINATOR en caso de perdida de ese mensaje
+            if current_state == SupervisorState.LEADER:
+                logging.info(f"Already leader, re-sending COORDINATOR to {sender_id}")
+                if sender_id in self.supervisor_peers:
+                    peer_addr = self.supervisor_peers[sender_id]
+                    self._send_message(peer_addr, MSG_COORDINATOR, str(self.supervisor_id))
+            elif current_state == SupervisorState.FOLLOWER:
                 logging.info("Starting my own election after receiving ELECTION")
                 self.trigger_election()
 
@@ -361,4 +370,6 @@ class BullyElection:
                 
         except Exception as e:
             if not self._stop_event.is_set():
-                logging.error(f"Failed to send {msg_type} to {addr}: {e}")
+                # comportamiento esperado → ignorar
+                if msg_type != MSG_ALIVE:
+                    logging.error(f"Failed to send {msg_type} to {addr}: {e}")
