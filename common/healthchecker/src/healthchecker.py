@@ -115,21 +115,12 @@ class Healthchecker:
                 leader = max(responses, key=lambda x: x["id"])
                 self.current_leader = leader
                 logging.info(f"Leader discovered: {leader}")
-                
-                # validar con heartbeat de prueba
-                if self._test_leader_heartbeat():
-                    return True
-                else:
-                    logging.warning(f"Leader {leader} didn't respond to test heartbeat")
-                    self.current_leader = None
+                return True
 
             time.sleep(0.5)
 
         logging.error("Failed to discover leader after all retries")
         return False
-
-    def _test_leader_heartbeat(self) -> bool:
-        return self._send_heartbeat_to_leader(validate_node_id=True)
 
     def _heartbeat_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -151,18 +142,25 @@ class Healthchecker:
         msg = HeartbeatProtocol.encode_node_alive_response(self.node_id)
         addr = (self.current_leader["host"], self.current_leader["port"])
         
-        try:
-            self.send_sock.sendto(msg, addr)
-            data, _ = self.send_sock.recvfrom(2048)
-            msg_type = data[0] if len(data) > 0 else None
-            
-            if msg_type == MSG_TYPE_HEARTBEAT_ACK:
-                if validate_node_id:
-                    node_id = HeartbeatProtocol.decode_heartbeat_ack(data)
-                    return node_id == self.node_id
-                return True
-        except (socket.timeout, OSError) as e:
-            logging.debug(f"Heartbeat to leader failed: {e}")
+        # reintento en heartbeats
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                self.send_sock.sendto(msg, addr)
+                data, _ = self.send_sock.recvfrom(2048)
+                msg_type = data[0] if len(data) > 0 else None
+                
+                if msg_type == MSG_TYPE_HEARTBEAT_ACK:
+                    if validate_node_id:
+                        node_id = HeartbeatProtocol.decode_heartbeat_ack(data)
+                        return node_id == self.node_id
+                    return True
+            except (socket.timeout, OSError) as e:
+                if attempt < max_attempts - 1:
+                    logging.debug(f"Heartbeat attempt {attempt + 1} failed, retrying...")
+                    time.sleep(0.05)
+                else:
+                    logging.debug(f"Heartbeat to leader failed after {max_attempts} attempts: {e}")
         
         return False
 
