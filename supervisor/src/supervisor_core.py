@@ -69,11 +69,18 @@ class SupervisorCore:
         for node_id in list(self.inactivity.keys()):
             prev_state = self.state[node_id]
 
-            if prev_state == STATE_DOWN:
+            # check importante para el nuevo lider
+            if prev_state != STATE_DOWN:
+                self.inactivity[node_id] += 1
+                last_activity_register = self.inactivity[node_id]
+            else:
+                self.inactivity[node_id] += 1
+                last_activity_register = self.inactivity[node_id]
+                
+                # re check por cada hard threshold
+                if last_activity_register % self.hard_threshold == 0:
+                    actions.append(("send_check", node_id))
                 continue
-
-            self.inactivity[node_id] += 1
-            last_activity_register = self.inactivity[node_id]
 
             # cruza el soft threshold → SUSPECT
             if last_activity_register == self.soft_threshold and prev_state == STATE_UP:
@@ -104,3 +111,23 @@ class SupervisorCore:
 
     def get_all_states(self) -> Dict[str, str]:
         return dict(self.state)
+    
+    def reset_for_new_leader(self) -> List[Action]:
+        actions: List[Action] = []
+        
+        for node_id in list(self.inactivity.keys()):
+            old_state = self.state[node_id]
+            
+            if old_state == STATE_DOWN:
+                # resetear el contador y checkear si volvieron
+                self.inactivity[node_id] = 0
+                actions.append(("send_check", node_id))
+            elif old_state == STATE_SUSPECT:
+                # validar su estado
+                self.inactivity[node_id] = self.soft_threshold
+                actions.append(("send_check", node_id))
+            else:
+                # resetear el contador
+                self.inactivity[node_id] = 0
+        
+        return actions

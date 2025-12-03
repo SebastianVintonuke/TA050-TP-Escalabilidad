@@ -181,8 +181,9 @@ class Supervisor:
                 ack = HeartbeatProtocol.encode_heartbeat_ack(node_id)
                 try:
                     self.send_sock.sendto(ack, addr)
-                except OSError:
-                    pass
+                    logging.debug(f"Sent HEARTBEAT_ACK to {node_id}")
+                except OSError as e:
+                    logging.error(f"Failed to send HEARTBEAT_ACK to {node_id}: {e}")
 
                 actions = self.core.register_heartbeat(node_id, ts)
 
@@ -247,9 +248,13 @@ class Supervisor:
             return
         
         if self._monitoring_active and self.supervisor_id:
+            socket_hostname = socket.gethostname()
+            if self.supervisor_id in self.supervisor_peers:
+                socket_hostname = self.supervisor_peers[self.supervisor_id][0]
+            
             response = LeaderElectionProtocol.encode_leader_info(
                 leader_id=self.supervisor_id,
-                leader_host=socket.gethostname(),
+                leader_host=socket_hostname,
                 leader_port=self.supervisor_port
             )
             try:
@@ -290,6 +295,11 @@ class Supervisor:
     def _on_become_leader(self) -> None:
         logging.info("BECAME LEADER - Activating node monitoring")
         self._monitoring_active = True
+        
+        # reseteo del estado
+        actions = self.core.reset_for_new_leader()
+        logging.info(f"BECAME LEADER - sending {len(actions)} health checks")
+        self._apply_actions(actions)
     
     def _on_lose_leadership(self) -> None:
         logging.warning("LOST LEADERSHIP - Deactivating node monitoring")
