@@ -11,6 +11,9 @@ MSG_TYPE_HEARTBEAT_ACK = 6
 MSG_TYPE_WHO_IS_LEADER = 3
 MSG_TYPE_LEADER_INFO = 4
 MSG_TYPE_NO_LEADER_YET = 5
+MSG_TYPE_STATE_REQUEST = 7
+MSG_TYPE_STATE_RESPONSE = 8
+MSG_TYPE_STATE_REPLICATION = 9
 
 
 class HeartbeatProtocol:
@@ -230,3 +233,197 @@ class LeaderElectionProtocol:
         
         request_id = data[idx:idx+request_id_len].decode('utf-8', errors='ignore')
         return request_id
+
+    @staticmethod
+    def encode_state_request(supervisor_id: int) -> bytes:
+        msg = bytearray()
+        msg.append(MSG_TYPE_STATE_REQUEST)
+        msg.extend(struct.pack('>I', supervisor_id))
+        return bytes(msg)
+
+    @staticmethod
+    def decode_state_request(data: bytes) -> Optional[int]:
+        if len(data) < 5:
+            return None
+        supervisor_id = struct.unpack('>I', data[1:5])[0]
+        return supervisor_id
+
+    @staticmethod
+    def encode_state_response(state: dict) -> bytes:
+        msg = bytearray()
+        msg.append(MSG_TYPE_STATE_RESPONSE)
+        
+        # numero de nodos
+        num_nodes = len(state)
+        msg.extend(struct.pack('>H', num_nodes))
+        
+        for node_id, node_data in state.items():
+            # node ID
+            node_id_bytes = node_id.encode('utf-8')
+            if len(node_id_bytes) > 255:
+                raise ValueError(f"node_id too long: {node_id}")
+            msg.append(len(node_id_bytes))
+            msg.extend(node_id_bytes)
+            
+            # state
+            state_str = node_data['state']
+            state_bytes = state_str.encode('utf-8')
+            if len(state_bytes) > 255:
+                raise ValueError(f"state string too long: {state_str}")
+            msg.append(len(state_bytes))
+            msg.extend(state_bytes)
+            
+            # inactivity
+            inactivity = node_data['inactivity']
+            msg.extend(struct.pack('>i', inactivity))
+            
+            # timestamp
+            last_timestamp = node_data['last_timestamp']
+            msg.extend(struct.pack('>d', last_timestamp))
+        
+        return bytes(msg)
+
+    @staticmethod
+    def decode_state_response(data: bytes) -> Optional[dict]:
+        if len(data) < 3:
+            return None
+        
+        idx = 1
+        num_nodes = struct.unpack('>H', data[idx:idx+2])[0]
+        idx += 2
+        
+        state = {}
+        
+        for _ in range(num_nodes):
+            # node_id
+            if idx >= len(data):
+                return None
+            node_id_len = data[idx]
+            idx += 1
+            
+            if idx + node_id_len > len(data):
+                return None
+            node_id = data[idx:idx+node_id_len].decode('utf-8', errors='ignore')
+            idx += node_id_len
+            
+            # state
+            if idx >= len(data):
+                return None
+            state_len = data[idx]
+            idx += 1
+            
+            if idx + state_len > len(data):
+                return None
+            state_str = data[idx:idx+state_len].decode('utf-8', errors='ignore')
+            idx += state_len
+            
+            # inactivity
+            if idx + 4 > len(data):
+                return None
+            inactivity = struct.unpack('>i', data[idx:idx+4])[0]
+            idx += 4
+            
+            # timestamp
+            if idx + 8 > len(data):
+                return None
+            last_timestamp = struct.unpack('>d', data[idx:idx+8])[0]
+            idx += 8
+            
+            state[node_id] = {
+                'state': state_str,
+                'inactivity': inactivity,
+                'last_timestamp': last_timestamp
+            }
+        
+        return state
+
+    @staticmethod
+    def encode_state_replication(leader_id: int, state: dict) -> bytes:
+        msg = bytearray()
+        msg.append(MSG_TYPE_STATE_REPLICATION)
+        
+        # leader ID
+        msg.extend(struct.pack('>I', leader_id))
+        
+        # numero de nodos
+        num_nodes = len(state)
+        msg.extend(struct.pack('>H', num_nodes))
+        
+        for node_id, node_data in state.items():
+            # node ID
+            node_id_bytes = node_id.encode('utf-8')
+            if len(node_id_bytes) > 255:
+                raise ValueError(f"node_id too long: {node_id}")
+            msg.append(len(node_id_bytes))
+            msg.extend(node_id_bytes)
+            
+            # State string
+            state_str = node_data['state']
+            state_bytes = state_str.encode('utf-8')
+            if len(state_bytes) > 255:
+                raise ValueError(f"state string too long: {state_str}")
+            msg.append(len(state_bytes))
+            msg.extend(state_bytes)
+            
+            # inactivity
+            inactivity = node_data['inactivity']
+            msg.extend(struct.pack('>i', inactivity))
+            
+            # last timestamp
+            last_timestamp = node_data['last_timestamp']
+            msg.extend(struct.pack('>d', last_timestamp))
+        
+        return bytes(msg)
+
+    @staticmethod
+    def decode_state_replication(data: bytes) -> Optional[tuple]:
+        if len(data) < 7:
+            return None
+        
+        idx = 1
+        leader_id = struct.unpack('>I', data[idx:idx+4])[0]
+        idx += 4
+        
+        num_nodes = struct.unpack('>H', data[idx:idx+2])[0]
+        idx += 2
+        
+        state = {}
+        
+        for _ in range(num_nodes):
+            if idx >= len(data):
+                return None
+            node_id_len = data[idx]
+            idx += 1
+            
+            if idx + node_id_len > len(data):
+                return None
+            node_id = data[idx:idx+node_id_len].decode('utf-8', errors='ignore')
+            idx += node_id_len
+            
+            if idx >= len(data):
+                return None
+            state_len = data[idx]
+            idx += 1
+            
+            if idx + state_len > len(data):
+                return None
+            state_str = data[idx:idx+state_len].decode('utf-8', errors='ignore')
+            idx += state_len
+            
+            if idx + 4 > len(data):
+                return None
+            inactivity = struct.unpack('>i', data[idx:idx+4])[0]
+            idx += 4
+            
+            if idx + 8 > len(data):
+                return None
+            last_timestamp = struct.unpack('>d', data[idx:idx+8])[0]
+            idx += 8
+            
+            state[node_id] = {
+                'state': state_str,
+                'inactivity': inactivity,
+                'last_timestamp': last_timestamp
+            }
+        
+        return (leader_id, state)
