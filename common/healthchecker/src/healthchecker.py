@@ -178,11 +178,9 @@ class Healthchecker:
             if msg_type == MSG_TYPE_NODE_ALIVE_CHECK:
                 _, node_id, _ = HeartbeatProtocol.decode_message(data)
                 if node_id == self.node_id:
-                    if self.current_leader:
-                        response = HeartbeatProtocol.encode_node_alive_response(self.node_id)
-                        leader_addr = (self.current_leader["host"], self.current_leader["port"])
-                        try:
-                            self.send_sock.sendto(response, leader_addr)
-                            logging.debug(f"Responded to NODE_ALIVE_CHECK from {addr}, sent to leader {leader_addr}")
-                        except OSError as e:
-                            logging.warning(f"Failed to send NODE_ALIVE_RESPONSE to leader: {e}")
+                    response = HeartbeatProtocol.encode_node_alive_response(self.node_id)
+                    try:
+                        self.send_sock.sendto(response, addr)
+                        logging.debug(f"Responded to NODE_ALIVE_CHECK from {addr}")
+                    except OSError as e:
+                        logging.warning(f"Failed to send NODE_ALIVE_RESPONSE: {e}")
