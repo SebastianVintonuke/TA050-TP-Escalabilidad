@@ -7,10 +7,12 @@ from .resultnode_state_handler import UserQueryCounter, ResultNodeStateManager
 from common.utils import stable_hash
 from common.state_storage.nothing_state_storage import  NothingQueryStateStorage
 log_info = logging.info
-def get_credentials(accum_id):
-	parts = accum_id.split("_")
 
-	return "_".join(parts[:-1]), parts[-1]
+DELIMETER_CREDENTIAL  = "."
+def get_credentials(accum_id):
+	parts = accum_id.split(DELIMETER_CREDENTIAL )
+
+	return DELIMETER_CREDENTIAL .join(parts[:-1]), parts[-1]
 
 
 class ResultNode:
@@ -33,6 +35,9 @@ class ResultNode:
 			handler = self.map_handlers.get(query_type, None)
 			log_info(f"Initializing user query counter for {user_id}, type: {query_type}")
 
+			if not handler:
+				log_info(f"Invalid query type! handler was None...")
+
 			# If its invalid i.e handler == None .. its discarded on start after loading
 			counter = UserQueryCounter(user_query_id, handler)
 
@@ -44,7 +49,7 @@ class ResultNode:
 	def handle_result(self, headers, msg):
 		user_id = headers.ids[0]
 		query_type = headers.types[0]
-		user_query_id = user_id+"_"+query_type
+		user_query_id = user_id+ DELIMETER_CREDENTIAL +query_type
 
 
 		if self.state_storage.is_cancelled_query(user_query_id):
