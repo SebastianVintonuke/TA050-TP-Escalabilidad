@@ -11,7 +11,9 @@ from common.protocol.heartbeat_leader import (
     HeartbeatProtocol,
     LeaderElectionProtocol, 
     MSG_TYPE_NODE_ALIVE_RESPONSE,
-    MSG_TYPE_WHO_IS_LEADER
+    MSG_TYPE_WHO_IS_LEADER,
+    MSG_TYPE_STATE_REQUEST,
+    MSG_TYPE_STATE_REPLICATION
 )
 
 ACTION_MARK_UP = "mark_up"
@@ -21,6 +23,8 @@ ACTION_MARK_DOWN = "mark_down"
 LEADER_ID_INDEX = 0
 LEADER_NAME_INDEX = 1
 LEADER_PORT_INDEX = 2
+
+REPLICATION_INTERVAL = 3.0
 
 
 class Supervisor:
@@ -48,6 +52,7 @@ class Supervisor:
 
         self._t_recv: Optional[threading.Thread] = None
         self._t_tick: Optional[threading.Thread] = None
+        self._t_replication: Optional[threading.Thread] = None
 
         self._init_supervisor_core(soft_threshold, hard_threshold)
 
@@ -94,6 +99,7 @@ class Supervisor:
         self.enable_leader_election = enable_leader_election
         self.bully: Optional[BullyElection] = None
         self._monitoring_active = True
+        self.replicated_state: Optional[Dict] = None
         
         if self.enable_leader_election:
             if not self.supervisor_id or not self.supervisor_peers:
@@ -112,9 +118,7 @@ class Supervisor:
             )
             self.bully.on_become_leader = self._on_become_leader
             self.bully.on_lose_leadership = self._on_lose_leadership
-        else:
-            logging.info("Running in standalone mode (no leader election)")
-
+        
     def start(self) -> None:
         if self.bully:
             self.bully.start()
@@ -124,6 +128,10 @@ class Supervisor:
 
         self._t_tick = threading.Thread(target=self._tick_loop)
         self._t_tick.start()
+        
+        if self.enable_leader_election:
+            self._t_replication = threading.Thread(target=self._state_replication_loop)
+            self._t_replication.start()
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -149,6 +157,9 @@ class Supervisor:
 
         if self._t_tick is not None:
             self._t_tick.join()
+        
+        if self._t_replication is not None:
+            self._t_replication.join()
 
 
     def _recv_loop(self) -> None:
@@ -169,6 +180,14 @@ class Supervisor:
                 self._handle_who_is_leader(data, addr)
                 continue
 
+            if msg_type == MSG_TYPE_STATE_REQUEST:
+                self._handle_state_request(data, addr)
+                continue
+
+            if msg_type == MSG_TYPE_STATE_REPLICATION:
+                self._handle_state_replication(data, addr)
+                continue
+
             if msg_type == MSG_TYPE_NODE_ALIVE_RESPONSE:
                 if not self._monitoring_active:
                     continue
@@ -181,7 +200,7 @@ class Supervisor:
                 ack = HeartbeatProtocol.encode_heartbeat_ack(node_id)
                 try:
                     self.send_sock.sendto(ack, addr)
-                    logging.debug(f"Sent HEARTBEAT_ACK to {node_id}")
+                    # logging.debug(f"Sent HEARTBEAT_ACK to {node_id}")
                 except OSError as e:
                     logging.error(f"Failed to send HEARTBEAT_ACK to {node_id}: {e}")
 
@@ -199,6 +218,33 @@ class Supervisor:
             actions = self.core.tick()
 
             self._apply_actions(actions)
+    
+    def _state_replication_loop(self) -> None:
+        while not self._stop_event.is_set():
+            time.sleep(REPLICATION_INTERVAL)
+            
+            # solo el lider
+            if not self._monitoring_active:
+                continue
+            
+            if not self.supervisor_id:
+                continue
+            
+            state = self.core.get_state_snapshot()
+            
+            for peer_id, (peer_host, peer_election_port) in self.supervisor_peers.items():
+                if peer_id == self.supervisor_id:
+                    continue
+                
+                try:
+                    message = LeaderElectionProtocol.encode_state_replication(
+                        self.supervisor_id, 
+                        state
+                    )
+                    self.send_sock.sendto(message, (peer_host, self.supervisor_port))
+                    # logging.debug(f"Replicated state to supervisor {peer_id}: {len(state)} nodes")
+                except Exception as e:
+                    logging.warning(f"Failed to replicate state to supervisor {peer_id}: {e}")
 
     def _apply_actions(self, actions: List[Tuple[str, str]]) -> None:
         for action, node_id in actions:
@@ -215,7 +261,11 @@ class Supervisor:
         inact = self.core.get_inactivity(node_id)
         logging.error(f"{node_id} -> DOWN (inactividad={inact}, hard timeout)")
         if self.restart_manager:
-            self.restart_manager.restart_node_with_backoff(node_id)
+            recent_attempts = self.restart_manager.get_restart_attempts(node_id)
+            if recent_attempts > 0:
+                logging.warning(f"{node_id} restart skipped (already {recent_attempts} attempts in progress/recent)")
+            else:
+                self.restart_manager.restart_node_with_backoff(node_id)
         else:
             logging.warning(f"{node_id} restart skipped (restart disabled)")
 
@@ -238,8 +288,9 @@ class Supervisor:
 
         try:
             self.send_sock.sendto(data, addr)
-        except OSError:
-            pass
+            logging.debug(f"Sent NODE_ALIVE_CHECK to {node_id} at {addr}")
+        except OSError as e:
+            logging.warning(f"Failed to send NODE_ALIVE_CHECK to {node_id}: {e}")
 
     def _handle_who_is_leader(self, data: bytes, addr: Tuple[str, int]) -> None:
         node_id, _ = LeaderElectionProtocol.decode_who_is_leader(data)
@@ -296,14 +347,100 @@ class Supervisor:
         logging.info("BECAME LEADER - Activating node monitoring")
         self._monitoring_active = True
         
-        # reseteo del estado
-        actions = self.core.reset_for_new_leader()
-        logging.info(f"BECAME LEADER - sending {len(actions)} health checks")
+        # intento recuperar estado
+        previous_state = self._request_state_from_previous_leader()
+        
+        if previous_state:
+            logging.info("BECAME LEADER - Restoring state from previous leader")
+            actions = self.core.restore_state_from_replica(previous_state)
+        else:
+            logging.info("BECAME LEADER - No previous state available, starting fresh")
+            actions = self.core.reset_for_new_leader()
+        
+        logging.info(f"BECAME LEADER - applying {len(actions)} actions")
         self._apply_actions(actions)
     
     def _on_lose_leadership(self) -> None:
         logging.warning("LOST LEADERSHIP - Deactivating node monitoring")
         self._monitoring_active = False
+    
+    def _request_state_from_previous_leader(self) -> Optional[Dict]:
+        if self.replicated_state:
+            # logging.info(f"Using replicated state: {len(self.replicated_state)} nodes")
+            return self.replicated_state
+        
+        if not self.bully or not self.bully.previous_leader:
+            # logging.info("No previous leader to request state from")
+            return None
+        
+        previous_leader_id = self.bully.previous_leader
+        if previous_leader_id not in self.supervisor_peers:
+            # logging.warning(f"Previous leader {previous_leader_id} not in peers")
+            return None
+        
+        prev_host, prev_election_port = self.supervisor_peers[previous_leader_id]
+        
+        logging.info(f"Requesting state from previous leader {previous_leader_id} at {prev_host}:{self.supervisor_port}")
+        
+        request_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        request_sock.settimeout(2.0)
+        
+        try:
+            if not self.supervisor_id:
+                return None
+            request = LeaderElectionProtocol.encode_state_request(self.supervisor_id)
+            request_sock.sendto(request, (prev_host, self.supervisor_port))
+            
+            data, _ = request_sock.recvfrom(8192)
+            state = LeaderElectionProtocol.decode_state_response(data)
+            
+            if state:
+                logging.info(f"Received state from previous leader: {len(state)} nodes")
+            return state
+            
+        except socket.timeout:
+            logging.warning(f"Timeout waiting for state from previous leader {previous_leader_id}")
+            return None
+        except Exception as e:
+            logging.error(f"Error requesting state from previous leader: {e}")
+            return None
+        finally:
+            request_sock.close()
+    
+    def _handle_state_request(self, data: bytes, addr: Tuple[str, int]) -> None:
+        try:
+            requesting_supervisor_id = LeaderElectionProtocol.decode_state_request(data)
+            # logging.info(f"Received state request from supervisor {requesting_supervisor_id}")
+            
+            state = self.core.get_state_snapshot()
+            
+            response = LeaderElectionProtocol.encode_state_response(state)
+            self.send_sock.sendto(response, addr)
+            
+            # logging.info(f"Sent state snapshot to supervisor {requesting_supervisor_id}: {len(state)} nodes")
+            
+        except Exception as e:
+            logging.error(f"Error handling state request: {e}")
+    
+    def _handle_state_replication(self, data: bytes, addr: Tuple[str, int]) -> None:
+        try:
+            result = LeaderElectionProtocol.decode_state_replication(data)
+            if not result:
+                logging.warning("Failed to decode state replication message")
+                return
+            
+            leader_id, state = result
+            
+            # solo aceptar del lider
+            if self.bully and self.bully.current_leader == leader_id:
+                self.replicated_state = state
+                # logging.debug(f"Stored replicated state from leader {leader_id}: {len(state)} nodes")
+            else:
+                current = self.bully.current_leader if self.bully else None
+                # logging.warning(f"Ignoring state replication from {leader_id} (current leader: {current})")
+                
+        except Exception as e:
+            logging.error(f"Error handling state replication: {e}")
     
     def is_leader(self) -> bool:
         if not self.bully:
