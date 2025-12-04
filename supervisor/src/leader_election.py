@@ -16,6 +16,8 @@ MSG_ELECTION = "ELECTION"
 MSG_ANSWER = "ANSWER"
 MSG_COORDINATOR = "COORDINATOR"
 MSG_ALIVE = "ALIVE"
+MSG_WHO_IS_LEADER = "WHO_IS_LEADER"
+MSG_I_AM_LEADER = "I_AM_LEADER"
 
 
 class BullyElection:
@@ -36,6 +38,7 @@ class BullyElection:
 
         self.state = SupervisorState.FOLLOWER
         self.current_leader: Optional[int] = None
+        self.previous_leader: Optional[int] = None
         self.last_leader_alive = 0.0
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -81,7 +84,9 @@ class BullyElection:
         time.sleep(0.5)
 
         if self.current_leader is None:
-            self.trigger_election()
+            if not self._discover_existing_leader():
+                # no hay líder activo, iniciar elección
+                self.trigger_election()
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -103,6 +108,37 @@ class BullyElection:
 
     def get_leader_id(self) -> Optional[int]:
         return self.current_leader
+
+    def _discover_existing_leader(self) -> bool:        
+        # WHO_IS_LEADER
+        for peer_id, (host, port) in self.supervisor_peers.items():
+            if peer_id != self.supervisor_id:
+                self._send_message((host, port), MSG_WHO_IS_LEADER, str(self.supervisor_id))
+        
+        discovery_timeout = 2.0
+        discovery_start = time.time()
+        
+        discovered_leader = None
+        while time.time() - discovery_start < discovery_timeout:
+            with self._state_lock:
+                if self.current_leader is not None:
+                    discovered_leader = self.current_leader
+                    break
+            time.sleep(0.1)
+        
+        if discovered_leader is not None:
+            logging.info(f"Discovered existing leader: {discovered_leader}")
+            
+            # challenge
+            if discovered_leader < self.supervisor_id:
+                logging.info(f"Leader {discovered_leader} has lower ID, will initiate election to challenge")
+                return False
+            else:
+                logging.info(f"Leader {discovered_leader} has higher or equal ID, accepting")
+                return True
+        
+        logging.info("No existing leader found, will start election")
+        return False
 
     def trigger_election(self) -> None:
         if self._stop_event.is_set():
@@ -183,6 +219,7 @@ class BullyElection:
                 return
             
             self.state = SupervisorState.LEADER
+            self.previous_leader = self.current_leader
             self.current_leader = self.supervisor_id
             should_stop_alive_thread = (self._thread_alive is not None and self._thread_alive.is_alive())
 
@@ -298,6 +335,12 @@ class BullyElection:
         elif msg_type == MSG_ALIVE:
             self._handle_alive(sender_id)
 
+        elif msg_type == MSG_WHO_IS_LEADER:
+            self._handle_who_is_leader(sender_id, addr)
+
+        elif msg_type == MSG_I_AM_LEADER:
+            self._handle_i_am_leader(sender_id)
+
         else:
             logging.warning(f"Unknown message type: {msg_type}")
 
@@ -343,6 +386,7 @@ class BullyElection:
         with self._state_lock:
             was_leader = (self.state == SupervisorState.LEADER)
 
+            self.previous_leader = self.current_leader
             self.current_leader = sender_id
             self.last_leader_alive = time.time()
 
@@ -359,6 +403,27 @@ class BullyElection:
         if sender_id == self.current_leader:
             self.last_leader_alive = time.time()
             # logging.debug(f"Received ALIVE from leader {sender_id}")
+
+    def _handle_who_is_leader(self, sender_id: int, addr: Tuple[str, int]) -> None:
+        with self._state_lock:
+            if self.state == SupervisorState.LEADER:
+                logging.debug(f"Responding to WHO_IS_LEADER from {sender_id}: I am leader")
+                self._send_message(addr, MSG_I_AM_LEADER, str(self.supervisor_id))
+
+    def _handle_i_am_leader(self, sender_id: int) -> None:
+        logging.info(f"Received I_AM_LEADER from {sender_id}")
+        
+        with self._state_lock:
+            if sender_id >= self.supervisor_id:
+                self.previous_leader = self.current_leader
+                self.current_leader = sender_id
+                self.last_leader_alive = time.time()
+                self.state = SupervisorState.FOLLOWER
+                logging.info(f"Accepting {sender_id} as existing leader")
+            else:
+                logging.info(f"Discovered leader {sender_id} with lower ID, will challenge after discovery")
+                self.previous_leader = sender_id
+                self.current_leader = sender_id
 
     def _send_message(self, addr: Tuple[str, int], msg_type: str, data: str) -> None:
         try:
