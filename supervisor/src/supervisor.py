@@ -244,7 +244,8 @@ class Supervisor:
                     self.send_sock.sendto(message, (peer_host, self.supervisor_port))
                     # logging.debug(f"Replicated state to supervisor {peer_id}: {len(state)} nodes")
                 except Exception as e:
-                    logging.warning(f"Failed to replicate state to supervisor {peer_id}: {e}")
+                    # logging.warning(f"Failed to replicate state to supervisor {peer_id}: {e}")
+                    pass
 
     def _apply_actions(self, actions: List[Tuple[str, str]]) -> None:
         for action, node_id in actions:
@@ -258,8 +259,7 @@ class Supervisor:
                 self.handle_node_down(node_id)
 
     def handle_node_down(self, node_id):
-        inact = self.core.get_inactivity(node_id)
-        logging.error(f"{node_id} -> DOWN (inactividad={inact}, hard timeout)")
+        logging.error(f"{node_id} -> DOWN")
         if self.restart_manager:
             recent_attempts = self.restart_manager.get_restart_attempts(node_id)
             if recent_attempts > 0:
@@ -270,13 +270,11 @@ class Supervisor:
             logging.warning(f"{node_id} restart skipped (restart disabled)")
 
     def check_node_health(self, node_id):
-        inact = self.core.get_inactivity(node_id)
-        logging.warning(f"{node_id} -> SUSPECT (inactividad={inact}, enviando check)")
+        logging.warning(f"{node_id} -> SUSPECT")
         self._send_node_alive_check(node_id)
 
     def mark_node_active(self, node_id):
-        inact = self.core.get_inactivity(node_id)
-        logging.info(f"{node_id} -> UP (inactividad reseteda desde {inact})")
+        logging.info(f"{node_id} -> UP")
 
         if self.restart_manager:
             self.restart_manager.clear_restart_history(node_id)
@@ -288,7 +286,7 @@ class Supervisor:
 
         try:
             self.send_sock.sendto(data, addr)
-            logging.debug(f"Sent NODE_ALIVE_CHECK to {node_id} at {addr}")
+            # logging.debug(f"Sent NODE_ALIVE_CHECK to {node_id} at {addr}")
         except OSError as e:
             logging.warning(f"Failed to send NODE_ALIVE_CHECK to {node_id}: {e}")
 
@@ -328,7 +326,7 @@ class Supervisor:
                 )
                 try:
                     self.send_sock.sendto(response, addr)
-                    logging.debug(f"Responded to WHO_IS_LEADER from {node_id}: leader is {leader_info[0]}")
+                    # logging.debug(f"Responded to WHO_IS_LEADER from {node_id}: leader is {leader_info[0]}")
                 except OSError:
                     pass
             else:
