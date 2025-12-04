@@ -42,7 +42,7 @@ class ResultNodeStateManager:
 		
 		user_query_state.last_packet_id= changes[META_LAST_PACKET_ID]
 		user_query_state.packet_tracker.expected_next_packet = changes[META_NEXT_EXP_PACKET]
-		user_query_state.packet_tracker.missing_packets = changes[META_MISSING]
+		user_query_state.packet_tracker.missing_packets = set(changes[META_MISSING])
 
 		return user_query_state
 
@@ -55,7 +55,7 @@ class ResultNodeStateManager:
 
 		user_query_state.last_packet_id= state[META_LAST_PACKET_ID]
 		user_query_state.packet_tracker.expected_next_packet = state[META_NEXT_EXP_PACKET]
-		user_query_state.packet_tracker.missing_packets = state[META_MISSING]
+		user_query_state.packet_tracker.missing_packets = set(state[META_MISSING])
 
 
 		return user_query_state
