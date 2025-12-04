@@ -4,6 +4,9 @@ import threading
 import time
 from typing import Dict, List, Tuple, Optional
 
+# reduce logs HTTP del docker client
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 PAUSED_CONTAINER = 'paused'
 EXITED_CONTAINER = 'exited'
 DEAD_CONTAINER = 'dead'
@@ -61,11 +64,11 @@ class RestartManager:
                 )
                 return
 
-            # TODO: bajar tiempo de backoff
-            backoff_delay = min(3 * (2 ** attempt_count), 30)
+            # backoff: 2s, 4s, 8s, 16s, 30s
+            backoff_delay = min(2 * (2 ** attempt_count), 30)
             self.restart_history[node_id].append((now, backoff_delay))
 
-        logging.warning(
+        logging.info(
             f"{node_id} scheduling restart (attempt {attempt_count + 1}/{self.max_restart_attempts}, "
             f"backoff={backoff_delay}s)"
         )
@@ -146,7 +149,7 @@ class RestartManager:
         with self._lock:
             if node_id in self.restart_history:
                 self.restart_history[node_id] = []
-                logging.debug(f"{node_id} restart history cleared")
+                # logging.debug(f"{node_id} restart history cleared")
 
     def get_restart_attempts(self, node_id: str) -> int:
         now = time.time()
