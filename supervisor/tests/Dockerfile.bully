@@ -1,0 +1,9 @@
+FROM python:3.9.7-slim
+WORKDIR /app
+
+COPY common /app/common
+COPY supervisor /app/supervisor
+
+ENV PYTHONPATH=/app
+
+CMD ["python3", "/app/supervisor/tests/bully_tests.py"]

@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  bully_tests:
+    build:
+      context: ../..
+      dockerfile: supervisor/tests/Dockerfile.bully
+    container_name: bully_tests
+    environment:
+      - PYTHONPATH=/app
