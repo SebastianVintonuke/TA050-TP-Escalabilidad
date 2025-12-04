@@ -75,7 +75,7 @@ class Healthchecker:
 
     def _discover_leader(self) -> bool:
         for attempt in range(self.discovery_retries):
-            logging.info(f"Leader discovery attempt {attempt + 1}/{self.discovery_retries}")
+            # logging.info(f"Leader discovery attempt {attempt + 1}/{self.discovery_retries}")
             
             responses = []
 
@@ -95,12 +95,17 @@ class Healthchecker:
 
                     if msg_type == MSG_TYPE_LEADER_INFO:
                         leader_id, leader_host, leader_port = LeaderElectionProtocol.decode_leader_info(data)
-                        responses.append({
+                        leader = {
                             "id": leader_id,
                             "host": leader_host,
                             "port": leader_port
-                        })
-                        logging.info(f"Received LEADER_INFO: leader_id={leader_id}")
+                        }
+                        self.current_leader = leader
+                        logging.info(f"Leader discovered: {leader}")
+                        self.send_sock.settimeout(original_timeout)
+
+                        return True
+                    
                     elif msg_type == MSG_TYPE_NO_LEADER_YET:
                         logging.debug(f"Supervisor {supervisor} has no leader yet")
                 except socket.timeout:
@@ -110,14 +115,8 @@ class Healthchecker:
                 finally:
                     self.send_sock.settimeout(original_timeout)
 
-            # elegir líder con mayor ID
-            if responses:
-                leader = max(responses, key=lambda x: x["id"])
-                self.current_leader = leader
-                logging.info(f"Leader discovered: {leader}")
-                return True
-
-            time.sleep(0.5)
+            if attempt < self.discovery_retries - 1:
+                time.sleep(0.5)
 
         logging.error("Failed to discover leader after all retries")
         return False
@@ -157,10 +156,11 @@ class Healthchecker:
                     return True
             except (socket.timeout, OSError) as e:
                 if attempt < max_attempts - 1:
-                    logging.debug(f"Heartbeat attempt {attempt + 1} failed, retrying...")
+                    # logging.debug(f"Heartbeat attempt {attempt + 1} failed, retrying...")
                     time.sleep(0.05)
                 else:
-                    logging.debug(f"Heartbeat to leader failed after {max_attempts} attempts: {e}")
+                    # logging.debug(f"Heartbeat to leader failed after {max_attempts} attempts: {e}")
+                    pass
         
         return False
 
@@ -181,6 +181,6 @@ class Healthchecker:
                     response = HeartbeatProtocol.encode_node_alive_response(self.node_id)
                     try:
                         self.send_sock.sendto(response, addr)
-                        logging.debug(f"Responded to NODE_ALIVE_CHECK from {addr}")
+                        # logging.debug(f"Responded to NODE_ALIVE_CHECK from {addr}")
                     except OSError as e:
                         logging.warning(f"Failed to send NODE_ALIVE_RESPONSE: {e}")
