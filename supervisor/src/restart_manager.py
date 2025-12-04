@@ -61,7 +61,8 @@ class RestartManager:
                 )
                 return
 
-            backoff_delay = min(2 ** attempt_count, 60)
+            # TODO: bajar tiempo de backoff
+            backoff_delay = min(3 * (2 ** attempt_count), 30)
             self.restart_history[node_id].append((now, backoff_delay))
 
         logging.warning(
@@ -97,6 +98,8 @@ class RestartManager:
         try:
             # all=True incluye containers que no están 'running'
             containers = self.docker_client.containers.list(all=True, filters={"name": node_id})
+            
+            containers = [c for c in containers if c.name == node_id]
             
             if not containers:
                 logging.error(f"{node_id} container not found for restart")
